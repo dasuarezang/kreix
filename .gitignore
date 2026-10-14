@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Datos privados: nunca al repositorio
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+ejemplos/
+demo/
+extractos/
+
+# Editores y sistema
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
