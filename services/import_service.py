@@ -15,6 +15,7 @@ from data.database import session_scope
 from data.repositories import (
     InsertStats,
     get_or_create_account,
+    list_accounts,
     insert_operations,
     insert_transactions,
     upsert_valuations,
@@ -64,14 +65,18 @@ class ImportService:
     def __init__(self, factory: sessionmaker[Session]) -> None:
         self._factory = factory
 
-    def import_files(self, paths: Iterable[str | Path], portfolio_as_of: date | None = None) -> ImportReport:
+    def import_files(
+        self, paths: Iterable[str | Path], portfolio_as_of: date | None = None, account_id: int | None = None
+    ) -> ImportReport:
+        """`account_id` es la cuenta destino de los extractos de Imagin; si se omite, la primera
+        cuenta (o una llamada 'Imagin' si aun no hay ninguna)."""
         report = ImportReport()
         for path in map(Path, paths):
-            report.files.append(self._import_one(path, portfolio_as_of))
+            report.files.append(self._import_one(path, portfolio_as_of, account_id))
         report.reconciliation_warnings = self.reconciliation_warnings()
         return report
 
-    def _import_one(self, path: Path, portfolio_as_of: date | None) -> FileReport:
+    def _import_one(self, path: Path, portfolio_as_of: date | None, account_id: int | None) -> FileReport:
         try:
             parsed = parse_file(path, portfolio_as_of)
         except (ParseError, OSError, ValueError) as exc:
@@ -79,8 +84,10 @@ class ImportService:
         stats = InsertStats()
         with session_scope(self._factory) as s:  # un fichero = una transaccion
             if parsed.kind is FileKind.IMAGIN_STATEMENT:
-                acc = get_or_create_account(s, Bank.IMAGIN, AccountKind.CHECKING, ACCOUNT_NAMES[Bank.IMAGIN])
-                stats = insert_transactions(s, acc.id, parsed.transactions)
+                target = self._checking_account_id(s, account_id)
+                if target is None:
+                    return FileReport(path.name, parsed.kind, error="La cuenta de destino ya no existe.")
+                stats = insert_transactions(s, target, parsed.transactions)
             elif parsed.kind is FileKind.MYINVESTOR_OPERATIONS:
                 acc = get_or_create_account(
                     s, Bank.MYINVESTOR, AccountKind.INVESTMENT, ACCOUNT_NAMES[Bank.MYINVESTOR]
@@ -89,6 +96,15 @@ class ImportService:
             else:
                 stats = InsertStats(inserted=upsert_valuations(s, parsed.positions))
         return FileReport(path.name, parsed.kind, stats.inserted, stats.skipped, list(parsed.warnings))
+
+    @staticmethod
+    def _checking_account_id(session: Session, account_id: int | None) -> int | None:
+        existing = list_accounts(session, AccountKind.CHECKING)
+        if account_id is not None:
+            return account_id if any(a.id == account_id for a in existing) else None
+        if existing:
+            return existing[0].id
+        return get_or_create_account(session, Bank.IMAGIN, AccountKind.CHECKING, ACCOUNT_NAMES[Bank.IMAGIN]).id
 
     def reconciliation_warnings(self) -> list[str]:
         with session_scope(self._factory) as s:

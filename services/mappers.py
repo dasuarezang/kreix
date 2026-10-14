@@ -18,7 +18,7 @@ def load_transactions(session: Session) -> list[TransactionDraft]:
         TransactionDraft(
             bank=bank, booking_date=t.booking_date, description=t.description, amount=t.amount,
             balance_after=t.balance_after, category=t.category, tx_hash=t.tx_hash,
-            source_file=t.source_file or "",
+            source_file=t.source_file or "", account_id=t.account_id,
         )
         for t, bank in rows
     ]
@@ -35,7 +35,7 @@ def load_operations(session: Session) -> list[OperationDraft]:
         OperationDraft(
             bank=bank, isin=inv.isin, product_name=inv.name, op_type=o.op_type, trade_date=o.trade_date,
             value_date=None, units=o.units, unit_price=o.unit_price, amount=o.amount,
-            tx_hash=o.tx_hash, source_file=o.source_file or "",
+            tx_hash=o.tx_hash, source_file=o.source_file or "", account_id=o.account_id,
         )
         for o, bank, inv in rows
     ]

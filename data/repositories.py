@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from core.entities import OperationDraft, PositionSnapshot, TransactionDraft
 from core.enums import AccountKind, Bank
+from data.hashing import scoped_hash
 from data.models import Account, Investment, InvestmentOperation, Transaction, Valuation
 
 
@@ -56,7 +57,7 @@ def insert_transactions(session: Session, account_id: int, drafts: list[Transact
                 amount=d.amount,
                 balance_after=d.balance_after,
                 category=d.category,
-                tx_hash=d.tx_hash,
+                tx_hash=scoped_hash(account_id, d.tx_hash),
                 source_file=d.source_file,
             )
             .on_conflict_do_nothing(index_elements=["tx_hash"])
@@ -81,7 +82,7 @@ def insert_operations(session: Session, account_id: int, drafts: list[OperationD
                 unit_price=d.unit_price,
                 amount=d.amount,
                 fees=Decimal(0),
-                tx_hash=d.tx_hash,
+                tx_hash=scoped_hash(account_id, d.tx_hash),
                 source_file=d.source_file,
             )
             .on_conflict_do_nothing(index_elements=["tx_hash"])
@@ -108,3 +109,48 @@ def upsert_valuations(session: Session, positions: list[PositionSnapshot]) -> in
         )
         session.execute(stmt)
     return len(positions)
+
+
+# ----------------------------------------------------------------- cuentas
+def list_accounts(session: Session, kind: AccountKind | None = None) -> list[Account]:
+    stmt = select(Account).order_by(Account.id)
+    if kind is not None:
+        stmt = stmt.where(Account.kind == kind)
+    return list(session.scalars(stmt))
+
+
+class AccountError(ValueError):
+    """Operacion de cuentas no valida (nombre vacio o repetido, cuenta inexistente...)."""
+
+
+def add_account(session: Session, name: str, bank: Bank = Bank.IMAGIN, kind: AccountKind = AccountKind.CHECKING) -> Account:
+    name = " ".join(name.split())
+    if not name:
+        raise AccountError("El nombre de la cuenta no puede estar vacio.")
+    if session.scalar(select(Account).where(Account.bank == bank, Account.name == name)):
+        raise AccountError(f"Ya existe una cuenta llamada '{name}'.")
+    account = Account(bank=bank, kind=kind, name=name)
+    session.add(account)
+    session.flush()
+    return account
+
+
+def rename_account(session: Session, account_id: int, name: str) -> Account:
+    account = session.get(Account, account_id)
+    if account is None:
+        raise AccountError("La cuenta no existe.")
+    name = " ".join(name.split())
+    if not name:
+        raise AccountError("El nombre de la cuenta no puede estar vacio.")
+    clash = session.scalar(select(Account).where(Account.bank == account.bank, Account.name == name, Account.id != account_id))
+    if clash:
+        raise AccountError(f"Ya existe una cuenta llamada '{name}'.")
+    account.name = name
+    return account
+
+
+def delete_account(session: Session, account_id: int) -> None:
+    account = session.get(Account, account_id)
+    if account is None:
+        raise AccountError("La cuenta no existe.")
+    session.delete(account)  # sus movimientos y operaciones caen en cascada

@@ -46,7 +46,7 @@ class DashboardService:
             return DashboardData()
 
         latest = metrics.latest_positions(snaps)
-        cash = metrics.latest_balance(txs)
+        cash = metrics.total_cash(txs)
         data = DashboardData(
             has_data=True,
             cash=cash,

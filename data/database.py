@@ -10,7 +10,11 @@ from pathlib import Path
 from sqlalchemy import Engine, create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
+from data.hashing import scoped_hash
 from data.models import Base
+
+SCHEMA_VERSION = 2  # v2: los hashes de movimientos incluyen la cuenta
+_HASHED_TABLES = ("transactions", "investment_operations")
 
 
 def default_db_path() -> Path:
@@ -44,8 +48,24 @@ def make_engine(url: str | None = None) -> Engine:
 
 
 def init_db(engine: Engine) -> None:
-    """Crea las tablas si no existen. (Migraciones con Alembic llegaran despues.)"""
+    """Crea las tablas si no existen y migra bases de datos antiguas.
+    (Alembic llegara mas adelante; mientras tanto basta `PRAGMA user_version`.)"""
     Base.metadata.create_all(engine)
+    _migrate(engine)
+
+
+def _migrate(engine: Engine) -> None:
+    with engine.begin() as conn:
+        version = conn.exec_driver_sql("PRAGMA user_version").scalar() or 0
+        if version < 2:
+            for table in _HASHED_TABLES:
+                rows = conn.exec_driver_sql(f"SELECT id, account_id, tx_hash FROM {table}").all()
+                for row_id, account_id, tx_hash in rows:
+                    conn.exec_driver_sql(
+                        f"UPDATE {table} SET tx_hash = ? WHERE id = ?", (scoped_hash(account_id, tx_hash), row_id)
+                    )
+        if version < SCHEMA_VERSION:
+            conn.exec_driver_sql(f"PRAGMA user_version = {SCHEMA_VERSION}")
 
 
 def make_session_factory(engine: Engine) -> sessionmaker[Session]:
