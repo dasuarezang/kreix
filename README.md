@@ -20,9 +20,37 @@
 - **Nunca duplica movimientos.** Puedes reimportar el mismo extracto, o varios que se solapan, y solo se añade lo nuevo. Dos pagos idénticos el mismo día se distinguen por el saldo posterior.
 - **Categoriza los gastos** con reglas por palabras clave (supermercado, suscripciones, ocio, restaurantes, transporte, vivienda, salud, Bizum...).
 - **Calcula las métricas que importan:** patrimonio neto, rendimiento global, tasa de ahorro, TIR y TWR.
+- **Una pestaña para tus cuentas y otra para tu inversión**, cada una con sus métricas, sus gráficos y todos sus movimientos, para un mes concreto o para todo el historial (ver más abajo).
+- **Varias cuentas bancarias:** añade, renombra o elimina cuentas, y mira una sola o todas a la vez.
 - **Avisa de lo que no cuadra** en vez de importar en silencio: saldos con huecos, cartera que no coincide con las operaciones, importes incoherentes.
 - **Modo claro y oscuro** intercambiables en caliente (`Ctrl+T`), con la paleta amarilla y roja de la marca.
 - **Privado por diseño:** todo se procesa y se guarda en tu equipo. No hay red, cuentas ni telemetría.
+
+## Las pestañas
+
+| Pestaña | Para qué sirve |
+|---|---|
+| **Resumen** | Patrimonio neto, rendimiento global y tasa de ahorro del mes, con la distribución de activos y la evolución patrimonial. |
+| **Cuentas** | Todo lo de tus cuentas bancarias: saldo, ingresos, gastos, tasa de ahorro, gasto medio, mayor gasto y categoría principal; gastos por categoría, evolución del saldo, ingresos y gastos por mes; y la tabla de movimientos. |
+| **Inversión** | Todo lo de tu cartera: valor, aportado, plusvalía, rentabilidad (TWR y TIR), distribución por fondo, aportado frente a valor, posiciones actuales y operaciones. |
+| **Importar** | Arrastra extractos y elige a qué cuenta pertenecen. |
+| **Ajustes** | Qué cuenta como ingreso, borrar datos, ruta de la base de datos. |
+
+Atajos: `Ctrl+1` a `Ctrl+5` cambian de pestaña y `Ctrl+T` alterna el modo claro y oscuro.
+
+<p align="center">
+  <img src="docs/screenshots/cuentas-oscuro.png" alt="Pestaña Cuentas" width="49%">
+  <img src="docs/screenshots/inversion-claro.png" alt="Pestaña Inversión" width="49%">
+</p>
+
+**Por mes o en global.** En Cuentas e Inversión, el selector de arriba cambia entre "Todo el historial" y cada mes con datos (las flechas saltan al mes anterior o siguiente). Las métricas, los gráficos y las tablas se ajustan al periodo elegido:
+
+- En Cuentas, el saldo es el **saldo al cierre** del mes y la media de gasto pasa de mensual a diaria.
+- En Inversión, el mes muestra el valor estimado al cierre, lo aportado en el mes, la variación sin contar aportaciones y la rentabilidad del mes.
+
+**Movimientos.** La tabla de Cuentas ordena los movimientos del más reciente al más antiguo y, dentro de un mismo día, en su orden real (se reconstruye con la cadena de saldos). Se puede buscar por concepto, filtrar por categoría y ordenar pulsando cualquier cabecera. Con varias cuentas aparece una columna "Cuenta".
+
+**Varias cuentas.** En Cuentas, **Gestionar cuentas** permite añadir, renombrar y eliminar cuentas. En Importar eliges la cuenta de destino de cada extracto de Imagin. El mismo extracto importado en dos cuentas distintas no cuenta como duplicado. La cartera de inversión es una sola.
 
 ## Qué archivos acepta
 
@@ -86,10 +114,11 @@ Clean Architecture: las dependencias apuntan hacia el dominio, y `core` no sabe 
 ```
 main.py                 ensambla las capas y arranca la interfaz
 ui/                     PySide6: ventana, vistas, gráficos, tema claro/oscuro
-services/               casos de uso: importar, calcular el dashboard, ajustes
+services/               casos de uso: importar, resumen, cuentas, inversión, ajustes
 etl/                    lectores de CSV/Excel y parsers (Imagin, MyInvestor), cuadre
-data/                   modelos SQLAlchemy y repositorios idempotentes
-core/                   lógica pura: métricas, categorizador, entidades, enumeraciones
+data/                   modelos SQLAlchemy, repositorios idempotentes y migraciones
+core/                   lógica pura: métricas (generales, por cuenta y de inversión),
+                        periodos, categorizador, entidades, enumeraciones
 logo-mejorado/          logotipos e iconos de la marca
 tools/                  datos de demostración y generador de capturas
 tests/                  suite de pruebas
@@ -98,7 +127,7 @@ tests/                  suite de pruebas
 Decisiones de diseño relevantes:
 
 - **Dinero exacto.** Los importes se guardan como enteros escalados (x10⁶) mediante un tipo propio, `Decimal6`. No hay errores de coma flotante y `SUM()` sigue funcionando en SQL.
-- **Idempotencia.** Cada movimiento tiene un `tx_hash` único y se inserta con `ON CONFLICT DO NOTHING`.
+- **Idempotencia.** Cada movimiento tiene un `tx_hash` único (que incluye la cuenta) y se inserta con `ON CONFLICT DO NOTHING`. Las bases de datos anteriores se migran solas al abrir (`PRAGMA user_version`).
 - **Preparado para cifrar.** El motor se crea en un único punto (`make_engine`), así que cambiar a una base cifrada (SQLCipher) no toca el resto del código.
 - **Gráficos nativos** (QtCharts), redibujados al cambiar de tema, con tooltips al pasar el ratón.
 

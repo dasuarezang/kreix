@@ -33,24 +33,24 @@ def main() -> None:
 
     app = QApplication(sys.argv[:1])
     window = build_window(f"sqlite:///{tmp / 'demo.db'}", "demo")
-    window.resize(1280, 900)
     window.show()
 
     def shot(name: str) -> None:
         QTest.qWait(1800)  # espera a que terminen las animaciones de los graficos
         window.grab().save(str(out / f"{name}.png"))
 
-    window.navigate(1)
+    window.resize(1280, 1180)
+    window.navigate(window.IMPORT)
     window.import_view.as_of.setDate(QDate(as_of.year, as_of.month, as_of.day))
     window.import_view.import_paths([str(p) for p in sorted((tmp / "demo").glob("*.csv"))])
     shot("importar-oscuro")
 
-    window.navigate(0)
-    bar = window.dashboard._stack.currentWidget().verticalScrollBar()
-    for theme_name in ("dark", "light"):
+    tabs = (("resumen", window.SUMMARY), ("cuentas", window.ACCOUNTS), ("inversion", window.INVESTMENT))
+    for theme_name, suffix in (("dark", "oscuro"), ("light", "claro")):
         window.apply_theme(theme_name)
-        bar.setValue(0)
-        shot(f"resumen-{'oscuro' if theme_name == 'dark' else 'claro'}")
+        for name, page in tabs:
+            window.navigate(page)
+            shot(f"{name}-{suffix}")
     app.quit()
     print(f"Capturas en {out}")
 
