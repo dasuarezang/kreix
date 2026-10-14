@@ -28,19 +28,32 @@
 
 ## Las pestañas
 
+Arriba a la izquierda están las tres vistas de tus datos; abajo, en forma de píldora con icono, las herramientas, y debajo el conmutador de modo claro y oscuro (un sol y una luna).
+
 | Pestaña | Para qué sirve |
 |---|---|
 | **Resumen** | Patrimonio neto, rendimiento global y tasa de ahorro del mes, con la distribución de activos y la evolución patrimonial. |
 | **Cuentas** | Todo lo de tus cuentas bancarias: saldo, ingresos, gastos, tasa de ahorro, gasto medio, mayor gasto y categoría principal; gastos por categoría, evolución del saldo, ingresos y gastos por mes; y la tabla de movimientos. |
-| **Inversión** | Todo lo de tu cartera: valor, aportado, plusvalía, rentabilidad (TWR y TIR), distribución por fondo, aportado frente a valor, posiciones actuales y operaciones. |
-| **Importar** | Arrastra extractos y elige a qué cuenta pertenecen. |
+| **Inversiones** | Todo lo de tu cartera: valor, aportado, plusvalía, rentabilidad (TWR y TIR), distribución por fondo, aportado frente a valor, posiciones actuales y operaciones. |
 | **Ajustes** | Qué cuenta como ingreso, borrar datos, ruta de la base de datos. |
+| **Ayuda** | Qué significa cada cifra y cada gráfico, explicado sin tecnicismos y con ejemplos. Tiene buscador. |
+| **Importar** | Arrastra extractos y elige a qué cuenta pertenecen. También restaura un archivo `.kreix`. |
+| **Exportar** | Guarda todos tus datos en un único archivo `.kreix` para hacer una copia o llevarlos a otro ordenador. |
 
-Atajos: `Ctrl+1` a `Ctrl+5` cambian de pestaña y `Ctrl+T` alterna el modo claro y oscuro.
+Atajos: `Ctrl+1` a `Ctrl+7` cambian de página en el orden de la tabla y `Ctrl+T` alterna el modo claro y oscuro.
+
+**Ayuda.** Un glosario para quien no sabe de finanzas: patrimonio neto, tasa de ahorro, valor liquidativo, plusvalía, TWR, TIR y el resto de términos que muestra Kreix. Cada uno explica qué es, cómo lo calcula Kreix y da un ejemplo con números. Buscar "tir" encuentra la TIR, pero no "invertir".
+
+**Exportar y mover tus datos.** *Exportar* crea un archivo `.kreix` (un ZIP con una copia consistente de la base de datos y una ficha con la versión y los totales). Para llevarlo a otro ordenador, instala Kreix allí, ve a *Importar* y arrastra el archivo: los datos quedan idénticos a los de origen (cuentas, movimientos, categorías, operaciones, cartera y ajustes, incluida la protección anti-duplicados). Importar un `.kreix` **reemplaza** los datos que hubiera en ese ordenador, y pide confirmación si ya había datos. Un archivo recibido se trata como no fiable: solo se aceptan sus dos entradas, se comprueba la integridad de la base de datos y se rechaza si trae disparadores o vistas, si es de una versión más reciente o si es demasiado grande. **El archivo no está cifrado**: contiene tu información financiera, guárdalo en un sitio seguro.
 
 <p align="center">
   <img src="docs/screenshots/cuentas-oscuro.png" alt="Pestaña Cuentas" width="49%">
-  <img src="docs/screenshots/inversion-claro.png" alt="Pestaña Inversión" width="49%">
+  <img src="docs/screenshots/inversion-claro.png" alt="Pestaña Inversiones" width="49%">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/ayuda-oscuro.png" alt="Página de Ayuda" width="49%">
+  <img src="docs/screenshots/exportar-claro.png" alt="Página de Exportar" width="49%">
 </p>
 
 **Por mes o en global.** En Cuentas e Inversión, el selector de arriba cambia entre "Todo el historial" y cada mes con datos (las flechas saltan al mes anterior o siguiente). Las métricas, los gráficos y las tablas se ajustan al periodo elegido:
@@ -114,7 +127,7 @@ Clean Architecture: las dependencias apuntan hacia el dominio, y `core` no sabe 
 ```
 main.py                 ensambla las capas y arranca la interfaz
 ui/                     PySide6: ventana, vistas, gráficos, tema claro/oscuro
-services/               casos de uso: importar, resumen, cuentas, inversión, ajustes
+services/               casos de uso: importar, resumen, cuentas, inversión, ajustes, exportar/restaurar
 etl/                    lectores de CSV/Excel y parsers (Imagin, MyInvestor), cuadre
 data/                   modelos SQLAlchemy, repositorios idempotentes y migraciones
 core/                   lógica pura: métricas (generales, por cuenta y de inversión),
@@ -144,13 +157,13 @@ Los tests de interfaz usan Qt sin pantalla (`QT_QPA_PLATFORM=offscreen`) y simul
 
 - Importar extractos en PDF.
 - Migraciones de base de datos con Alembic.
-- Cifrado de la base de datos.
+- Cifrado de la base de datos y del archivo `.kreix` exportado.
 - Reglas de categorización editables desde la interfaz.
 - Empaquetado como ejecutable (`.exe` / `.app`).
 
 ## Privacidad
 
-Los extractos bancarios son datos sensibles. El repositorio ignora por defecto las bases de datos (`*.db`) y la carpeta `ejemplos/`. No subas extractos reales al control de versiones.
+Los extractos bancarios son datos sensibles, y el archivo `.kreix` exportado también (no está cifrado). El repositorio ignora por defecto las bases de datos (`*.db`) y la carpeta `ejemplos/`. No subas extractos reales al control de versiones.
 
 ## Licencia
 

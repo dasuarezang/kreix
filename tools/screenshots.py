@@ -45,7 +45,8 @@ def main() -> None:
     window.import_view.import_paths([str(p) for p in sorted((tmp / "demo").glob("*.csv"))])
     shot("importar-oscuro")
 
-    tabs = (("resumen", window.SUMMARY), ("cuentas", window.ACCOUNTS), ("inversion", window.INVESTMENT))
+    tabs = (("resumen", window.SUMMARY), ("cuentas", window.ACCOUNTS), ("inversion", window.INVESTMENT),
+            ("ayuda", window.HELP), ("exportar", window.EXPORT))
     for theme_name, suffix in (("dark", "oscuro"), ("light", "claro")):
         window.apply_theme(theme_name)
         for name, page in tabs:
