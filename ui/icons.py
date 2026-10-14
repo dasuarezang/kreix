@@ -40,6 +40,16 @@ _SHAPES = {
                for a in (math.radians(d) for d in range(0, 360, 45))
            ),
     "moon": '<path d="M20.5 14.2A8.5 8.5 0 1 1 9.8 3.5a6.7 6.7 0 0 0 10.7 10.7z"/>',
+    # secciones de la ayuda
+    "pie": '<circle cx="12" cy="12" r="9.5"/><path d="M12 2.5V12h9.5"/><path d="M12 12l-6.7 6.7"/>',
+    "card": '<rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 10h19"/><path d="M6.5 15h4"/>',
+    "trend": '<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
+    "percent": '<path d="M19 5L5 19"/><circle cx="6.8" cy="6.8" r="2.6"/><circle cx="17.2" cy="17.2" r="2.6"/>',
+    "alert": '<path d="M10.3 4L2.5 17.5A2 2 0 0 0 4.2 20.5h15.6a2 2 0 0 0 1.7-3L13.7 4a2 2 0 0 0-3.4 0z"/>'
+             '<path d="M12 9.5v4"/><circle cx="12" cy="17" r="0.6" fill="currentColor"/>',
+    "book": '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2.5H20v19H6.5A2.5 2.5 0 0 1 4 19V5a2.5 2.5 0 0 1 2.5-2.5z"/>',
+    "back": '<path d="M19 12H5"/><path d="M11 5l-7 7 7 7"/>',
+    "chevron": '<path d="M9 5l7 7-7 7"/>',
 }
 
 

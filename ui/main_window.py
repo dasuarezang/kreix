@@ -40,10 +40,11 @@ class Services:
 
 
 class MainWindow(QMainWindow):
-    # El orden es el de los atajos Ctrl+1..7: arriba las tres vistas de datos, abajo las pildoras.
-    PAGES = ("Resumen", "Cuentas", "Inversiones", "Ajustes", "Ayuda", "Importar", "Exportar")
-    SUMMARY, ACCOUNTS, INVESTMENT, SETTINGS, HELP, IMPORT, EXPORT = range(7)
-    PILLS = ((SETTINGS, "gear"), (HELP, "help"), (IMPORT, "upload"), (EXPORT, "download"))
+    # El orden es el de los atajos Ctrl+1..7 y el de la barra, de arriba abajo: las tres vistas de datos
+    # y despues las pildoras (Importar, Exportar, Ajustes y, la ultima de todas, Ayuda).
+    PAGES = ("Resumen", "Cuentas", "Inversiones", "Importar", "Exportar", "Ajustes", "Ayuda")
+    SUMMARY, ACCOUNTS, INVESTMENT, IMPORT, EXPORT, SETTINGS, HELP = range(7)
+    PILLS = ((IMPORT, "upload"), (EXPORT, "download"), (SETTINGS, "gear"), (HELP, "help"))
 
     def __init__(self, services: Services, db_path: str) -> None:
         super().__init__()
@@ -62,8 +63,8 @@ class MainWindow(QMainWindow):
         self.import_view = ImportView(services.importer)
         self.export_view = ExportView(services.transfer)
         self.stack = QStackedWidget()
-        for page in (self.dashboard, self.accounts_view, self.investment_view, self.settings_view,
-                     self.help_view, self.import_view, self.export_view):
+        for page in (self.dashboard, self.accounts_view, self.investment_view, self.import_view,
+                     self.export_view, self.settings_view, self.help_view):
             self.stack.addWidget(page)
 
         for view in (self.dashboard, self.accounts_view, self.investment_view):
@@ -147,7 +148,7 @@ class MainWindow(QMainWindow):
         button.setChecked(True)
         button.setFocus(Qt.FocusReason.OtherFocusReason)   # el aro de foco acompana a la pestana activa
         if index == self.HELP:
-            self.help_view.ensure_built()
+            self.help_view.show_hub()          # al entrar en Ayuda siempre se ve el menu de secciones
         elif index == self.EXPORT:
             self.export_view.refresh()
 
@@ -222,6 +223,7 @@ class MainWindow(QMainWindow):
         self.dashboard.refresh_theme()
         self.accounts_view.refresh_theme()
         self.investment_view.refresh_theme()
+        self.help_view.refresh_theme()
         self._settings = replace(self._settings, theme=name)
         self.settings_view.set_theme(name)
         if persist:

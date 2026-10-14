@@ -79,6 +79,20 @@ QPushButton#PillButton {{
 QPushButton#PillButton:hover {{ background: {p.hover}; border-color: {p.muted}; }}
 QPushButton#PillButton:checked {{ background: {p.accent}; border-color: {p.accent}; color: {p.on_accent}; }}
 QPushButton#PillButton:focus {{ border: 2px solid {p.accent}; padding: 0 17px 0 13px; }}
+/* ---- menu de ayuda ---- */
+QPushButton#HubCard {{
+    background: {p.surface}; border: 1px solid {p.border}; border-radius: 16px; text-align: left; padding: 0;
+}}
+QPushButton#HubCard:hover {{ background: {p.hover}; border-color: {p.accent}; }}
+QPushButton#HubCard:focus {{ border: 2px solid {p.accent}; }}
+QLabel#HubTitle {{ font-size: 15px; font-weight: 700; }}
+QLabel#IconChip {{ background: {p.accent}; border-radius: 30px; }}
+QPushButton#BackButton {{
+    background: transparent; border: none; color: {p.muted}; font-weight: 700;
+    padding: 6px 14px 6px 8px; border-radius: 10px;
+}}
+QPushButton#BackButton:hover {{ background: {p.hover}; color: {p.text}; }}
+QPushButton#BackButton:focus {{ border: 2px solid {p.accent}; }}
 QLabel#SidebarFoot {{ color: {p.muted}; font-size: 11px; }}
 
 /* ---- tipografia ---- */

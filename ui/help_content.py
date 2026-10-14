@@ -31,6 +31,16 @@ S_WARNINGS = "Avisos"
 S_USE = "Usar Kreix"
 SECTIONS = (S_OVERVIEW, S_ACCOUNTS, S_INVEST, S_RETURNS, S_WARNINGS, S_USE)
 
+# icono (de ui.icons) y descripcion corta de cada seccion, para los botones del menu de ayuda
+SECTION_INFO: dict[str, tuple[str, str]] = {
+    S_OVERVIEW: ("pie", "Patrimonio, liquidez e inversión"),
+    S_ACCOUNTS: ("card", "Saldo, ingresos, gastos y ahorro"),
+    S_INVEST: ("trend", "Fondos, participaciones y aportaciones"),
+    S_RETURNS: ("percent", "Plusvalía, TWR y TIR"),
+    S_WARNINGS: ("alert", "Qué significan y qué hacer"),
+    S_USE: ("book", "Importar, exportar y atajos"),
+}
+
 ENTRIES: tuple[HelpEntry, ...] = (
     # ------------------------------------------------------------------ Tu dinero de un vistazo
     HelpEntry(
@@ -363,8 +373,8 @@ ENTRIES: tuple[HelpEntry, ...] = (
     ),
     HelpEntry(
         S_USE, "Atajos de teclado",
-        "Ctrl+1 Resumen, Ctrl+2 Cuentas, Ctrl+3 Inversiones, Ctrl+4 Ajustes, Ctrl+5 Ayuda, Ctrl+6 Importar, "
-        "Ctrl+7 Exportar. Ctrl+T cambia entre modo claro y oscuro.",
+        "Ctrl+1 Resumen, Ctrl+2 Cuentas, Ctrl+3 Inversiones, Ctrl+4 Importar, Ctrl+5 Exportar, Ctrl+6 Ajustes, "
+        "Ctrl+7 Ayuda. Ctrl+T cambia entre modo claro y oscuro.",
         "",
         "",
         keywords=("teclado", "ctrl"),

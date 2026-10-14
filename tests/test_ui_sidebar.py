@@ -56,14 +56,14 @@ def drop(zone, paths):
 
 
 # ---------------------------------------------------------------- barra lateral
-def test_sidebar_layout_top_buttons_and_bottom_pills(window):
+def test_sidebar_layout_top_buttons_and_bottom_pills_in_order(window):
     window.resize(1280, 900)
     window.show()
     QApplication.processEvents()
     nav = [b for b in window.findChildren(QPushButton) if b.objectName() == "NavButton"]
     pills = [b for b in window.findChildren(QPushButton) if b.objectName() == "PillButton"]
     assert [b.text() for b in sorted(nav, key=lambda b: b.y())] == ["Resumen", "Cuentas", "Inversiones"]
-    assert [b.text() for b in sorted(pills, key=lambda b: b.y())] == ["Ajustes", "Ayuda", "Importar", "Exportar"]
+    assert [b.text() for b in sorted(pills, key=lambda b: b.y())] == ["Importar", "Exportar", "Ajustes", "Ayuda"]
     assert max(b.mapTo(window, b.rect().topLeft()).y() for b in nav) < min(b.mapTo(window, b.rect().topLeft()).y() for b in pills)
     toggle_y = window.theme_switch.mapTo(window, window.theme_switch.rect().topLeft()).y()
     assert toggle_y > max(p.mapTo(window, p.rect().topLeft()).y() for p in pills)    # el conmutador, debajo de las pildoras
@@ -145,18 +145,49 @@ def test_help_shortcuts_text_matches_the_real_shortcuts(window):
     assert expected in entry.plain.replace("\n", " ")
 
 
-def test_help_page_renders_filters_and_shows_empty_state(window):
+def test_help_opens_on_a_menu_of_section_buttons(window):
     view = window.help_view
-    assert view.entry_terms() == []                      # aun no se ha abierto: no se ha construido
     window.navigate(window.HELP)
-    assert len(view.entry_terms()) == len(ENTRIES)
-    view.search.setText("tir")
+    assert view.is_hub() and view.section_titles() == list(SECTIONS)                 # un boton por apartado, con su titulo
+    assert all(not c.chip.pixmap().isNull() for c in view.cards)                     # y su icono
+    assert view.entry_terms() == []                                                  # el menu no lista terminos
+
+
+def test_each_section_button_opens_its_own_content_and_back_returns_to_the_menu(window):
+    view = window.help_view
+    window.navigate(window.HELP)
+    for card in view.cards:
+        card.click()
+        assert view.current_section() == card.section and not view.is_hub()
+        assert view.entry_terms() == [e.term for e in ENTRIES if e.section == card.section]
+        assert view._section_title.text() == card.section
+        view.back_button.click()
+        assert view.is_hub() and view.current_section() is None
+    # el contenido repartido entre secciones es todo el glosario, sin perder nada
+    assert sum(len([e for e in ENTRIES if e.section == s]) for s in SECTIONS) == len(ENTRIES)
+
+
+def test_entering_help_always_shows_the_menu(window):
+    view = window.help_view
+    window.navigate(window.HELP)
+    view.cards[2].click()
+    assert not view.is_hub()
+    window.navigate(window.SUMMARY)
+    window.navigate(window.HELP)
+    assert view.is_hub()
+
+
+def test_help_search_lives_on_the_menu_and_hides_the_buttons(window):
+    view = window.help_view
+    window.navigate(window.HELP)
+    view.set_query("tir")
     assert view.entry_terms()[0].startswith("TIR") and len(view.entry_terms()) < len(ENTRIES)
-    view.search.setText("zzzz")
+    assert not view._grid_holder.isVisibleTo(view) and view._results_holder.isVisibleTo(view)
+    view.set_query("zzzz")
     assert view.entry_terms() == []
     assert any("No hay resultados" in lbl.text() for lbl in view.findChildren(QLabel))
-    view.search.setText("")
-    assert len(view.entry_terms()) == len(ENTRIES)
+    view.set_query("")
+    assert view._grid_holder.isVisibleTo(view) and not view._results_holder.isVisibleTo(view)
 
 
 # ---------------------------------------------------------------- exportar
