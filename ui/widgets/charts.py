@@ -22,6 +22,7 @@ from core.metrics import AllocationSlice, MonthlyFlow, WealthPoint
 from ui import theme
 from ui.format import fmt_eur, fmt_pct, month_long, month_short
 
+ANIMATIONS = True   # las pruebas lo desactivan: la animacion no aporta y las ralentiza
 SPANISH = QLocale(QLocale.Language.Spanish, QLocale.Country.Spain)
 
 
@@ -38,7 +39,9 @@ class BaseChart(QChartView):
         chart.setBackgroundVisible(False)
         chart.setMargins(QMargins(0, 0, 0, 0))
         chart.setLocale(SPANISH)
-        chart.setAnimationOptions(QChart.AnimationOption.SeriesAnimations)
+        chart.setAnimationOptions(
+            QChart.AnimationOption.SeriesAnimations if ANIMATIONS else QChart.AnimationOption.NoAnimation
+        )
         chart.legend().setAlignment(Qt.AlignmentFlag.AlignBottom)
         self.setRenderHint(QPainter.RenderHint.Antialiasing)
         self.setFrameShape(QFrame.Shape.NoFrame)
@@ -109,7 +112,7 @@ class DonutChart(BaseChart):
             colors = {"Inversión": p.accent, "Liquidez": p.neutral}
             for i, s in enumerate(self._slices):
                 sl = series.append(s.label, float(s.value))
-                sl.setColor(QColor(colors.get(s.label, p.red)))
+                sl.setColor(QColor(colors.get(s.label) or p.series[i % len(p.series)]))
                 sl.setBorderColor(QColor(p.surface))
                 sl.setBorderWidth(3)
                 sl.setLabelVisible(False)

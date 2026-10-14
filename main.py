@@ -8,9 +8,11 @@ import sys
 from PySide6.QtWidgets import QApplication
 
 from data.database import default_db_path, init_db, make_engine, make_session_factory
+from services.accounts_service import AccountsService
 from services.dashboard_service import DashboardService
 from services.data_service import DataService
 from services.import_service import ImportService
+from services.investment_service import InvestmentService
 from services.settings_service import SettingsService
 from ui import assets
 from ui.main_window import MainWindow, Services
@@ -20,7 +22,10 @@ def build_window(db_url: str | None = None, db_label: str | None = None) -> Main
     engine = make_engine(db_url)
     init_db(engine)
     factory = make_session_factory(engine)
-    services = Services(ImportService(factory), DashboardService(factory), SettingsService(factory), DataService(factory))
+    services = Services(
+        ImportService(factory), DashboardService(factory), SettingsService(factory), DataService(factory),
+        AccountsService(factory), InvestmentService(factory),
+    )
     return MainWindow(services, db_label or str(default_db_path()))
 
 

@@ -23,17 +23,20 @@ class Palette:
     red: str             # rojo de marca
     neutral: str         # tercera serie de los graficos
     hover: str           # fondo de elementos al pasar el raton
+    series: tuple[str, ...]  # colores para graficos con muchas series (fondos)
 
 
 DARK = Palette(
     name="dark", bg="#15191D", surface="#1F2429", surface_alt="#282F36", border="#323A43",
     text="#F6F2EA", muted="#9AA5B1", accent="#FFD43B", accent_hover="#FFE066", on_accent="#1F2429",
     red="#E5484D", neutral="#7F8C99", hover="#2A3139",
+    series=("#FFD43B", "#E5484D", "#7F8C99", "#F2A900", "#FF8787", "#B0BAC5"),
 )
 LIGHT = Palette(
     name="light", bg="#F6F2EA", surface="#FFFFFF", surface_alt="#EFE9DD", border="#E2DBCD",
     text="#1F2429", muted="#667085", accent="#F2B400", accent_hover="#FFC21A", on_accent="#1F2429",
     red="#C92A2A", neutral="#6B7885", hover="#F1ECE1",
+    series=("#F2B400", "#C92A2A", "#6B7885", "#B07F00", "#E8590C", "#9AA5B1"),
 )
 PALETTES = {"dark": DARK, "light": LIGHT}
 
@@ -121,8 +124,47 @@ QDateEdit::drop-down {{ border: none; width: 24px; }}
 QCalendarWidget QWidget {{ background: {p.surface}; color: {p.text}; }}
 QCalendarWidget QAbstractItemView {{ selection-background-color: {p.accent}; selection-color: {p.on_accent}; }}
 
+/* ---- tablas ---- */
+QTableView {{
+    background: {p.surface}; alternate-background-color: {p.hover}; color: {p.text};
+    border: none; outline: none; gridline-color: transparent;
+    selection-background-color: {p.accent}; selection-color: {p.on_accent};
+}}
+QTableView::item {{ padding: 0 12px; border: none; }}
+QHeaderView {{ background: {p.surface}; }}
+QHeaderView::section {{
+    background: {p.surface}; color: {p.muted}; font-size: 11px; font-weight: 700;
+    padding: 8px 12px; border: none; border-bottom: 1px solid {p.border};
+}}
+QHeaderView::section:hover {{ color: {p.text}; }}
+QTableCornerButton::section {{ background: {p.surface}; border: none; }}
+
+/* ---- combos, busqueda y menus ---- */
+QComboBox, QLineEdit {{
+    background: {p.surface}; color: {p.text}; border: 1px solid {p.border};
+    border-radius: 8px; padding: 7px 12px; min-height: 18px;
+}}
+QComboBox:hover, QLineEdit:hover {{ border-color: {p.muted}; }}
+QComboBox:focus, QLineEdit:focus {{ border: 2px solid {p.accent}; padding: 6px 11px; }}
+QComboBox::drop-down {{ border: none; width: 26px; }}
+QComboBox QAbstractItemView {{
+    background: {p.surface}; color: {p.text}; border: 1px solid {p.border};
+    selection-background-color: {p.accent}; selection-color: {p.on_accent}; outline: none; padding: 4px;
+}}
+QPushButton#Arrow {{ padding: 6px 12px; font-size: 16px; font-weight: 700; }}
+QMenu {{ background: {p.surface}; color: {p.text}; border: 1px solid {p.border}; border-radius: 8px; padding: 6px; }}
+QMenu::item {{ padding: 8px 22px; border-radius: 6px; }}
+QMenu::item:selected {{ background: {p.accent}; color: {p.on_accent}; }}
+QMenu::item:disabled {{ color: {p.muted}; }}
+QDialog, QMessageBox, QInputDialog {{ background: {p.surface}; color: {p.text}; }}
+QLabel#MiniValue {{ font-size: 20px; font-weight: 800; }}
+QLabel#MiniValue[tone="negative"] {{ color: {p.red}; }}
+
 QScrollBar:vertical {{ background: transparent; width: 10px; margin: 2px; }}
 QScrollBar::handle:vertical {{ background: {p.border}; border-radius: 4px; min-height: 30px; }}
 QScrollBar::handle:vertical:hover {{ background: {p.muted}; }}
+QScrollBar:horizontal {{ background: transparent; height: 10px; margin: 2px; }}
+QScrollBar::handle:horizontal {{ background: {p.border}; border-radius: 4px; min-width: 30px; }}
+QScrollBar::handle:horizontal:hover {{ background: {p.muted}; }}
 QScrollBar::add-line, QScrollBar::sub-line {{ height: 0; width: 0; }}
 """

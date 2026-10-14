@@ -10,13 +10,17 @@ from PySide6.QtWidgets import (
     QPushButton, QStackedWidget, QVBoxLayout, QWidget,
 )
 
+from services.accounts_service import AccountsService
 from services.dashboard_service import DashboardService
 from services.data_service import DataService
 from services.import_service import ImportService
+from services.investment_service import InvestmentService
 from services.settings_service import AppSettings, SettingsService
 from ui import assets, theme
+from ui.views.accounts_view import AccountsView
 from ui.views.dashboard_view import DashboardView
 from ui.views.import_view import ImportView
+from ui.views.investment_view import InvestmentView
 from ui.views.settings_view import VERSION, SettingsView
 from ui.widgets.switch import SwitchToggle
 
@@ -27,10 +31,13 @@ class Services:
     dashboard: DashboardService
     settings: SettingsService
     data: DataService
+    accounts: AccountsService
+    investment: InvestmentService
 
 
 class MainWindow(QMainWindow):
-    PAGES = ("Resumen", "Importar", "Ajustes")
+    PAGES = ("Resumen", "Cuentas", "Inversión", "Importar", "Ajustes")
+    SUMMARY, ACCOUNTS, INVESTMENT, IMPORT, SETTINGS = range(5)
 
     def __init__(self, services: Services, db_path: str) -> None:
         super().__init__()
@@ -42,13 +49,17 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(1040, 700)
 
         self.dashboard = DashboardView()
+        self.accounts_view = AccountsView(services.accounts, lambda: self._settings.flow_options)
+        self.investment_view = InvestmentView(services.investment)
         self.import_view = ImportView(services.importer)
         self.settings_view = SettingsView(self._settings, db_path)
         self.stack = QStackedWidget()
-        for page in (self.dashboard, self.import_view, self.settings_view):
+        for page in (self.dashboard, self.accounts_view, self.investment_view, self.import_view, self.settings_view):
             self.stack.addWidget(page)
 
-        self.dashboard.go_import.connect(lambda: self.navigate(1))
+        for view in (self.dashboard, self.accounts_view, self.investment_view):
+            view.go_import.connect(lambda: self.navigate(self.IMPORT))
+        self.accounts_view.accounts_changed.connect(self.refresh)
         self.import_view.imported.connect(self.refresh)
         self.settings_view.settings_changed.connect(self._on_settings_changed)
         self.settings_view.reset_requested.connect(self.confirm_reset)
@@ -116,10 +127,15 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------ comportamiento
     def navigate(self, index: int) -> None:
         self.stack.setCurrentIndex(index)
-        self._nav.button(index).setChecked(True)
+        button = self._nav.button(index)
+        button.setChecked(True)
+        button.setFocus(Qt.FocusReason.OtherFocusReason)   # el aro de foco acompana a la pestana activa
 
     def refresh(self) -> None:
         self.dashboard.set_data(self._svc.dashboard.load(self._settings.flow_options))
+        self.accounts_view.reload()
+        self.investment_view.reload()
+        self.import_view.set_accounts(self._svc.accounts.accounts())
 
     def confirm_reset(self) -> None:
         answer = QMessageBox.question(
@@ -136,7 +152,7 @@ class MainWindow(QMainWindow):
     def reset_data(self) -> None:
         self._svc.data.reset_all()
         self.refresh()
-        self.navigate(0)
+        self.navigate(self.SUMMARY)
 
     def apply_theme(self, name: str, persist: bool = False) -> None:
         palette = theme.PALETTES[name]
@@ -148,6 +164,8 @@ class MainWindow(QMainWindow):
             self.theme_switch.setChecked(name == "dark")
         self.theme_switch.update()
         self.dashboard.refresh_theme()
+        self.accounts_view.refresh_theme()
+        self.investment_view.refresh_theme()
         self._settings = replace(self._settings, theme=name)
         self.settings_view.set_theme(name)
         if persist:

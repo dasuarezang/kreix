@@ -5,9 +5,10 @@ from datetime import date
 
 from PySide6.QtCore import QDate, Qt, Signal
 from PySide6.QtWidgets import (
-    QDateEdit, QFrame, QHBoxLayout, QLabel, QScrollArea, QVBoxLayout, QWidget,
+    QComboBox, QDateEdit, QFrame, QHBoxLayout, QLabel, QScrollArea, QVBoxLayout, QWidget,
 )
 
+from services.accounts_service import AccountInfo
 from services.import_service import FileReport, ImportReport, ImportService
 from ui.widgets.cards import repolish
 from ui.widgets.dropzone import DropZone
@@ -95,6 +96,22 @@ class ImportView(QWidget):
         as_of_row.addLayout(as_of_col, 1)
         as_of_row.addWidget(self.as_of)
 
+        self.account_combo = QComboBox()
+        self.account_combo.setMinimumWidth(230)
+        self.account_combo.setAccessibleName("Cuenta de destino")
+        self.account_combo.addItem("Imagin (se creará al importar)", None)
+        account_label = QLabel("Cuenta de destino")
+        account_label.setObjectName("H2")
+        account_hint = QLabel("A qué cuenta bancaria pertenecen los extractos de Imagin que importes.")
+        account_hint.setObjectName("Small")
+        account_row = QHBoxLayout()
+        account_col = QVBoxLayout()
+        account_col.setSpacing(2)
+        account_col.addWidget(account_label)
+        account_col.addWidget(account_hint)
+        account_row.addLayout(account_col, 1)
+        account_row.addWidget(self.account_combo)
+
         self._results = QVBoxLayout()
         self._results.setSpacing(10)
         results_title = QLabel("Resultado")
@@ -110,6 +127,7 @@ class ImportView(QWidget):
         col.addWidget(title)
         col.addWidget(intro)
         col.addWidget(self.dropzone)
+        col.addLayout(account_row)
         col.addLayout(as_of_row)
         col.addSpacing(6)
         col.addWidget(results_title)
@@ -124,12 +142,25 @@ class ImportView(QWidget):
         outer.setContentsMargins(0, 0, 0, 0)
         outer.addWidget(scroll)
 
+    def set_accounts(self, accounts: list[AccountInfo]) -> None:
+        keep = self.account_combo.currentData()
+        self.account_combo.blockSignals(True)
+        self.account_combo.clear()
+        if accounts:
+            for a in accounts:
+                self.account_combo.addItem(a.name, a.id)
+            index = self.account_combo.findData(keep)
+            self.account_combo.setCurrentIndex(max(index, 0))
+        else:
+            self.account_combo.addItem("Imagin (se creará al importar)", None)
+        self.account_combo.blockSignals(False)
+
     def portfolio_date(self) -> date:
         qd = self.as_of.date()
         return date(qd.year(), qd.month(), qd.day())
 
     def import_paths(self, paths: list[str]) -> ImportReport:
-        report = self._service.import_files(paths, self.portfolio_date())
+        report = self._service.import_files(paths, self.portfolio_date(), self.account_combo.currentData())
         self.show_report(report)
         if report.total_inserted:
             self.imported.emit()

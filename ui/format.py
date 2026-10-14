@@ -4,6 +4,8 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal
 
+from core.enums import OperationType, TxCategory
+
 NBSP = " "
 MINUS = "−"
 EMPTY = "—"
@@ -45,3 +47,42 @@ def month_short(d: date) -> str:
 
 def month_long(d: date) -> str:
     return f"{MONTHS_LONG[d.month - 1]} {d.year}"
+
+
+CATEGORY_LABELS = {
+    TxCategory.INCOME: "Ingresos",
+    TxCategory.GROCERIES: "Supermercado",
+    TxCategory.DINING: "Restaurantes",
+    TxCategory.SUBSCRIPTIONS: "Suscripciones",
+    TxCategory.LEISURE: "Ocio",
+    TxCategory.TRANSPORT: "Transporte",
+    TxCategory.HOUSING: "Vivienda",
+    TxCategory.HEALTH: "Salud",
+    TxCategory.P2P: "Bizum",
+    TxCategory.TRANSFER: "Traspaso",
+    TxCategory.INVESTMENT_TRANSFER: "Aportación a inversión",
+    TxCategory.OTHER: "Otros",
+    TxCategory.UNCATEGORIZED: "Sin categoría",
+}
+OPERATION_LABELS = {
+    OperationType.BUY: "Compra",
+    OperationType.SELL: "Venta",
+    OperationType.DIVIDEND: "Dividendo",
+    OperationType.FEE: "Comisión",
+    OperationType.DEPOSIT: "Ingreso",
+    OperationType.WITHDRAWAL: "Retirada",
+}
+
+
+def category_label(category: TxCategory) -> str:
+    return CATEGORY_LABELS.get(category, category.value)
+
+
+def fmt_date(d: date) -> str:
+    return f"{d.day:02d}/{d.month:02d}/{d.year}"
+
+
+def fmt_units(value: Decimal | float | None, decimals: int = 4) -> str:
+    if value is None:
+        return EMPTY
+    return _es_number(value, decimals)

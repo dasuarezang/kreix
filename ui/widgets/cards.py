@@ -1,7 +1,9 @@
 """Tarjetas: indicador (KPI) y contenedor de grafico."""
 from __future__ import annotations
 
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QPainter, QPalette
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget
 
 
 def repolish(widget: QWidget) -> None:
@@ -10,10 +12,30 @@ def repolish(widget: QWidget) -> None:
     widget.style().polish(widget)
 
 
+class ElidedLabel(QLabel):
+    """Etiqueta de una linea que acaba en puntos suspensivos si no cabe (y no impone su ancho)."""
+
+    def __init__(self, text: str = "", parent=None) -> None:
+        super().__init__(text, parent)
+        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+
+    def setText(self, text: str) -> None:  # noqa: N802 (API de Qt)
+        super().setText(text)
+        self.setToolTip(text)
+
+    def paintEvent(self, _event) -> None:
+        painter = QPainter(self)
+        text = self.fontMetrics().elidedText(self.text(), Qt.TextElideMode.ElideRight, self.width())
+        self.style().drawItemText(
+            painter, self.rect(), int(self.alignment()) | Qt.TextFlag.TextSingleLine, self.palette(),
+            self.isEnabled(), text, QPalette.ColorRole.WindowText,
+        )
+
+
 class StatCard(QFrame):
     """Titulo, valor grande y subtitulo, con una barra de acento a la izquierda."""
 
-    def __init__(self, title: str, accent: str = "yellow", parent=None) -> None:
+    def __init__(self, title: str, accent: str = "yellow", compact: bool = False, parent=None) -> None:
         super().__init__(parent)
         self.setObjectName("Card")
         bar = QFrame()
@@ -23,8 +45,8 @@ class StatCard(QFrame):
 
         self._title = QLabel(title.upper())
         self._title.setObjectName("CardTitle")
-        self._value = QLabel("—")
-        self._value.setObjectName("CardValue")
+        self._value = ElidedLabel("—")
+        self._value.setObjectName("MiniValue" if compact else "CardValue")
         self._sub = QLabel("")
         self._sub.setObjectName("CardSub")
         self._sub.setWordWrap(True)
@@ -34,10 +56,14 @@ class StatCard(QFrame):
         for w in (self._title, self._value, self._sub):
             col.addWidget(w)
         row = QHBoxLayout(self)
-        row.setContentsMargins(16, 16, 20, 16)
+        row.setContentsMargins(16, 12 if compact else 16, 20, 12 if compact else 16)
         row.setSpacing(14)
         row.addWidget(bar)
         row.addLayout(col, 1)
+        self.setAccessibleName(title)
+
+    def set_title(self, title: str) -> None:
+        self._title.setText(title.upper())
         self.setAccessibleName(title)
 
     def set_content(self, value: str, subtitle: str = "", negative: bool = False) -> None:

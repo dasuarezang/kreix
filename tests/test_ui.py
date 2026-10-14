@@ -39,21 +39,6 @@ def test_fmt_pct_and_dates():
 
 
 # ---------------------------------------------------------------- ventana
-@pytest.fixture(scope="session")
-def qapp():
-    return QApplication.instance() or QApplication([])
-
-
-@pytest.fixture()
-def window(qapp):
-    from main import build_window
-
-    w = build_window("sqlite:///:memory:", "memoria")
-    yield w
-    w.close()
-    theme.set_current(theme.DARK)
-
-
 def drop(zone, paths):
     mime = QMimeData()
     mime.setUrls([QUrl.fromLocalFile(str(p)) for p in paths])
@@ -63,7 +48,7 @@ def drop(zone, paths):
 
 def test_starts_with_empty_state(window):
     assert window.dashboard._stack.currentIndex() == 0
-    assert window.stack.count() == 3
+    assert window.stack.count() == 5
 
 
 def test_drop_files_imports_and_fills_dashboard(window):
@@ -106,8 +91,8 @@ def test_savings_options_update_dashboard(window):
 
 
 def test_keyboard_navigation(window):
-    window.navigate(2)
-    assert window.stack.currentIndex() == 2 and window._nav.button(2).isChecked()
+    window.navigate(window.SETTINGS)
+    assert window.stack.currentIndex() == window.SETTINGS and window._nav.button(window.SETTINGS).isChecked()
 
 
 def test_logo_assets_load(qapp):
