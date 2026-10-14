@@ -168,7 +168,6 @@ Los tests de interfaz usan Qt sin pantalla (`QT_QPA_PLATFORM=offscreen`) y simul
 
 ## Hoja de ruta
 
-- Importar extractos en PDF.
 - Migraciones de base de datos con Alembic.
 - Cifrado de la base de datos y del archivo `.kreix` exportado.
 - Reglas de categorización editables desde la interfaz.
