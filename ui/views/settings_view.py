@@ -108,5 +108,14 @@ class SettingsView(QWidget):
         self._settings = replace(self._settings, **changes)
         self.settings_changed.emit(self._settings)
 
+    def set_settings(self, settings: AppSettings) -> None:
+        """Refleja unos ajustes cargados desde fuera (p. ej. tras restaurar datos) sin emitir cambios."""
+        self._settings = settings
+        for row, value in ((self.p2p, settings.include_p2p), (self.transfers, settings.transfers_in_as_income)):
+            row.switch.blockSignals(True)
+            row.switch.setChecked(value)
+            row.switch.blockSignals(False)
+            row.switch.update()
+
     def set_theme(self, theme_name: str) -> None:
         self._settings = replace(self._settings, theme=theme_name)

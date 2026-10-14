@@ -59,3 +59,69 @@ class SwitchToggle(QAbstractButton):
             painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.setPen(QPen(QColor(p.accent), 2))
             painter.drawRoundedRect(QRectF(-1, -1, self.WIDTH + 2, self.HEIGHT + 2), 14, 14)
+
+
+class ThemeToggle(QAbstractButton):
+    """Conmutador claro/oscuro: una pildora con sol y luna, y una bola que indica el modo activo.
+
+    Marcado == modo oscuro. No lleva texto visible; el nombre accesible lo describe."""
+
+    WIDTH, HEIGHT = 92, 40
+
+    def __init__(self, dark: bool = True, parent=None) -> None:
+        super().__init__(parent)
+        self.setCheckable(True)
+        self.setChecked(dark)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.setAccessibleName("Modo oscuro")
+        self._pos = 1.0 if dark else 0.0
+        self._anim = QPropertyAnimation(self, b"knobPosition", self)
+        self._anim.setDuration(180)
+        self.toggled.connect(self._animate)
+
+    def sizeHint(self) -> QSize:
+        return QSize(self.WIDTH, self.HEIGHT)
+
+    def _get_pos(self) -> float:
+        return self._pos
+
+    def _set_pos(self, value: float) -> None:
+        self._pos = value
+        self.update()
+
+    knobPosition = Property(float, _get_pos, _set_pos)
+
+    def _animate(self, checked: bool) -> None:
+        self._anim.stop()
+        self._anim.setStartValue(self._pos)
+        self._anim.setEndValue(1.0 if checked else 0.0)
+        self._anim.start()
+
+    def paintEvent(self, _event) -> None:
+        from ui import icons
+
+        p = theme.current()
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        h, w = self.HEIGHT, self.WIDTH
+        painter.setPen(QPen(QColor(p.border), 1))
+        painter.setBrush(QColor(p.surface_alt))
+        painter.drawRoundedRect(QRectF(0.5, 0.5, w - 1, h - 1), h / 2, h / 2)
+
+        pad, knob = 4, h - 8
+        x = pad + (w - 2 * pad - knob) * self._pos
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor(p.accent))
+        painter.drawEllipse(QRectF(x, pad, knob, knob))
+
+        size = 20
+        for name, center_x, active in (("sun", pad + knob / 2, not self.isChecked()),
+                                       ("moon", w - pad - knob / 2, self.isChecked())):
+            color = p.on_accent if active else p.muted
+            painter.drawPixmap(int(center_x - size / 2), int((h - size) / 2), icons.pixmap(name, color, size, 2.0))
+        if self.hasFocus():
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.setPen(QPen(QColor(p.accent), 2))
+            painter.drawRoundedRect(QRectF(-1, -1, w + 2, h + 2), h / 2 + 1, h / 2 + 1)

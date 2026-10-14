@@ -1,0 +1,401 @@
+"""Contenido de la pagina de Ayuda: que significa cada cifra que muestra Kreix.
+
+Texto pensado para quien no sabe de finanzas. Cada entrada explica el concepto con palabras
+sencillas, dice como lo calcula Kreix y da un ejemplo con numeros. Sin dependencias de Qt.
+"""
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+
+from core.categorizer import normalize
+
+
+@dataclass(frozen=True, slots=True)
+class HelpEntry:
+    section: str
+    term: str
+    plain: str                          # que es, con palabras sencillas
+    how: str = ""                       # como lo calcula Kreix
+    example: str = ""
+    note: str = ""                      # advertencia o matiz importante ("Ojo")
+    todo: str = ""                      # que hacer si aparece un aviso
+    keywords: tuple[str, ...] = ()      # sinonimos para el buscador
+
+
+S_OVERVIEW = "Tu dinero de un vistazo"
+S_ACCOUNTS = "Tus cuentas bancarias"
+S_INVEST = "Tus inversiones"
+S_RETURNS = "Rentabilidad: ¿cuánto he ganado?"
+S_WARNINGS = "Avisos"
+S_USE = "Usar Kreix"
+SECTIONS = (S_OVERVIEW, S_ACCOUNTS, S_INVEST, S_RETURNS, S_WARNINGS, S_USE)
+
+ENTRIES: tuple[HelpEntry, ...] = (
+    # ------------------------------------------------------------------ Tu dinero de un vistazo
+    HelpEntry(
+        S_OVERVIEW, "Patrimonio neto",
+        "Todo lo que tienes ahora mismo: el dinero que hay en tus cuentas más lo que valen tus inversiones. "
+        "Es la cifra más importante para saber si tu situación económica mejora con el tiempo.",
+        "Saldo de tus cuentas + valor de mercado actual de tu cartera. Kreix no registra deudas ni préstamos, "
+        "así que no se restan.",
+        "Tienes 1.000 € en la cuenta y 4.000 € en fondos: tu patrimonio neto es de 5.000 €.",
+        keywords=("saldo total", "net worth", "patrimonio"),
+    ),
+    HelpEntry(
+        S_OVERVIEW, "Liquidez",
+        "El dinero que puedes usar ya, sin tener que vender nada: lo que hay en tus cuentas bancarias.",
+        "Suma del saldo de todas tus cuentas.",
+        "",
+        keywords=("efectivo", "dinero disponible"),
+    ),
+    HelpEntry(
+        S_OVERVIEW, "Inversión (cartera)",
+        "El dinero que has puesto en fondos. Su valor sube y baja cada día según el mercado.",
+        "Valor de mercado de tus fondos según el último extracto de cartera importado.",
+        "",
+        keywords=("cartera", "fondos"),
+    ),
+    HelpEntry(
+        S_OVERVIEW, "Distribución de activos",
+        "Cómo se reparte tu patrimonio entre dinero en cuenta (liquidez) y dinero invertido. "
+        "Sirve para ver de un vistazo si tienes mucho dinero parado o muy poco colchón.",
+        "Cada parte dividida entre el patrimonio neto.",
+        "1.000 € en cuenta y 4.000 € invertidos: 20 % liquidez y 80 % inversión.",
+        keywords=("donut", "reparto"),
+    ),
+    HelpEntry(
+        S_OVERVIEW, "Evolución patrimonial",
+        "Cómo ha cambiado tu patrimonio mes a mes. Se ven tres líneas: lo que has aportado, lo que vale tu cartera "
+        "y tu patrimonio neto total. Cuando la cartera va por encima de lo aportado, la diferencia es lo que "
+        "ha ganado tu inversión.",
+        "Al final de cada mes: saldo de las cuentas + valor estimado de la cartera.",
+        "",
+        keywords=("gráfico", "grafico", "línea"),
+    ),
+
+    # ------------------------------------------------------------------ Tus cuentas bancarias
+    HelpEntry(
+        S_ACCOUNTS, "Saldo",
+        "El dinero que hay en la cuenta. Si miras un mes concreto, es el saldo al cierre de ese mes: lo que "
+        "quedaba tras el último movimiento.",
+        "El saldo que indica el banco tras cada movimiento. Con varias cuentas se suman, cada una con su propio saldo.",
+        "",
+        keywords=("saldo al cierre",),
+    ),
+    HelpEntry(
+        S_ACCOUNTS, "Ingresos",
+        "El dinero que entra en tus cuentas: nómina, becas, transferencias recibidas...",
+        "Suma de los movimientos positivos. Los Bizum recibidos y los traspasos entrantes cuentan si lo tienes "
+        "activado en Ajustes. Lo que mueves hacia tus inversiones nunca cuenta como ingreso ni como gasto.",
+        "",
+        keywords=("entradas",),
+    ),
+    HelpEntry(
+        S_ACCOUNTS, "Gastos",
+        "El dinero que sale de tus cuentas: compras, suscripciones, recibos...",
+        "Suma de los movimientos negativos, mostrada en positivo. Mover dinero entre tus propias cuentas o hacia "
+        "tus inversiones no es gastarlo, así que no se cuenta.",
+        "",
+        keywords=("salidas",),
+    ),
+    HelpEntry(
+        S_ACCOUNTS, "Flujo neto",
+        "Lo que te ha sobrado (o te ha faltado) en un periodo. Si es positivo, has ingresado más de lo que has gastado.",
+        "Ingresos - gastos.",
+        "Ingresas 1.000 € y gastas 700 €: flujo neto de +300 €.",
+        keywords=("ahorro neto",),
+    ),
+    HelpEntry(
+        S_ACCOUNTS, "Tasa de ahorro",
+        "El porcentaje de lo que ingresas que consigues no gastar. Cuanto más alta, más margen tienes para ahorrar o invertir.",
+        "(ingresos - gastos) ÷ ingresos. Puede ser negativa si gastas más de lo que ingresas.",
+        "Ingresas 1.000 € y gastas 700 €: ahorras 300 €, una tasa del 30 %. Si gastas 1.200 €, la tasa es del -20 %.",
+        keywords=("ahorro", "porcentaje de ahorro"),
+    ),
+    HelpEntry(
+        S_ACCOUNTS, "Gasto medio mensual y diario",
+        "Cuánto gastas de media. En la vista global se muestra por mes; si eliges un mes, por día.",
+        "Gastos del periodo ÷ meses transcurridos (o ÷ días transcurridos). En el mes en curso se cuenta hasta el "
+        "último día con datos.",
+        "Gastas 450 € en un mes de 30 días: 15 € de media al día.",
+        keywords=("media",),
+    ),
+    HelpEntry(
+        S_ACCOUNTS, "Mayor gasto",
+        "El pago individual más grande del periodo. Útil para detectar gastos puntuales que distorsionan el mes.",
+        "El movimiento negativo de mayor importe que cuenta como gasto.",
+    ),
+    HelpEntry(
+        S_ACCOUNTS, "Categoría principal",
+        "La categoría en la que más dinero se ha ido: supermercado, ocio, transporte...",
+        "Kreix asigna cada gasto a una categoría buscando palabras clave en el concepto del banco (por ejemplo, "
+        "«Mercadona» va a Supermercado). Lo que no reconoce queda como «Sin categoría».",
+        "",
+        keywords=("categorías", "categorias"),
+    ),
+    HelpEntry(
+        S_ACCOUNTS, "Movimientos",
+        "Cada entrada o salida de dinero que aparece en el extracto de tu banco. En la tabla están del más reciente "
+        "al más antiguo; puedes buscar por concepto, filtrar por categoría y ordenar pulsando cualquier cabecera.",
+        "Dentro de un mismo día se respeta el orden real, que Kreix reconstruye con la cadena de saldos.",
+    ),
+    HelpEntry(
+        S_ACCOUNTS, "Bizum",
+        "Pagos entre personas. Si repartes gastos con amigos, el Bizum que recibes no es un ingreso «de verdad», "
+        "porque en realidad te devuelven dinero que adelantaste.",
+        "Puedes decidir en Ajustes si los Bizum cuentan como ingresos y gastos. Por defecto cuentan.",
+    ),
+    HelpEntry(
+        S_ACCOUNTS, "Traspaso",
+        "Mover dinero entre cuentas tuyas (o recibirlo de otra cuenta tuya). No es ni ganar ni gastar dinero.",
+        "Los traspasos que entran cuentan como ingreso (se puede cambiar en Ajustes); los que salen no cuentan como gasto.",
+    ),
+    HelpEntry(
+        S_ACCOUNTS, "Gráficos de Cuentas",
+        "Gastos por categoría: en qué se va tu dinero. Evolución del saldo: cuánto hay en la cuenta al cierre de cada "
+        "día con movimientos. Ingresos y gastos por mes: si cada mes entra más de lo que sale.",
+        "",
+        "",
+        keywords=("gráfico", "grafico"),
+    ),
+
+    # ------------------------------------------------------------------ Tus inversiones
+    HelpEntry(
+        S_INVEST, "Fondo indexado",
+        "Un fondo que copia un índice (por ejemplo, las 500 mayores empresas de EE. UU.) en lugar de intentar "
+        "ganarle al mercado. Suele tener comisiones muy bajas y es lo que se compra en MyInvestor.",
+        "",
+        "",
+        keywords=("fondo", "indexado", "índice", "indice"),
+    ),
+    HelpEntry(
+        S_INVEST, "Participación",
+        "Cada «trocito» de un fondo. Al invertir compras participaciones; cuántas recibes depende del importe que "
+        "pones y del valor liquidativo de ese día.",
+        "",
+        "Inviertes 500 € cuando cada participación vale 250 €: recibes 2 participaciones.",
+    ),
+    HelpEntry(
+        S_INVEST, "Valor liquidativo (VL)",
+        "El precio de una participación. Se calcula una vez al día. Cuando sube, tu inversión vale más.",
+        "",
+        "Tienes 2 participaciones y el valor liquidativo es 250 €: tu posición vale 500 €.",
+        keywords=("vl", "precio", "valor liquidativo"),
+    ),
+    HelpEntry(
+        S_INVEST, "Precio medio",
+        "Lo que has pagado de media por cada participación, contando todas tus compras.",
+        "Capital invertido ÷ participaciones.",
+        "Compras 1 participación a 100 € y otra a 120 €: tu precio medio es 110 €.",
+        keywords=("precio medio de compra",),
+    ),
+    HelpEntry(
+        S_INVEST, "Aportado (capital invertido)",
+        "El dinero que has puesto en total en tus inversiones, sin contar lo que ha ganado o perdido.",
+        "Compras - ventas. En la vista por mes, lo aportado durante ese mes.",
+        "Metes 1.000 € en enero y 500 € en febrero: has aportado 1.500 €.",
+        keywords=("capital invertido", "aportaciones", "aportado"),
+    ),
+    HelpEntry(
+        S_INVEST, "Valor de la cartera",
+        "Lo que valdrían hoy todas tus participaciones si las vendieras.",
+        "Participaciones × valor liquidativo de cada fondo, sumado. Es el valor del último extracto de cartera importado.",
+        "",
+        keywords=("valor de mercado",),
+    ),
+    HelpEntry(
+        S_INVEST, "Aportación media mensual",
+        "Cuánto dinero metes de media cada mes en tus inversiones.",
+        "Aportado ÷ meses desde la primera compra.",
+        "Has aportado 5.000 € en 10 meses: 500 € al mes de media.",
+    ),
+    HelpEntry(
+        S_INVEST, "Posición mayor",
+        "El fondo que más pesa en tu cartera y qué porcentaje de ella representa. Si es muy alto, dependes mucho de ese fondo.",
+        "Valor de ese fondo ÷ valor de toda la cartera.",
+    ),
+    HelpEntry(
+        S_INVEST, "Operaciones",
+        "Las compras y ventas de fondos. En MyInvestor comprar se llama «suscripción» y vender, «reembolso».",
+        "",
+        "",
+        keywords=("compra", "venta", "suscripción", "suscripcion", "reembolso"),
+    ),
+    HelpEntry(
+        S_INVEST, "ISIN",
+        "El código internacional de 12 caracteres que identifica cada fondo, como un DNI. Sirve para no confundir "
+        "dos fondos con nombres parecidos.",
+        "",
+        "IE00B03HD191",
+    ),
+    HelpEntry(
+        S_INVEST, "Aportado frente a valor",
+        "Un gráfico con dos líneas: lo que has puesto y lo que vale tu cartera. La distancia entre ambas es lo que "
+        "ha ganado (o perdido) tu inversión con el tiempo.",
+        "",
+        "",
+        keywords=("gráfico", "grafico"),
+    ),
+
+    # ------------------------------------------------------------------ Rentabilidad
+    HelpEntry(
+        S_RETURNS, "Plusvalía y minusvalía",
+        "La ganancia (plusvalía) o la pérdida (minusvalía) de tu inversión: lo que vale ahora menos lo que pusiste. "
+        "Es una ganancia «sobre el papel»: solo se hace real si vendes.",
+        "Valor de la cartera - capital invertido.",
+        "Pusiste 4.000 € y hoy valen 4.200 €: plusvalía de +200 €.",
+        keywords=("ganancia", "pérdida", "perdida"),
+    ),
+    HelpEntry(
+        S_RETURNS, "Rentabilidad global",
+        "El porcentaje que has ganado o perdido sobre lo que has puesto, sin importar cuánto tiempo haya pasado.",
+        "Plusvalía ÷ capital invertido.",
+        "Pusiste 1.000 € y hoy valen 1.100 €: rentabilidad de +10 %.",
+        keywords=("rendimiento", "rentabilidad simple"),
+    ),
+    HelpEntry(
+        S_RETURNS, "TWR (rentabilidad ponderada en el tiempo)",
+        "Mide lo bien que han funcionado tus fondos, sin que influya cuándo ni cuánto dinero metiste. Es la mejor "
+        "cifra para comparar tus fondos con un índice o con otros fondos.",
+        "Kreix calcula la rentabilidad de cada tramo entre dos aportaciones y las encadena.",
+        "Un fondo sube un 50 % y después baja un 20 %: el TWR es +20 % (1,5 × 0,8 = 1,2), aunque hayas aportado "
+        "mucho más dinero justo antes de la bajada.",
+        keywords=("twr", "time weighted", "ponderada"),
+    ),
+    HelpEntry(
+        S_RETURNS, "TIR (tasa interna de retorno)",
+        "La rentabilidad anual media de TU dinero, teniendo en cuenta cuándo pusiste cada euro. Responde a esta "
+        "pregunta: «si hubiera tenido este dinero en una cuenta que paga un interés fijo al año, ¿qué interés "
+        "tendría que pagar para darme el mismo resultado?».",
+        "Se calcula con todas tus aportaciones, sus fechas y el valor actual de la cartera, y se expresa en tasa anual "
+        "(año de 365 días).",
+        "Un 4 % ganado en tres meses equivale a casi un 17 % anual.",
+        "Con pocos meses de inversión la TIR exagera: no significa que vayas a ganar eso durante un año entero. "
+        "Es más fiable cuando llevas más de un año.",
+        keywords=("tir", "xirr", "irr", "rentabilidad anualizada"),
+    ),
+    HelpEntry(
+        S_RETURNS, "¿Por qué la TIR y el TWR son distintos?",
+        "Responden a preguntas diferentes. El TWR valora los fondos; la TIR valora tus decisiones de cuándo comprar. "
+        "Si metes mucho dinero justo antes de una bajada, el TWR no lo nota pero tu TIR sí lo refleja. "
+        "Es normal que no coincidan; si aportas siempre lo mismo y a intervalos regulares, suelen parecerse.",
+    ),
+    HelpEntry(
+        S_RETURNS, "Variación del mes",
+        "Cuánto ha subido o bajado tu cartera durante el mes sin contar el dinero nuevo que metiste.",
+        "Valor al cierre - valor al inicio - aportado en el mes.",
+        "La cartera pasa de 5.000 € a 5.600 € y has aportado 500 €: variación de +100 €.",
+    ),
+    HelpEntry(
+        S_RETURNS, "Valor estimado al cierre",
+        "En la vista por mes, Kreix no conoce el valor exacto de cada día: solo tiene la foto de la cartera del día "
+        "en que la importaste. Por eso lo estima.",
+        "Participaciones según tus operaciones × precio estimado, que se interpola entre los valores liquidativos conocidos.",
+        "",
+        keywords=("estimado",),
+    ),
+
+    # ------------------------------------------------------------------ Avisos
+    HelpEntry(
+        S_WARNINGS, "«La cartera no cuadra con las operaciones»",
+        "Kreix compara las participaciones que dice tu extracto de cartera con las que suman tus operaciones "
+        "importadas. Si no coinciden, falta algún historial. Para no enseñarte números falsos, la TIR y el TWR se "
+        "ocultan hasta que cuadre.",
+        "",
+        "",
+        "",
+        "Exporta desde MyInvestor el historial completo de operaciones, desde la primera compra, y vuelve a importarlo.",
+        keywords=("no cuadra", "aviso", "cuadre"),
+    ),
+    HelpEntry(
+        S_WARNINGS, "«El saldo no cuadra»",
+        "En el extracto de una cuenta, cada saldo debe ser el anterior más el importe del movimiento. Si no es así, "
+        "probablemente falta algún movimiento porque descargaste un tramo incompleto.",
+        "",
+        "",
+        "",
+        "Descarga de nuevo el extracto cubriendo todo el periodo e impórtalo.",
+        keywords=("saldo", "aviso", "cuadre"),
+    ),
+    HelpEntry(
+        S_WARNINGS, "Sin categoría",
+        "Gastos cuyo concepto Kreix no ha sabido clasificar, por ejemplo el nombre de una persona en un pago.",
+        "Las categorías se asignan por palabras clave en el concepto del banco.",
+    ),
+
+    # ------------------------------------------------------------------ Usar Kreix
+    HelpEntry(
+        S_USE, "Importar extractos",
+        "Arrastra a la pantalla Importar los archivos que descargas del banco (CSV o Excel). Kreix reconoce solo de qué "
+        "banco y de qué tipo son, aunque no tengan extensión. Importar dos veces el mismo extracto no duplica nada.",
+        "Si tienes varias cuentas, elige a cuál pertenece el extracto. El extracto de cartera de MyInvestor no trae fecha: "
+        "indica a qué día corresponde.",
+        "",
+        keywords=("importar", "csv", "excel", "extracto"),
+    ),
+    HelpEntry(
+        S_USE, "Todo el historial o un mes",
+        "En Cuentas e Inversiones puedes ver todo el historial o un mes concreto con el selector de arriba. Las cifras, "
+        "los gráficos y las tablas se ajustan al periodo elegido. Las flechas saltan al mes anterior o siguiente.",
+    ),
+    HelpEntry(
+        S_USE, "Varias cuentas",
+        "En Cuentas puedes añadir, renombrar o eliminar cuentas bancarias y ver una sola o todas juntas. "
+        "Al importar eliges a qué cuenta va cada extracto. La cartera de inversión es una sola.",
+    ),
+    HelpEntry(
+        S_USE, "Exportar e importar tus datos",
+        "Exportar crea un único archivo .kreix con todos tus datos para guardarlo o llevarlo a otro ordenador. "
+        "En el otro equipo, arrástralo a Importar: sus datos serán idénticos a los de origen.",
+        "",
+        "",
+        "Importar un archivo .kreix reemplaza los datos que hubiera en ese equipo. El archivo no está cifrado: "
+        "contiene tu información financiera, guárdalo en un sitio seguro.",
+        keywords=("exportar", "copia de seguridad", "backup", "mover datos", "kreix"),
+    ),
+    HelpEntry(
+        S_USE, "Privacidad",
+        "Todo se guarda solo en tu ordenador. Kreix no usa internet, no tiene cuentas y no envía datos a ningún servidor.",
+        "",
+        "",
+        keywords=("datos", "seguridad"),
+    ),
+    HelpEntry(
+        S_USE, "Atajos de teclado",
+        "Ctrl+1 Resumen, Ctrl+2 Cuentas, Ctrl+3 Inversiones, Ctrl+4 Ajustes, Ctrl+5 Ayuda, Ctrl+6 Importar, "
+        "Ctrl+7 Exportar. Ctrl+T cambia entre modo claro y oscuro.",
+        "",
+        "",
+        keywords=("teclado", "ctrl"),
+    ),
+)
+
+
+def _tokens(text: str) -> list[str]:
+    return re.findall(r"[A-Z0-9]+", normalize(text))
+
+
+def search(entries: tuple[HelpEntry, ...] | list[HelpEntry], query: str) -> list[HelpEntry]:
+    """Entradas cuyo texto contiene cada palabra de la busqueda COMO COMIENZO DE PALABRA (sin distinguir
+    mayusculas ni acentos): "tir" encuentra la TIR pero no "invertir". Van primero las que
+    coinciden en el titulo, luego en los sinonimos y despues en el cuerpo."""
+    words = _tokens(query)
+    if not words:
+        return list(entries)
+    ranked: list[tuple[int, int, HelpEntry]] = []
+    for position, e in enumerate(entries):
+        body = _tokens(" ".join((e.term, e.plain, e.how, e.example, e.note, e.todo, *e.keywords)))
+        if not all(any(t.startswith(w) for t in body) for w in words):
+            continue
+        title = _tokens(e.term)
+        head = _tokens(" ".join((e.term, *e.keywords)))
+        tier = 0 if all(any(t.startswith(w) for t in title) for w in words) else (
+            1 if all(any(t.startswith(w) for t in head) for w in words) else 2)
+        ranked.append((tier, position, e))
+    return [e for _, _, e in sorted(ranked, key=lambda r: (r[0], r[1]))]
+
+
+def grouped(entries: list[HelpEntry] | tuple[HelpEntry, ...]) -> list[tuple[str, list[HelpEntry]]]:
+    """Entradas agrupadas por seccion, en el orden de SECTIONS."""
+    return [(s, [e for e in entries if e.section == s]) for s in SECTIONS if any(e.section == s for e in entries)]

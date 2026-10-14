@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
 
 from services.accounts_service import AccountInfo
 from services.import_service import FileReport, ImportReport, ImportService
+from services.transfer_service import EXTENSION
 from ui.widgets.cards import repolish
 from ui.widgets.dropzone import DropZone
 
@@ -66,6 +67,7 @@ class ResultRow(QFrame):
 
 class ImportView(QWidget):
     imported = Signal()
+    restore_requested = Signal(str)     # se ha soltado un archivo .kreix exportado desde otro Kreix
 
     def __init__(self, service: ImportService, parent=None) -> None:
         super().__init__(parent)
@@ -159,7 +161,13 @@ class ImportView(QWidget):
         qd = self.as_of.date()
         return date(qd.year(), qd.month(), qd.day())
 
-    def import_paths(self, paths: list[str]) -> ImportReport:
+    def import_paths(self, paths: list[str]) -> ImportReport | None:
+        backups = [p for p in paths if p.lower().endswith(EXTENSION)]
+        paths = [p for p in paths if p not in backups]
+        if backups:
+            self.restore_requested.emit(backups[0])
+            if not paths:
+                return None
         report = self._service.import_files(paths, self.portfolio_date(), self.account_combo.currentData())
         self.show_report(report)
         if report.total_inserted:

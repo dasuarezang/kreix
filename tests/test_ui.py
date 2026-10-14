@@ -48,7 +48,7 @@ def drop(zone, paths):
 
 def test_starts_with_empty_state(window):
     assert window.dashboard._stack.currentIndex() == 0
-    assert window.stack.count() == 5
+    assert window.stack.count() == 7
 
 
 def test_drop_files_imports_and_fills_dashboard(window):

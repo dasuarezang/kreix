@@ -14,20 +14,26 @@ def qapp():
     return QApplication.instance() or QApplication([])
 
 
-@pytest.fixture()
-def window(qapp):
-    from main import build_window
-    from ui import theme
-    from ui.widgets import charts
-
-    charts.ANIMATIONS = False
-
-    w = build_window("sqlite:///:memory:", "memoria")
-    yield w
-    w.close()
-    w.deleteLater()      # si no, las ventanas de pruebas anteriores siguen vivas y ralentizan cada cambio de tema
+def dispose_windows(*windows):
+    """Cierra y destruye ventanas: si no, siguen vivas y cada cambio de tema repinta todas las anteriores."""
     from PySide6.QtCore import QEvent
     from PySide6.QtWidgets import QApplication
 
+    from ui import theme
+
+    for w in windows:
+        w.close()
+        w.deleteLater()
     QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
     theme.set_current(theme.DARK)
+
+
+@pytest.fixture()
+def window(qapp):
+    from main import build_window
+    from ui.widgets import charts
+
+    charts.ANIMATIONS = False
+    w = build_window("sqlite:///:memory:", "memoria")
+    yield w
+    dispose_windows(w)

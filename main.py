@@ -14,6 +14,7 @@ from services.data_service import DataService
 from services.import_service import ImportService
 from services.investment_service import InvestmentService
 from services.settings_service import SettingsService
+from services.transfer_service import TransferService
 from ui import assets
 from ui.main_window import MainWindow, Services
 
@@ -24,7 +25,7 @@ def build_window(db_url: str | None = None, db_label: str | None = None) -> Main
     factory = make_session_factory(engine)
     services = Services(
         ImportService(factory), DashboardService(factory), SettingsService(factory), DataService(factory),
-        AccountsService(factory), InvestmentService(factory),
+        AccountsService(factory), InvestmentService(factory), TransferService(engine, factory),
     )
     return MainWindow(services, db_label or str(default_db_path()))
 

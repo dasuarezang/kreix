@@ -71,9 +71,21 @@ QPushButton#NavButton {{
 QPushButton#NavButton:hover {{ background: {p.hover}; color: {p.text}; }}
 QPushButton#NavButton:checked {{ background: {p.accent}; color: {p.on_accent}; }}
 QPushButton#NavButton:focus {{ border: 2px solid {p.accent}; padding: 9px 14px; }}
+QPushButton#PillButton {{
+    text-align: left; padding: 0 18px 0 14px; min-height: 40px; max-height: 40px;
+    border: 1px solid {p.border}; border-radius: 20px; background: {p.surface_alt};
+    color: {p.text}; font-weight: 600; font-size: 13px;
+}}
+QPushButton#PillButton:hover {{ background: {p.hover}; border-color: {p.muted}; }}
+QPushButton#PillButton:checked {{ background: {p.accent}; border-color: {p.accent}; color: {p.on_accent}; }}
+QPushButton#PillButton:focus {{ border: 2px solid {p.accent}; padding: 0 17px 0 13px; }}
 QLabel#SidebarFoot {{ color: {p.muted}; font-size: 11px; }}
 
 /* ---- tipografia ---- */
+QLabel#SectionTitle {{ color: {p.muted}; font-size: 11px; font-weight: 800; letter-spacing: 1px; }}
+QFrame#Card QLabel#StepBadge, QLabel#StepBadge {{ background: {p.accent}; color: {p.on_accent}; border-radius: 13px; font-weight: 800; }}
+QLabel#Small[state="ok"] {{ color: {p.text}; }}
+QLabel#Small[state="error"] {{ color: {p.red}; font-weight: 700; }}
 QLabel#H1 {{ font-size: 26px; font-weight: 800; }}
 QLabel#H2 {{ font-size: 15px; font-weight: 700; }}
 QLabel#Muted {{ color: {p.muted}; }}
