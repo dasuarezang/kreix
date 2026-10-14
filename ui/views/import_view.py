@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
 from services.accounts_service import AccountInfo
 from services.import_service import FileReport, ImportReport, ImportService
 from services.transfer_service import EXTENSION
-from ui.widgets.cards import repolish
+from ui.widgets.cards import PageHeader, repolish
 from ui.widgets.dropzone import DropZone
 
 
@@ -74,10 +74,8 @@ class ImportView(QWidget):
         self.setObjectName("Page")
         self._service = service
 
-        title = QLabel("Importar extractos")
-        title.setObjectName("H1")
-        intro = QLabel("Los archivos se procesan en tu equipo. Reimportar un extracto no duplica movimientos.")
-        intro.setObjectName("Muted")
+        header = PageHeader("Importar extractos", eyebrow="Entrada de datos",
+                            subtitle="Los archivos se procesan en tu equipo. Reimportar un extracto no duplica movimientos.")
 
         self.dropzone = DropZone()
         self.dropzone.files_dropped.connect(self.import_paths)
@@ -126,8 +124,7 @@ class ImportView(QWidget):
         col = QVBoxLayout(body)
         col.setContentsMargins(32, 28, 32, 32)
         col.setSpacing(16)
-        col.addWidget(title)
-        col.addWidget(intro)
+        col.addWidget(header)
         col.addWidget(self.dropzone)
         col.addLayout(account_row)
         col.addLayout(as_of_row)

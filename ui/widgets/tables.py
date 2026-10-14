@@ -9,7 +9,7 @@ from PySide6.QtCore import QAbstractTableModel, QModelIndex, QSortFilterProxyMod
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QAbstractItemView, QHeaderView, QTableView
 
-from ui import theme
+from ui import fonts, theme
 
 SORT_ROLE = Qt.ItemDataRole.UserRole
 LEFT = Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
@@ -74,7 +74,7 @@ class RowsModel(QAbstractTableModel):
             return col.sort(item) if col.sort else col.text(item)
         if role == Qt.ItemDataRole.ForegroundRole and col.tone:
             p = theme.current()
-            color = {"negative": p.red, "positive": p.text, "muted": p.muted, "accent": p.accent}.get(col.tone(item) or "")
+            color = {"negative": p.red, "positive": p.green, "muted": p.muted, "accent": p.accent}.get(col.tone(item) or "")
             return QColor(color) if color else None
         return None
 
@@ -114,7 +114,8 @@ class DataTable(QTableView):
         self.proxy = FilterProxy()
         self.proxy.setSourceModel(self.model_)
         self.setModel(self.proxy)
-        self.setAlternatingRowColors(True)
+        self.setAlternatingRowColors(False)
+        self.setFont(fonts.qfont(fonts.BODY_MEDIUM, 13, tabular=True))   # cifras de ancho fijo: las columnas se alinean
         self.setShowGrid(False)
         self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)

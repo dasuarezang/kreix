@@ -11,7 +11,7 @@ from services.investment_service import InvestmentService, InvestmentViewData
 from ui import assets
 from ui.format import EMPTY, OPERATION_LABELS, fmt_date, fmt_eur, fmt_pct, fmt_units, month_long
 from ui.views.accounts_view import signed_eur
-from ui.widgets.cards import ChartCard, StatCard
+from ui.widgets.cards import ChartCard, PageHeader, StatBand, StatCard
 from ui.widgets.charts import DonutChart
 from ui.widgets.charts_period import PortfolioChart
 from ui.widgets.period_bar import PeriodBar
@@ -39,20 +39,16 @@ class InvestmentView(QWidget):
         self._stack.addWidget(self._build_empty())
         self._stack.addWidget(self._build_content())
 
-        title = QLabel("Inversión")
-        title.setObjectName("H1")
+        self.header = PageHeader("Inversiones", eyebrow="Tu cartera")
         self.period = PeriodBar()
-        self._subtitle = QLabel("")
-        self._subtitle.setObjectName("Muted")
-        bottom = QHBoxLayout()
-        bottom.addWidget(self.period)
-        bottom.addSpacing(8)
-        bottom.addWidget(self._subtitle, 1)
+        bar = QHBoxLayout()
+        bar.addWidget(self.period)
+        bar.addStretch(1)
         root = QVBoxLayout(self)
         root.setContentsMargins(32, 28, 32, 0)
-        root.setSpacing(12)
-        root.addWidget(title)
-        root.addLayout(bottom)
+        root.setSpacing(14)
+        root.addWidget(self.header)
+        root.addLayout(bar)
         root.addLayout(self._stack, 1)
         self.period.changed.connect(lambda _m: self.reload())
 
@@ -103,21 +99,16 @@ class InvestmentView(QWidget):
         banner_row.addWidget(fix)
         root.addWidget(self._banner)
 
-        self.card_value = StatCard("Valor de la cartera", "yellow")
-        self.card_contrib = StatCard("Aportado", "neutral")
-        self.card_gain = StatCard("Plusvalía", "red")
-        self.card_twr = StatCard("Rentabilidad", "red")
-        self.mini_ops = StatCard("Operaciones", "neutral", compact=True)
-        self.mini_avg = StatCard("Aportación media mensual", "neutral", compact=True)
-        self.mini_funds = StatCard("Fondos en cartera", "yellow", compact=True)
-        self.mini_largest = StatCard("Posición mayor", "yellow", compact=True)
-        for cards in ((self.card_value, self.card_contrib, self.card_gain, self.card_twr),
-                      (self.mini_ops, self.mini_avg, self.mini_funds, self.mini_largest)):
-            row = QHBoxLayout()
-            row.setSpacing(16)
-            for c in cards:
-                row.addWidget(c, 1)
-            root.addLayout(row)
+        self.card_value = StatCard("Valor de la cartera", band=True)
+        self.card_contrib = StatCard("Aportado", band=True)
+        self.card_gain = StatCard("Plusvalía", band=True)
+        self.card_twr = StatCard("Rentabilidad", band=True)
+        self.mini_ops = StatCard("Operaciones", compact=True, band=True)
+        self.mini_avg = StatCard("Aportación media mensual", compact=True, band=True)
+        self.mini_funds = StatCard("Fondos en cartera", compact=True, band=True)
+        self.mini_largest = StatCard("Posición mayor", compact=True, band=True)
+        root.addWidget(StatBand((self.card_value, self.card_contrib, self.card_gain, self.card_twr)))
+        root.addWidget(StatBand((self.mini_ops, self.mini_avg, self.mini_funds, self.mini_largest)))
 
         self.donut = DonutChart()
         self.donut.EMPTY_TEXT = "Importa la cartera de MyInvestor"
@@ -201,7 +192,7 @@ class InvestmentView(QWidget):
             return
         s = d.summary
         month = d.period.start
-        self._subtitle.setText("")      # el selector de periodo ya lo indica
+        self.header.set_subtitle("")      # el selector de periodo ya lo indica
 
         self._banner.setVisible(bool(d.warnings))
         if d.warnings:
@@ -219,12 +210,12 @@ class InvestmentView(QWidget):
             gain = s.period_gain
             self.card_gain.set_title("Variación del mes")
             self.card_gain.set_content(signed_eur(gain) if gain is not None else EMPTY, "Sin contar las aportaciones",
-                                       negative=gain is not None and gain < 0)
+                                       negative=gain is not None and gain < 0, positive=gain is not None and gain > 0)
             self.card_twr.set_title("Rentabilidad del mes")
             twr = s.twr if reliable else None
             self.card_twr.set_content(fmt_pct(twr, 2, signed=True) if twr is not None else EMPTY,
                                       "Ponderada en el tiempo" if reliable else "No disponible: la cartera no cuadra",
-                                      negative=twr is not None and twr < 0)
+                                      negative=twr is not None and twr < 0, positive=twr is not None and twr > 0)
         else:
             self.card_value.set_content(fmt_eur(s.value), "Valor de mercado actual")
             self.card_contrib.set_content(fmt_eur(s.contributions_total), "Compras menos ventas")
@@ -232,13 +223,13 @@ class InvestmentView(QWidget):
             self.card_gain.set_content(signed_eur(s.gain) if s.gain is not None else EMPTY,
                                        f"Rentabilidad {fmt_pct(s.simple_return, 2, signed=True)}" if s.simple_return is not None
                                        else "Importa la cartera de MyInvestor",
-                                       negative=s.gain is not None and s.gain < 0)
+                                       negative=s.gain is not None and s.gain < 0, positive=s.gain is not None and s.gain > 0)
             self.card_twr.set_title("Rentabilidad (TWR)")
             twr = s.twr if reliable else None
             sub = (f"TIR {fmt_pct(s.xirr)} anual" if s.xirr is not None else "Ponderada en el tiempo") if reliable \
                 else "No disponible: la cartera no cuadra"
             self.card_twr.set_content(fmt_pct(twr, 2, signed=True) if twr is not None else EMPTY, sub,
-                                      negative=twr is not None and twr < 0)
+                                      negative=twr is not None and twr < 0, positive=twr is not None and twr > 0)
 
         self.mini_ops.set_content(str(s.operations), f"{s.buys} compras · {s.sells} ventas")
         self.mini_avg.set_content(fmt_eur(s.avg_monthly_contribution) if s.avg_monthly_contribution is not None else EMPTY, "")

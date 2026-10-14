@@ -7,6 +7,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from services.settings_service import AppSettings
+from ui.widgets.cards import PageHeader
 from ui.widgets.switch import SwitchToggle
 
 VERSION = "0.1.0"
@@ -42,8 +43,7 @@ class SettingsView(QWidget):
         self.setObjectName("Page")
         self._settings = settings
 
-        title = QLabel("Ajustes")
-        title.setObjectName("H1")
+        header = PageHeader("Ajustes", eyebrow="Preferencias")
 
         self.p2p = SettingRow(
             "Contar Bizum como ingresos y gastos",
@@ -84,7 +84,7 @@ class SettingsView(QWidget):
         col = QVBoxLayout(self)
         col.setContentsMargins(32, 28, 32, 32)
         col.setSpacing(16)
-        col.addWidget(title)
+        col.addWidget(header)
         col.addWidget(calc)
         col.addWidget(data)
         col.addWidget(about)

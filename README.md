@@ -133,7 +133,8 @@ data/                   modelos SQLAlchemy, repositorios idempotentes y migracio
 core/                   lógica pura: métricas (generales, por cuenta y de inversión),
                         periodos, categorizador, entidades, enumeraciones
 logo-mejorado/          logotipos e iconos de la marca
-tools/                  datos de demostración y generador de capturas
+assets/fonts/           tipografías incluidas (Montserrat y DM Sans, licencia OFL)
+tools/                  datos de demostración, capturas y generador de fuentes
 tests/                  suite de pruebas
 ```
 
@@ -142,7 +143,14 @@ Decisiones de diseño relevantes:
 - **Dinero exacto.** Los importes se guardan como enteros escalados (x10⁶) mediante un tipo propio, `Decimal6`. No hay errores de coma flotante y `SUM()` sigue funcionando en SQL.
 - **Idempotencia.** Cada movimiento tiene un `tx_hash` único (que incluye la cuenta) y se inserta con `ON CONFLICT DO NOTHING`. Las bases de datos anteriores se migran solas al abrir (`PRAGMA user_version`).
 - **Preparado para cifrar.** El motor se crea en un único punto (`make_engine`), así que cambiar a una base cifrada (SQLCipher) no toca el resto del código.
-- **Gráficos nativos** (QtCharts), redibujados al cambiar de tema, con tooltips al pasar el ratón.
+- **Gráficos propios**, pintados con QPainter (barras redondeadas con degradado, curvas suaves, donut con leyenda e importes), con animación de entrada y tarjeta de detalle al pasar el ratón. Se adaptan al tema activo.
+
+## Diseño
+
+- **Tipografía:** Montserrat ExtraBold (la del logotipo) para títulos y cifras grandes, y DM Sans para el texto. Los archivos van dentro del programa, así que se ve igual en cualquier ordenador. Ambas son libres (SIL Open Font License); las licencias están en `assets/fonts/LICENCIAS.txt`.
+- **Color:** el amarillo y el rojo del logotipo sobre carbón (modo oscuro) o papel cálido (modo claro). El amarillo se reserva para lo importante, el verde marca lo positivo y el rojo lo negativo.
+- **Motivo de marca:** las tres franjas inclinadas de la K del logotipo aparecen en las cabeceras y en la zona de importación.
+- **Estructura:** una cifra principal grande en el Resumen y bandas de cifras en Cuentas e Inversiones, en lugar de muchas cajas iguales.
 
 ## Desarrollo
 

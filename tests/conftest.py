@@ -34,6 +34,9 @@ def window(qapp):
     from ui.widgets import charts
 
     charts.ANIMATIONS = False
+    from ui import fonts
+
+    fonts.setup_application(qapp)
     w = build_window("sqlite:///:memory:", "memoria")
     yield w
     dispose_windows(w)

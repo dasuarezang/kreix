@@ -7,7 +7,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QDragEnterEvent, QDragLeaveEvent, QDropEvent
 from PySide6.QtWidgets import QFileDialog, QFrame, QLabel, QPushButton, QVBoxLayout
 
-from ui import assets
+from ui.widgets.cards import StripeMark
 from ui.widgets.cards import repolish
 
 # Primero "todos": los extractos de algunos bancos no llevan extension (p. ej. "extractImagin").
@@ -30,9 +30,7 @@ class DropZone(QFrame):
         self.setMinimumHeight(230)
         self.setProperty("dragging", False)
 
-        logo = QLabel()
-        logo.setPixmap(assets.mark(56))
-        logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        logo = StripeMark(112, 58, centered=True)
         self._title = QLabel("Arrastra aquí tus extractos")
         self._title.setObjectName("H1")
         self._title.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -47,7 +45,7 @@ class DropZone(QFrame):
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.setSpacing(10)
-        layout.addWidget(logo)
+        layout.addWidget(logo, 0, Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self._title)
         layout.addWidget(hint)
         layout.addSpacing(6)

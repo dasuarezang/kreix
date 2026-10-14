@@ -16,7 +16,7 @@ from data.repositories import AccountError
 from services.accounts_service import AccountsService, AccountsViewData
 from ui import assets
 from ui.format import category_label, fmt_date, fmt_eur, fmt_pct, month_long
-from ui.widgets.cards import ChartCard, StatCard
+from ui.widgets.cards import ChartCard, PageHeader, StatBand, StatCard
 from ui.widgets.charts_period import BalanceChart, CategoryBarsChart, IncomeExpenseChart
 from ui.widgets.period_bar import PeriodBar
 from ui.widgets.tables import RIGHT, Column, DataTable
@@ -52,8 +52,7 @@ class AccountsView(QWidget):
 
     # ------------------------------------------------------------------ construccion
     def _build_header(self) -> QVBoxLayout:
-        title = QLabel("Cuentas")
-        title.setObjectName("H1")
+        self.header = PageHeader("Cuentas", eyebrow="Tus cuentas")
         self.account_combo = QComboBox()
         self.account_combo.setMinimumWidth(230)
         self.account_combo.setAccessibleName("Cuenta")
@@ -66,25 +65,17 @@ class AccountsView(QWidget):
         self.act_add.triggered.connect(self.prompt_add)
         self.act_rename.triggered.connect(self.prompt_rename)
         self.act_delete.triggered.connect(self.prompt_delete)
+        self.header.add_right(self.account_combo)
+        self.header.add_right(self.manage)
 
         self.period = PeriodBar()
-        self._subtitle = QLabel("")
-        self._subtitle.setObjectName("Muted")
-
-        top = QHBoxLayout()
-        top.addWidget(title)
-        top.addStretch(1)
-        top.addWidget(self.account_combo)
-        top.addWidget(self.manage)
-        bottom = QHBoxLayout()
-        bottom.addWidget(self.period)
-        bottom.addSpacing(8)
-        bottom.addWidget(self._subtitle, 1)
-
         col = QVBoxLayout()
-        col.setSpacing(12)
-        col.addLayout(top)
-        col.addLayout(bottom)
+        col.setSpacing(14)
+        col.addWidget(self.header)
+        bar = QHBoxLayout()
+        bar.addWidget(self.period)
+        bar.addStretch(1)
+        col.addLayout(bar)
         self.account_combo.currentIndexChanged.connect(lambda _i: self.reload())
         self.period.changed.connect(lambda _m: self.reload())
         return col
@@ -122,21 +113,16 @@ class AccountsView(QWidget):
         root.setContentsMargins(0, 0, 0, 28)
         root.setSpacing(16)
 
-        self.card_balance = StatCard("Saldo", "yellow")
-        self.card_income = StatCard("Ingresos", "yellow")
-        self.card_expenses = StatCard("Gastos", "red")
-        self.card_rate = StatCard("Tasa de ahorro", "neutral")
-        self.mini_moves = StatCard("Movimientos", "neutral", compact=True)
-        self.mini_largest = StatCard("Mayor gasto", "red", compact=True)
-        self.mini_category = StatCard("Categoría principal", "red", compact=True)
-        self.mini_average = StatCard("Gasto medio", "neutral", compact=True)
-        for cards in ((self.card_balance, self.card_income, self.card_expenses, self.card_rate),
-                      (self.mini_moves, self.mini_largest, self.mini_category, self.mini_average)):
-            row = QHBoxLayout()
-            row.setSpacing(16)
-            for c in cards:
-                row.addWidget(c, 1)
-            root.addLayout(row)
+        self.card_balance = StatCard("Saldo", band=True)
+        self.card_income = StatCard("Ingresos", band=True)
+        self.card_expenses = StatCard("Gastos", band=True)
+        self.card_rate = StatCard("Tasa de ahorro", band=True)
+        self.mini_moves = StatCard("Movimientos", compact=True, band=True)
+        self.mini_largest = StatCard("Mayor gasto", compact=True, band=True)
+        self.mini_category = StatCard("Categoría principal", compact=True, band=True)
+        self.mini_average = StatCard("Gasto medio", compact=True, band=True)
+        root.addWidget(StatBand((self.card_balance, self.card_income, self.card_expenses, self.card_rate)))
+        root.addWidget(StatBand((self.mini_moves, self.mini_largest, self.mini_category, self.mini_average)))
 
         self.categories = CategoryBarsChart()
         self.balance = BalanceChart()
@@ -232,7 +218,7 @@ class AccountsView(QWidget):
     def _render(self, d: AccountsViewData) -> None:
         self._stack.setCurrentIndex(1 if d.has_movements else 0)
         self._empty_title.setText("Aún no hay movimientos" if d.accounts else "Aún no tienes ninguna cuenta")
-        self._subtitle.setText(self._describe(d))
+        self.header.set_subtitle(self._describe(d))
         if not d.has_movements or d.summary is None:
             self.table.set_rows([])
             return
@@ -248,7 +234,7 @@ class AccountsView(QWidget):
         rate = s.savings_rate
         self.card_rate.set_content(fmt_pct(rate, 0) if rate is not None else "—",
                                    f"Flujo neto {signed_eur(s.net)}" if rate is not None else "Sin ingresos en el periodo",
-                                   negative=rate is not None and rate < 0)
+                                   negative=rate is not None and rate < 0, positive=rate is not None and rate > 0)
 
         ups = sum(1 for t in d.movements if t.amount > 0)
         self.mini_moves.set_content(str(s.movements), f"{ups} entradas · {s.movements - ups} salidas")

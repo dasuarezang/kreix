@@ -8,7 +8,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QFileDialog, QFrame, QHBoxLayout, QLabel, QPushButton, QScrollArea, QVBoxLayout, QWidget
 
 from services.transfer_service import EXTENSION, DataSummary, TransferError, TransferService
-from ui.widgets.cards import repolish
+from ui.widgets.cards import PageHeader, repolish
 
 
 NO_DATA = "Todavía no hay datos que exportar."
@@ -26,11 +26,8 @@ class ExportView(QWidget):
         self.setObjectName("Page")
         self._service = service
 
-        title = QLabel("Exportar")
-        title.setObjectName("H1")
-        intro = QLabel("Guarda todos tus datos en un único archivo para hacer una copia o llevarlos a otro ordenador.")
-        intro.setObjectName("Muted")
-        intro.setWordWrap(True)
+        header = PageHeader("Exportar", eyebrow="Copia de seguridad",
+                            subtitle="Guarda todos tus datos en un único archivo para hacer una copia o llevarlos a otro ordenador.")
 
         self._contents = QLabel("")
         self._contents.setWordWrap(True)
@@ -75,7 +72,7 @@ class ExportView(QWidget):
         col = QVBoxLayout(body)
         col.setContentsMargins(32, 28, 32, 32)
         col.setSpacing(16)
-        for w in (title, intro, what, warning, steps):
+        for w in (header, what, warning, steps):
             col.addWidget(w)
         col.addStretch(1)
         scroll = QScrollArea()

@@ -1,42 +1,54 @@
 """Paletas de marca (claro/oscuro) y hoja de estilos de la aplicacion.
 
-Los colores de acento salen del logo: amarillo dorado y rojo. El resto de grises
-parte del color del recuadro del logo (#1F2429) y del crema del fondo claro.
+Identidad: el amarillo dorado y el rojo del logotipo sobre grises carbon (modo oscuro) o papel calido
+(modo claro). El amarillo se reserva para lo que importa (pestana activa, accion principal, serie
+destacada); el verde marca lo positivo y el rojo lo negativo. La jerarquia la da la tipografia:
+Montserrat ExtraBold para titulos y cifras, DM Sans para el texto.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 
+from ui import fonts as F
+
 
 @dataclass(frozen=True, slots=True)
 class Palette:
     name: str
-    bg: str
-    surface: str
-    surface_alt: str
+    bg: str              # fondo de las paginas
+    side: str            # fondo de la barra lateral
+    surface: str         # tarjetas
+    surface_alt: str     # campos, botones secundarios, pildoras
     border: str
     text: str
     muted: str
     accent: str          # amarillo de marca
     accent_hover: str
     on_accent: str       # texto sobre el amarillo
-    red: str             # rojo de marca
+    accent_soft: str     # amarillo muy suave (fondos de aviso, seleccion)
+    red: str
+    red_soft: str
+    green: str
+    green_soft: str
     neutral: str         # tercera serie de los graficos
-    hover: str           # fondo de elementos al pasar el raton
-    series: tuple[str, ...]  # colores para graficos con muchas series (fondos)
+    hover: str           # fondo al pasar el raton
+    grid: str            # lineas de cuadricula de los graficos
+    series: tuple[str, ...]   # colores para graficos con muchas series (fondos)
 
 
 DARK = Palette(
-    name="dark", bg="#15191D", surface="#1F2429", surface_alt="#282F36", border="#323A43",
-    text="#F6F2EA", muted="#9AA5B1", accent="#FFD43B", accent_hover="#FFE066", on_accent="#1F2429",
-    red="#E5484D", neutral="#7F8C99", hover="#2A3139",
-    series=("#FFD43B", "#E5484D", "#7F8C99", "#F2A900", "#FF8787", "#B0BAC5"),
+    name="dark", bg="#101418", side="#0B0E11", surface="#171C22", surface_alt="#1F252D", border="#262D37",
+    text="#F3EFE7", muted="#8F9AA8", accent="#FFD23F", accent_hover="#FFDE6B", on_accent="#16181B",
+    accent_soft="#2A2816", red="#F0555A", red_soft="#2D1C20", green="#3FC08F", green_soft="#17291F",
+    neutral="#6F7C8A", hover="#212832", grid="#232A33",
+    series=("#FFD23F", "#F0555A", "#6F7C8A", "#F2A900", "#FF9AA0", "#A9B4C0"),
 )
 LIGHT = Palette(
-    name="light", bg="#F6F2EA", surface="#FFFFFF", surface_alt="#EFE9DD", border="#E2DBCD",
-    text="#1F2429", muted="#667085", accent="#F2B400", accent_hover="#FFC21A", on_accent="#1F2429",
-    red="#C92A2A", neutral="#6B7885", hover="#F1ECE1",
-    series=("#F2B400", "#C92A2A", "#6B7885", "#B07F00", "#E8590C", "#9AA5B1"),
+    name="light", bg="#F5F0E6", side="#EDE6D8", surface="#FFFFFF", surface_alt="#F1EBDF", border="#E7E0D1",
+    text="#1B1E22", muted="#6C7380", accent="#F5B800", accent_hover="#FFC81F", on_accent="#17191C",
+    accent_soft="#FBF0CC", red="#D63B3B", red_soft="#FBE3E1", green="#1E9E6C", green_soft="#DDF3E8",
+    neutral="#8B94A0", hover="#F4EFE4", grid="#ECE6D8",
+    series=("#F5B800", "#D63B3B", "#8B94A0", "#B07F00", "#E8590C", "#B7BEC8"),
 )
 PALETTES = {"dark": DARK, "light": LIGHT}
 
@@ -53,139 +65,157 @@ def set_current(palette: Palette) -> None:
 
 
 def stylesheet(p: Palette) -> str:
+    body, medium, bold = F.stack(F.BODY), F.stack(F.BODY_MEDIUM), F.stack(F.BODY_BOLD)
+    display, display_bold, label = F.stack(F.DISPLAY), F.stack(F.DISPLAY_BOLD), F.stack(F.LABEL)
     return f"""
-* {{ font-family: "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif; font-size: 13px; }}
-QMainWindow, QWidget#Root, QWidget#Page, QScrollArea, QScrollArea > QWidget > QWidget {{
-    background: {p.bg}; color: {p.text};
-}}
+QWidget {{ color: {p.text}; }}
+QMainWindow, QWidget#Root, QWidget#Page, QScrollArea, QScrollArea > QWidget > QWidget {{ background: {p.bg}; }}
 QScrollArea {{ border: none; }}
-QLabel {{ background: transparent; color: {p.text}; }}
-QToolTip {{ background: {p.surface_alt}; color: {p.text}; border: 1px solid {p.border}; padding: 6px 8px; }}
+QLabel {{ background: transparent; }}
+QToolTip {{
+    background: {p.surface_alt}; color: {p.text}; border: 1px solid {p.border}; padding: 7px 10px;
+    font-family: {medium}; font-size: 12px;
+}}
 
-/* ---- barra lateral ---- */
-QFrame#Sidebar {{ background: {p.surface}; border-right: 1px solid {p.border}; }}
+/* ---------------------------------------------------------------- tipografia */
+QLabel#H1 {{ font-family: {display}; font-size: 32px; }}
+QLabel#H2 {{ font-family: {bold}; font-size: 16px; }}
+QLabel#Muted {{ color: {p.muted}; }}
+QLabel#Small {{ color: {p.muted}; font-size: 12px; }}
+QLabel#Eyebrow {{ color: {p.accent}; font-family: {label}; font-size: 11px; }}
+QLabel#SectionTitle {{ color: {p.muted}; font-family: {label}; font-size: 11px; }}
+QLabel#Small[state="ok"] {{ color: {p.text}; }}
+QLabel#Small[state="error"] {{ color: {p.red}; font-family: {bold}; }}
+
+/* ---------------------------------------------------------------- barra lateral */
+QFrame#Sidebar {{ background: {p.side}; border: none; }}
 QPushButton#NavButton {{
-    text-align: left; padding: 11px 16px; border: none; border-radius: 10px;
-    color: {p.muted}; background: transparent; font-weight: 600; font-size: 14px;
+    text-align: left; padding: 11px 16px; border: none; border-radius: 12px;
+    color: {p.muted}; background: transparent; font-family: {bold}; font-size: 14px;
 }}
 QPushButton#NavButton:hover {{ background: {p.hover}; color: {p.text}; }}
 QPushButton#NavButton:checked {{ background: {p.accent}; color: {p.on_accent}; }}
 QPushButton#NavButton:focus {{ border: 2px solid {p.accent}; padding: 9px 14px; }}
 QPushButton#PillButton {{
     text-align: left; padding: 0 18px 0 14px; min-height: 40px; max-height: 40px;
-    border: 1px solid {p.border}; border-radius: 20px; background: {p.surface_alt};
-    color: {p.text}; font-weight: 600; font-size: 13px;
+    border: none; border-radius: 20px; background: {p.surface_alt};
+    color: {p.text}; font-family: {bold}; font-size: 13px;
 }}
-QPushButton#PillButton:hover {{ background: {p.hover}; border-color: {p.muted}; }}
-QPushButton#PillButton:checked {{ background: {p.accent}; border-color: {p.accent}; color: {p.on_accent}; }}
-QPushButton#PillButton:focus {{ border: 2px solid {p.accent}; padding: 0 17px 0 13px; }}
-/* ---- menu de ayuda ---- */
-QPushButton#HubCard {{
-    background: {p.surface}; border: 1px solid {p.border}; border-radius: 16px; text-align: left; padding: 0;
-}}
-QPushButton#HubCard:hover {{ background: {p.hover}; border-color: {p.accent}; }}
-QPushButton#HubCard:focus {{ border: 2px solid {p.accent}; }}
-QLabel#HubTitle {{ font-size: 15px; font-weight: 700; }}
-QLabel#IconChip {{ background: {p.accent}; border-radius: 30px; }}
-QPushButton#BackButton {{
-    background: transparent; border: none; color: {p.muted}; font-weight: 700;
-    padding: 6px 14px 6px 8px; border-radius: 10px;
-}}
-QPushButton#BackButton:hover {{ background: {p.hover}; color: {p.text}; }}
-QPushButton#BackButton:focus {{ border: 2px solid {p.accent}; }}
+QPushButton#PillButton:hover {{ background: {p.hover}; }}
+QPushButton#PillButton:checked {{ background: {p.accent}; color: {p.on_accent}; }}
+QPushButton#PillButton:focus {{ border: 2px solid {p.accent}; padding: 0 16px 0 12px; }}
 QLabel#SidebarFoot {{ color: {p.muted}; font-size: 11px; }}
 
-/* ---- tipografia ---- */
-QLabel#SectionTitle {{ color: {p.muted}; font-size: 11px; font-weight: 800; letter-spacing: 1px; }}
-QFrame#Card QLabel#StepBadge, QLabel#StepBadge {{ background: {p.accent}; color: {p.on_accent}; border-radius: 13px; font-weight: 800; }}
-QLabel#Small[state="ok"] {{ color: {p.text}; }}
-QLabel#Small[state="error"] {{ color: {p.red}; font-weight: 700; }}
-QLabel#H1 {{ font-size: 26px; font-weight: 800; }}
-QLabel#H2 {{ font-size: 15px; font-weight: 700; }}
-QLabel#Muted {{ color: {p.muted}; }}
-QLabel#Small {{ color: {p.muted}; font-size: 12px; }}
-
-/* ---- tarjetas ---- */
-QFrame#Card {{ background: {p.surface}; border: 1px solid {p.border}; border-radius: 14px; }}
+/* ---------------------------------------------------------------- tarjetas */
+QFrame#Card {{ background: {p.surface}; border: 1px solid {p.border}; border-radius: 20px; }}
 QFrame#Card QLabel {{ background: transparent; }}
-QLabel#CardTitle {{ color: {p.muted}; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; }}
-QLabel#CardValue {{ font-size: 30px; font-weight: 800; }}
-QLabel#CardValue[tone="negative"] {{ color: {p.red}; }}
+QFrame#Hero {{ background: {p.surface}; border: 1px solid {p.border}; border-radius: 24px; }}
+QFrame#Hero QLabel {{ background: transparent; }}
+QFrame#Band {{ background: {p.surface}; border: 1px solid {p.border}; border-radius: 20px; }}
+QFrame#Band QLabel {{ background: transparent; }}
+QFrame#BandCell {{ background: transparent; border: none; border-radius: 0; }}
+QFrame#BandDivider {{ background: {p.border}; border: none; }}
+QLabel#CardTitle {{ color: {p.muted}; font-family: {label}; font-size: 11px; }}
+QLabel#CardValue {{ font-family: {display}; font-size: 34px; }}
+QLabel#CardValue[tone="negative"], QLabel#MiniValue[tone="negative"], QLabel#HeroValue[tone="negative"] {{ color: {p.red}; }}
+QLabel#CardValue[tone="positive"], QLabel#MiniValue[tone="positive"] {{ color: {p.green}; }}
+QLabel#HeroValue {{ font-family: {display}; font-size: 52px; }}
+QLabel#MiniValue {{ font-family: {display_bold}; font-size: 22px; }}
 QLabel#CardSub {{ color: {p.muted}; font-size: 12px; }}
-QFrame#AccentBar {{ background: {p.accent}; border-radius: 2px; border: none; }}
-QFrame#AccentBar[tone="red"] {{ background: {p.red}; }}
-QFrame#AccentBar[tone="neutral"] {{ background: {p.neutral}; }}
+QFrame#AccentBar {{ background: transparent; border: none; }}
 
-/* ---- avisos ---- */
-QFrame#Banner {{ background: {p.surface_alt}; border: 1px solid {p.accent}; border-radius: 12px; }}
-QFrame#Banner QLabel {{ background: transparent; }}
-QLabel#Pill {{ border-radius: 9px; padding: 2px 10px; font-size: 11px; font-weight: 700;
-    background: {p.surface_alt}; color: {p.text}; }}
-QLabel#Pill[state="ok"] {{ background: {p.accent}; color: {p.on_accent}; }}
-QLabel#Pill[state="warn"] {{ background: {p.surface_alt}; color: {p.accent}; border: 1px solid {p.accent}; }}
-QLabel#Pill[state="error"] {{ background: {p.red}; color: #FFFFFF; }}
-
-/* ---- botones ---- */
-QPushButton {{
-    background: {p.surface_alt}; color: {p.text}; border: 1px solid {p.border};
-    border-radius: 10px; padding: 9px 18px; font-weight: 600;
+/* chips de variacion (+4,4 %) */
+QLabel#Chip {{
+    border-radius: 11px; padding: 3px 10px; font-family: {bold}; font-size: 12px;
+    background: {p.surface_alt}; color: {p.text};
 }}
-QPushButton:hover {{ background: {p.hover}; border-color: {p.muted}; }}
-QPushButton:focus {{ border: 2px solid {p.accent}; }}
-QPushButton#Primary {{ background: {p.accent}; color: {p.on_accent}; border: none; font-weight: 700; }}
-QPushButton#Primary:hover {{ background: {p.accent_hover}; }}
+QLabel#Chip[tone="positive"] {{ background: {p.green_soft}; color: {p.green}; }}
+QLabel#Chip[tone="negative"] {{ background: {p.red_soft}; color: {p.red}; }}
+QLabel#Chip[tone="accent"] {{ background: {p.accent_soft}; color: {p.accent}; }}
 
-/* ---- zona de importacion ---- */
-QFrame#DropZone {{ background: {p.surface}; border: 2px dashed {p.border}; border-radius: 18px; }}
-QFrame#DropZone[dragging="true"] {{ background: {p.surface_alt}; border: 2px dashed {p.accent}; }}
+/* ---------------------------------------------------------------- avisos y estados */
+QFrame#Banner {{ background: {p.accent_soft}; border: 1px solid {p.accent}; border-radius: 16px; }}
+QFrame#Banner QLabel {{ background: transparent; }}
+QLabel#Pill {{
+    border-radius: 9px; padding: 3px 12px; font-family: {bold}; font-size: 11px;
+    background: {p.surface_alt}; color: {p.text};
+}}
+QLabel#Pill[state="ok"] {{ background: {p.green_soft}; color: {p.green}; }}
+QLabel#Pill[state="warn"] {{ background: {p.accent_soft}; color: {p.accent}; }}
+QLabel#Pill[state="error"] {{ background: {p.red_soft}; color: {p.red}; }}
+
+/* ---------------------------------------------------------------- botones */
+QPushButton {{
+    background: {p.surface_alt}; color: {p.text}; border: none; border-radius: 12px;
+    padding: 10px 20px; font-family: {bold}; font-size: 13px;
+}}
+QPushButton:hover {{ background: {p.hover}; }}
+QPushButton:focus {{ border: 2px solid {p.accent}; padding: 8px 18px; }}
+QPushButton:disabled {{ color: {p.muted}; }}
+QPushButton#Primary {{ background: {p.accent}; color: {p.on_accent}; padding: 11px 24px; }}
+QPushButton#Primary:hover {{ background: {p.accent_hover}; }}
+QPushButton#Primary:disabled {{ background: {p.surface_alt}; color: {p.muted}; }}
+QPushButton#Arrow {{ padding: 6px 12px; font-size: 16px; }}
+QPushButton#BackButton {{
+    background: transparent; color: {p.muted}; padding: 6px 14px 6px 8px; border-radius: 10px;
+}}
+QPushButton#BackButton:hover {{ background: {p.hover}; color: {p.text}; }}
+
+/* menu de ayuda */
+QPushButton#HubCard {{
+    background: {p.surface}; border: 1px solid {p.border}; border-radius: 20px; text-align: left; padding: 0;
+}}
+QPushButton#HubCard:hover {{ background: {p.hover}; border-color: {p.accent}; }}
+QPushButton#HubCard:focus {{ border: 2px solid {p.accent}; padding: 0; }}
+QLabel#HubTitle {{ font-family: {display_bold}; font-size: 16px; }}
+QLabel#IconChip {{ background: {p.accent}; border-radius: 30px; }}
+QLabel#StepBadge {{
+    background: {p.accent}; color: {p.on_accent}; border-radius: 13px; font-family: {display_bold}; font-size: 12px;
+}}
+QFrame#Card QLabel#StepBadge {{ background: {p.accent}; color: {p.on_accent}; }}
+
+/* ---------------------------------------------------------------- zona de importacion */
+QFrame#DropZone {{ background: {p.surface}; border: 2px dashed {p.border}; border-radius: 24px; }}
+QFrame#DropZone[dragging="true"] {{ background: {p.accent_soft}; border: 2px dashed {p.accent}; }}
 QFrame#DropZone QLabel {{ background: transparent; }}
 
-/* ---- entradas ---- */
-QDateEdit {{
-    background: {p.surface}; color: {p.text}; border: 1px solid {p.border};
-    border-radius: 8px; padding: 6px 10px; min-width: 110px;
+/* ---------------------------------------------------------------- entradas */
+QComboBox, QLineEdit, QDateEdit {{
+    background: {p.surface_alt}; color: {p.text}; border: 1px solid {p.surface_alt};
+    border-radius: 12px; padding: 8px 14px; min-height: 20px; font-family: {medium};
 }}
-QDateEdit:focus {{ border: 2px solid {p.accent}; }}
-QDateEdit::drop-down {{ border: none; width: 24px; }}
-QCalendarWidget QWidget {{ background: {p.surface}; color: {p.text}; }}
-QCalendarWidget QAbstractItemView {{ selection-background-color: {p.accent}; selection-color: {p.on_accent}; }}
-
-/* ---- tablas ---- */
-QTableView {{
-    background: {p.surface}; alternate-background-color: {p.hover}; color: {p.text};
-    border: none; outline: none; gridline-color: transparent;
-    selection-background-color: {p.accent}; selection-color: {p.on_accent};
-}}
-QTableView::item {{ padding: 0 12px; border: none; }}
-QHeaderView {{ background: {p.surface}; }}
-QHeaderView::section {{
-    background: {p.surface}; color: {p.muted}; font-size: 11px; font-weight: 700;
-    padding: 8px 12px; border: none; border-bottom: 1px solid {p.border};
-}}
-QHeaderView::section:hover {{ color: {p.text}; }}
-QTableCornerButton::section {{ background: {p.surface}; border: none; }}
-
-/* ---- combos, busqueda y menus ---- */
-QComboBox, QLineEdit {{
-    background: {p.surface}; color: {p.text}; border: 1px solid {p.border};
-    border-radius: 8px; padding: 7px 12px; min-height: 18px;
-}}
-QComboBox:hover, QLineEdit:hover {{ border-color: {p.muted}; }}
-QComboBox:focus, QLineEdit:focus {{ border: 2px solid {p.accent}; padding: 6px 11px; }}
-QComboBox::drop-down {{ border: none; width: 26px; }}
+QComboBox:hover, QLineEdit:hover, QDateEdit:hover {{ border-color: {p.border}; }}
+QComboBox:focus, QLineEdit:focus, QDateEdit:focus {{ border: 2px solid {p.accent}; padding: 7px 13px; }}
+QComboBox::drop-down, QDateEdit::drop-down {{ border: none; width: 28px; }}
 QComboBox QAbstractItemView {{
-    background: {p.surface}; color: {p.text}; border: 1px solid {p.border};
+    background: {p.surface}; color: {p.text}; border: 1px solid {p.border}; border-radius: 10px;
     selection-background-color: {p.accent}; selection-color: {p.on_accent}; outline: none; padding: 4px;
 }}
-QPushButton#Arrow {{ padding: 6px 12px; font-size: 16px; font-weight: 700; }}
-QMenu {{ background: {p.surface}; color: {p.text}; border: 1px solid {p.border}; border-radius: 8px; padding: 6px; }}
-QMenu::item {{ padding: 8px 22px; border-radius: 6px; }}
+QCalendarWidget QWidget {{ background: {p.surface}; color: {p.text}; }}
+QCalendarWidget QAbstractItemView {{ selection-background-color: {p.accent}; selection-color: {p.on_accent}; }}
+QMenu {{ background: {p.surface}; color: {p.text}; border: 1px solid {p.border}; border-radius: 12px; padding: 6px; }}
+QMenu::item {{ padding: 9px 24px; border-radius: 8px; }}
 QMenu::item:selected {{ background: {p.accent}; color: {p.on_accent}; }}
 QMenu::item:disabled {{ color: {p.muted}; }}
 QDialog, QMessageBox, QInputDialog {{ background: {p.surface}; color: {p.text}; }}
-QLabel#MiniValue {{ font-size: 20px; font-weight: 800; }}
-QLabel#MiniValue[tone="negative"] {{ color: {p.red}; }}
 
+/* ---------------------------------------------------------------- tablas */
+QTableView {{
+    background: transparent; color: {p.text}; border: none; outline: none; gridline-color: transparent;
+    selection-background-color: {p.accent_soft}; selection-color: {p.text};
+}}
+QTableView::item {{ padding: 0 12px; border: none; border-bottom: 1px solid {p.border}; }}
+QTableView::item:hover {{ background: {p.hover}; }}
+QTableView::item:selected {{ background: {p.accent_soft}; color: {p.text}; }}
+QHeaderView {{ background: transparent; }}
+QHeaderView::section {{
+    background: transparent; color: {p.muted}; font-family: {label}; font-size: 10px;
+    padding: 8px 12px; border: none; border-bottom: 1px solid {p.border};
+}}
+QHeaderView::section:hover {{ color: {p.text}; }}
+QTableCornerButton::section {{ background: transparent; border: none; }}
+
+/* ---------------------------------------------------------------- barras de desplazamiento */
 QScrollBar:vertical {{ background: transparent; width: 10px; margin: 2px; }}
 QScrollBar::handle:vertical {{ background: {p.border}; border-radius: 4px; min-height: 30px; }}
 QScrollBar::handle:vertical:hover {{ background: {p.muted}; }}

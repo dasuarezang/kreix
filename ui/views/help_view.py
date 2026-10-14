@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
 )
 
 from ui import icons, theme
+from ui.widgets.cards import PageHeader
 from ui.help_content import ENTRIES, SECTION_INFO, SECTIONS, HelpEntry, grouped, search
 
 ICON_PX = 26
@@ -102,11 +103,8 @@ class HelpView(QWidget):
 
     # ------------------------------------------------------------------ menu (hub)
     def _build_hub(self) -> QWidget:
-        title = QLabel("Ayuda")
-        title.setObjectName("H1")
-        intro = QLabel("Qué significa cada cifra y cada gráfico de Kreix, explicado sin tecnicismos. Elige un tema.")
-        intro.setObjectName("Muted")
-        intro.setWordWrap(True)
+        header = PageHeader("Ayuda", eyebrow="Glosario",
+                            subtitle="Qué significa cada cifra y cada gráfico de Kreix, explicado sin tecnicismos. Elige un tema.")
 
         self.search = QLineEdit()
         self.search.setPlaceholderText("O busca un término: TIR, patrimonio neto, tasa de ahorro…")
@@ -142,7 +140,7 @@ class HelpView(QWidget):
         col = QVBoxLayout(body)
         col.setContentsMargins(32, 28, 32, 32)
         col.setSpacing(14)
-        for w in (title, intro, self.search, self._summary, self._grid_holder, self._results_holder):
+        for w in (header, self.search, self._summary, self._grid_holder, self._results_holder):
             col.addWidget(w)
         col.addStretch(1)
         return self._scroll(body)

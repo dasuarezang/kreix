@@ -15,7 +15,7 @@ from services.import_service import ImportService
 from services.investment_service import InvestmentService
 from services.settings_service import SettingsService
 from services.transfer_service import TransferService
-from ui import assets
+from ui import assets, fonts
 from ui.main_window import MainWindow, Services
 
 
@@ -36,6 +36,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     app = QApplication(sys.argv[:1])
+    fonts.setup_application(app)
     app.setApplicationName("Kreix")
     app.setWindowIcon(assets.app_icon())
     db = args.db or os.environ.get("KREIX_DB")

@@ -32,6 +32,9 @@ def main() -> None:
     as_of = demo_data.build(tmp / "demo")
 
     app = QApplication(sys.argv[:1])
+    from ui import fonts
+
+    fonts.setup_application(app)
     window = build_window(f"sqlite:///{tmp / 'demo.db'}", "demo")
     window.show()
 
