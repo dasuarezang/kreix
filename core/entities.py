@@ -28,6 +28,7 @@ class TransactionDraft:
     category: TxCategory
     tx_hash: str
     source_file: str
+    account_id: int | None = None   # lo rellena la capa de datos al leer de la base
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,6 +44,7 @@ class OperationDraft:
     amount: Decimal                 # efectivo: <0 compra (sale de la cuenta), >0 venta
     tx_hash: str
     source_file: str
+    account_id: int | None = None
 
 
 @dataclass(frozen=True, slots=True)

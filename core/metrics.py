@@ -15,7 +15,6 @@ Convenciones:
 """
 from __future__ import annotations
 
-import calendar
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date
@@ -24,6 +23,7 @@ from typing import Iterable, Sequence
 
 from core.entities import OperationDraft, PositionSnapshot, TransactionDraft
 from core.enums import OperationType, TxCategory
+from core.periods import month_end, month_start, next_month as _next_month  # noqa: F401 (reexportados)
 
 ZERO = Decimal(0)
 _TRADES = (OperationType.BUY, OperationType.SELL)
@@ -44,18 +44,6 @@ class MonthlyFlow:
     @property
     def savings_rate(self) -> Decimal | None:
         return savings_rate(self.income, self.expenses)
-
-
-def month_start(d: date) -> date:
-    return d.replace(day=1)
-
-
-def _next_month(d: date) -> date:
-    return date(d.year + (d.month == 12), d.month % 12 + 1, 1)
-
-
-def month_end(d: date) -> date:
-    return d.replace(day=calendar.monthrange(d.year, d.month)[1])
 
 
 @dataclass(frozen=True, slots=True)
@@ -126,20 +114,89 @@ def month_savings_rate(
 
 
 # =========================================================================== saldos y patrimonio
-def latest_balance(transactions: Iterable[TransactionDraft], as_of: date | None = None) -> Decimal | None:
-    """Saldo de la cuenta en `as_of` (o el mas reciente).
+def _chain_order(group: list[TransactionDraft]) -> list[TransactionDraft]:
+    """Ordena los movimientos de UN dia y UNA cuenta de mas antiguo a mas reciente
+    siguiendo la cadena de saldos (saldo previo + importe = saldo). Si la cadena no se
+    puede resolver sin ambiguedad, conserva el orden de entrada."""
+    if len(group) < 2 or any(t.balance_after is None for t in group):
+        return list(group)
+    balances = {t.balance_after for t in group}
+    starts = [t for t in group if t.balance_after - t.amount not in balances]  # type: ignore[operator]
+    if len(starts) != 1:
+        return list(group)
+    by_previous: dict[Decimal, list[TransactionDraft]] = defaultdict(list)
+    for t in group:
+        by_previous[t.balance_after - t.amount].append(t)  # type: ignore[operator]
+    ordered = [starts[0]]
+    used = {id(starts[0])}
+    while True:
+        nxt = next((t for t in by_previous.get(ordered[-1].balance_after, []) if id(t) not in used), None)  # type: ignore[arg-type]
+        if nxt is None:
+            break
+        ordered.append(nxt)
+        used.add(id(nxt))
+    return ordered if len(ordered) == len(group) else list(group)
 
-    Varios movimientos el mismo dia: el saldo vigente es el del ultimo eslabon de la
-    cadena (el que ningun otro movimiento tiene como saldo previo), asi no depende
-    del orden en que se guardaron."""
+
+def chronological(transactions: Iterable[TransactionDraft]) -> list[TransactionDraft]:
+    """De mas antiguo a mas reciente. Entre dias, por fecha; dentro de un dia, por la
+    cadena de saldos de cada cuenta (el orden en que se guardaron no importa)."""
+    by_day: dict[date, dict[int | None, list[TransactionDraft]]] = defaultdict(lambda: defaultdict(list))
+    for t in transactions:
+        by_day[t.booking_date][t.account_id].append(t)
+    out: list[TransactionDraft] = []
+    for day in sorted(by_day):
+        for group in by_day[day].values():
+            out.extend(_chain_order(group))
+    return out
+
+
+def order_movements(transactions: Iterable[TransactionDraft], newest_first: bool = True) -> list[TransactionDraft]:
+    ordered = chronological(transactions)
+    return ordered[::-1] if newest_first else ordered
+
+
+def latest_balance(transactions: Iterable[TransactionDraft], as_of: date | None = None) -> Decimal | None:
+    """Saldo de UNA cuenta en `as_of` (o el mas reciente). Para varias cuentas, `total_cash`."""
     rows = [t for t in transactions if t.balance_after is not None and (as_of is None or t.booking_date <= as_of)]
     if not rows:
         return None
-    day = max(t.booking_date for t in rows)
-    same_day = [t for t in rows if t.booking_date == day]
-    preceding = {t.balance_after - t.amount for t in same_day}  # type: ignore[operator]
-    ends = [t for t in same_day if t.balance_after not in preceding]
-    return (ends or same_day)[0].balance_after
+    return chronological(rows)[-1].balance_after
+
+
+def total_cash(transactions: Iterable[TransactionDraft], as_of: date | None = None) -> Decimal | None:
+    """Suma del saldo de cada cuenta (cada una con su propia cadena de saldos)."""
+    by_account: dict[int | None, list[TransactionDraft]] = defaultdict(list)
+    for t in transactions:
+        by_account[t.account_id].append(t)
+    balances = [b for rows in by_account.values() if (b := latest_balance(rows, as_of)) is not None]
+    return sum(balances, ZERO) if balances else None
+
+
+def balance_series(
+    transactions: Iterable[TransactionDraft], start: date | None = None, end: date | None = None
+) -> list[tuple[date, Decimal]]:
+    """Saldo (sumando cuentas) al cierre de cada dia con movimientos dentro de [start, end]."""
+    by_account: dict[int | None, list[TransactionDraft]] = defaultdict(list)
+    for t in transactions:
+        if t.balance_after is not None:
+            by_account[t.account_id].append(t)
+    closing: dict[int | None, dict[date, Decimal]] = {}
+    for acc, rows in by_account.items():
+        days: dict[date, Decimal] = {}
+        for t in chronological(rows):
+            days[t.booking_date] = t.balance_after  # type: ignore[assignment]  # el ultimo del dia gana
+        closing[acc] = days
+    all_days = sorted({d for days in closing.values() for d in days})
+    series: list[tuple[date, Decimal]] = []
+    current: dict[int | None, Decimal] = {}
+    for d in all_days:
+        for acc, days in closing.items():
+            if d in days:
+                current[acc] = days[d]
+        if (start is None or d >= start) and (end is None or d <= end):
+            series.append((d, sum(current.values(), ZERO)))
+    return series
 
 
 def latest_positions(snapshots: Iterable[PositionSnapshot], as_of: date | None = None) -> list[PositionSnapshot]:
@@ -226,6 +283,14 @@ def xirr(flows: Iterable[tuple[date, Decimal]]) -> float | None:
     return (lo + hi) / 2
 
 
+def estimated_value(
+    operations: Iterable[OperationDraft], snapshots: Iterable[PositionSnapshot], on: date
+) -> Decimal:
+    """Valor estimado de la cartera un dia concreto (participaciones segun las operaciones,
+    precio interpolado entre los valores liquidativos conocidos)."""
+    return _Portfolio(operations, snapshots).value(on, include_day=True)
+
+
 def portfolio_cashflows(
     operations: Iterable[OperationDraft], end_value: Decimal, as_of: date
 ) -> list[tuple[date, Decimal]]:
@@ -298,29 +363,36 @@ def twr(
     operations: Iterable[OperationDraft],
     snapshots: Iterable[PositionSnapshot] = (),
     end: date | None = None,
+    start: date | None = None,
 ) -> float | None:
-    """Rentabilidad ponderada en el tiempo (time-weighted return), acumulada.
+    """Rentabilidad ponderada en el tiempo (time-weighted return).
 
     Encadena la rentabilidad de cada tramo entre aportaciones/reembolsos, de modo que
-    el momento y tamano de las aportaciones no afecta al resultado."""
+    el momento y tamano de las aportaciones no afecta al resultado.
+    Sin `start` es la acumulada desde la primera compra; con `start`, la del periodo
+    (start, end]. Devuelve None si en ese periodo no habia capital invertido."""
     snapshots = list(snapshots)
     pf = _Portfolio(operations, snapshots)
     if not pf.ops:
         return None
     if end is None:
         end = max([s.as_of for s in snapshots] + [o.trade_date for o in pf.ops])
-    flow_dates = sorted({o.trade_date for o in pf.ops if o.trade_date <= end})
+    flow_dates = sorted({o.trade_date for o in pf.ops if o.trade_date <= end and (start is None or o.trade_date > start)})
 
     growth = 1.0
-    prev_after: Decimal | None = None
+    started = False
+    prev_after: Decimal | None = pf.value(start, include_day=True) if start is not None else None
+    if prev_after is not None and prev_after > 0:
+        started = True
     for d in flow_dates:
         before = pf.value(d, include_day=False)
         if prev_after is not None and prev_after > 0:
             growth *= float(before / prev_after)
         prev_after = pf.value(d, include_day=True)
+        started = started or prev_after > 0
     if prev_after is not None and prev_after > 0:
         growth *= float(pf.value(end, include_day=True) / prev_after)
-    return growth - 1.0
+    return growth - 1.0 if started else None
 
 
 # =========================================================================== series temporales
@@ -357,7 +429,7 @@ def wealth_evolution(
     trades = [o for o in operations if o.op_type in _TRADES]
     points: list[WealthPoint] = []
     for d in dates:
-        cash = latest_balance(transactions, as_of=d) or ZERO
+        cash = total_cash(transactions, as_of=d) or ZERO
         invested = pf.value(d, include_day=True)
         contributed = sum((-o.amount for o in trades if o.trade_date <= d), ZERO)
         points.append(WealthPoint(d, cash, invested, contributed, cash + invested))
