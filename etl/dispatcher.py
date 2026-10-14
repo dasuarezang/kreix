@@ -31,7 +31,7 @@ def parse_file(path: str | Path, portfolio_as_of: date | None = None) -> ParseRe
     path = Path(path)
     if path.suffix.lower() == ".pdf":
         raise ParseError(
-            "Los PDF todavía no se pueden importar. Descarga el extracto en CSV o Excel desde tu banco."
+            "Kreix solo importa extractos en CSV o Excel. Descárgalo en uno de esos formatos desde tu banco."
         )
     rows = load_rows(path)
     kind, header_idx = detect(rows)

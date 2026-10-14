@@ -76,7 +76,7 @@ Atajos: `Ctrl+1` a `Ctrl+7` cambian de página en el orden de la tabla y `Ctrl+T
 - Admite CSV con `;`, `,` o tabulador, en UTF-8 o Windows-1252, y Excel con títulos antes de la tabla.
 - **No importa la extensión:** archivos como `extractImagin` (sin extensión) o `.csv.txt` funcionan igual, porque el tipo se detecta por las cabeceras.
 - Los importes en formato español (`-2,99EUR`, `1.234,56 €`) se limpian automáticamente.
-- **Los PDF todavía no se pueden importar.** Descarga el extracto en CSV o Excel desde tu banco.
+- **Solo CSV y Excel:** Kreix no importa PDF. Descarga el extracto en uno de esos dos formatos desde tu banco.
 - El extracto de cartera de MyInvestor no incluye fecha, así que Kreix te pide a qué día corresponde.
 
 ## Instalación y ejecución

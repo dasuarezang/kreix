@@ -104,10 +104,10 @@ def test_unknown_format_is_rejected(tmp_path):
         parse_file(f)
 
 
-def test_pdf_gets_a_clear_message(tmp_path):
+def test_pdf_is_rejected_pointing_to_csv_or_excel(tmp_path):
     f = tmp_path / "movimientos.pdf"
     f.write_bytes(b"%PDF-1.7 fake")
-    with pytest.raises(ParseError, match="PDF"):
+    with pytest.raises(ParseError, match="CSV o Excel"):
         parse_file(f)
 
 
