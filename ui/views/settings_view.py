@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import replace
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from services.settings_service import AppSettings
 from ui.widgets.switch import SwitchToggle
@@ -35,6 +35,7 @@ class SettingRow(QWidget):
 
 class SettingsView(QWidget):
     settings_changed = Signal(object)
+    reset_requested = Signal()
 
     def __init__(self, settings: AppSettings, db_path: str, parent=None) -> None:
         super().__init__(parent)
@@ -66,7 +67,17 @@ class SettingsView(QWidget):
         privacy = QLabel("Todo se guarda solo en este equipo. Kreix no envía datos a ningún servidor.")
         privacy.setObjectName("Small")
         privacy.setWordWrap(True)
-        data = self._card("Tus datos", path, privacy)
+        self.reset_button = QPushButton("Borrar todos los datos")
+        self.reset_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.reset_button.setToolTip("Elimina movimientos, operaciones y cartera. Los ajustes se conservan.")
+        self.reset_button.clicked.connect(self.reset_requested)
+        reset_row = QHBoxLayout()
+        reset_row.addWidget(self.reset_button)
+        reset_row.addStretch(1)
+        reset_box = QWidget()
+        reset_box.setLayout(reset_row)
+        reset_row.setContentsMargins(0, 6, 0, 0)
+        data = self._card("Tus datos", path, privacy, reset_box)
 
         about = self._card("Acerca de", QLabel(f"Kreix {VERSION}"))
 

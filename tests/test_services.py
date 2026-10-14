@@ -7,6 +7,7 @@ import pytest
 from core.metrics import FlowOptions
 from data.database import init_db, make_engine, make_session_factory
 from services.dashboard_service import DashboardService
+from services.data_service import DataService
 from services.import_service import ImportService
 from services.settings_service import AppSettings, SettingsService
 
@@ -77,3 +78,21 @@ def test_settings_roundtrip_and_defaults(factory):
     assert svc.load() == AppSettings("light", False, True)
     svc.save(AppSettings("dark", True, False))
     assert svc.load() == AppSettings("dark", True, False)
+
+
+def test_reset_all_clears_data_but_keeps_settings(factory):
+    ImportService(factory).import_files(ALL, portfolio_as_of=date(2026, 10, 14))
+    SettingsService(factory).save(AppSettings("light", False, True))
+    DataService(factory).reset_all()
+    assert DashboardService(factory).load().has_data is False
+    assert SettingsService(factory).load() == AppSettings("light", False, True)
+    # y se puede volver a importar desde cero
+    assert ImportService(factory).import_files([FIX / "imagin_sample.csv"]).files[0].inserted == 6
+
+
+def test_files_without_extension_are_accepted(factory, tmp_path):
+    """Algunos exports (p. ej. 'extractImagin') no llevan extension."""
+    plain = tmp_path / "extractImagin"
+    plain.write_text((FIX / "imagin_sample.csv").read_text(encoding="utf-8"), encoding="utf-8")
+    report = ImportService(factory).import_files([plain])
+    assert report.files[0].ok and report.files[0].inserted == 6

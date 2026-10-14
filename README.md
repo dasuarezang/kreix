@@ -33,6 +33,7 @@
 | MyInvestor | Cartera (CSV o Excel) | `Producto; ISIN; Participaciones Totales; ...; Valor Liquidativo Actual` |
 
 - Admite CSV con `;`, `,` o tabulador, en UTF-8 o Windows-1252, y Excel con títulos antes de la tabla.
+- **No importa la extensión:** archivos como `extractImagin` (sin extensión) o `.csv.txt` funcionan igual, porque el tipo se detecta por las cabeceras.
 - Los importes en formato español (`-2,99EUR`, `1.234,56 €`) se limpian automáticamente.
 - **Los PDF todavía no se pueden importar.** Descarga el extracto en CSV o Excel desde tu banco.
 - El extracto de cartera de MyInvestor no incluye fecha, así que Kreix te pide a qué día corresponde.
@@ -50,6 +51,8 @@ python -m venv .venv
 ```
 
 En macOS o Linux usa `.venv/bin/python` en lugar de `.venv\Scripts\python`.
+
+Si importaste algo mal, **Ajustes > Borrar todos los datos** deja la base de datos vacía (los ajustes se conservan) para volver a empezar.
 
 Los datos se guardan en `%APPDATA%\Kreix\kreix.db` (Windows), `~/Library/Application Support/Kreix/` (macOS) o `~/.local/share/Kreix/` (Linux). Para probar sin tocar tus datos:
 

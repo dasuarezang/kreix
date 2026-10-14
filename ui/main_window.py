@@ -6,11 +6,12 @@ from dataclasses import dataclass, replace
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
-    QApplication, QButtonGroup, QFrame, QHBoxLayout, QLabel, QMainWindow, QPushButton,
-    QStackedWidget, QVBoxLayout, QWidget,
+    QApplication, QButtonGroup, QFrame, QHBoxLayout, QLabel, QMainWindow, QMessageBox,
+    QPushButton, QStackedWidget, QVBoxLayout, QWidget,
 )
 
 from services.dashboard_service import DashboardService
+from services.data_service import DataService
 from services.import_service import ImportService
 from services.settings_service import AppSettings, SettingsService
 from ui import assets, theme
@@ -25,6 +26,7 @@ class Services:
     importer: ImportService
     dashboard: DashboardService
     settings: SettingsService
+    data: DataService
 
 
 class MainWindow(QMainWindow):
@@ -49,6 +51,7 @@ class MainWindow(QMainWindow):
         self.dashboard.go_import.connect(lambda: self.navigate(1))
         self.import_view.imported.connect(self.refresh)
         self.settings_view.settings_changed.connect(self._on_settings_changed)
+        self.settings_view.reset_requested.connect(self.confirm_reset)
 
         root = QWidget()
         root.setObjectName("Root")
@@ -117,6 +120,23 @@ class MainWindow(QMainWindow):
 
     def refresh(self) -> None:
         self.dashboard.set_data(self._svc.dashboard.load(self._settings.flow_options))
+
+    def confirm_reset(self) -> None:
+        answer = QMessageBox.question(
+            self, "Borrar todos los datos",
+            "Se eliminarán todos los movimientos, operaciones y la cartera importados.\n"
+            "Tus ajustes se conservan. Esta acción no se puede deshacer.\n\n"
+            "¿Quieres continuar?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.Cancel,
+        )
+        if answer == QMessageBox.StandardButton.Yes:
+            self.reset_data()
+
+    def reset_data(self) -> None:
+        self._svc.data.reset_all()
+        self.refresh()
+        self.navigate(0)
 
     def apply_theme(self, name: str, persist: bool = False) -> None:
         palette = theme.PALETTES[name]

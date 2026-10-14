@@ -10,7 +10,8 @@ from PySide6.QtWidgets import QFileDialog, QFrame, QLabel, QPushButton, QVBoxLay
 from ui import assets
 from ui.widgets.cards import repolish
 
-FILE_FILTER = "Extractos bancarios (*.csv *.txt *.xlsx *.xlsm *.xls);;Todos los archivos (*)"
+# Primero "todos": los extractos de algunos bancos no llevan extension (p. ej. "extractImagin").
+FILE_FILTER = "Todos los archivos (*);;Extractos bancarios (*.csv *.txt *.xlsx *.xlsm *.xls)"
 
 
 def local_files(mime_data) -> list[str]:
@@ -35,7 +36,7 @@ class DropZone(QFrame):
         self._title = QLabel("Arrastra aquí tus extractos")
         self._title.setObjectName("H1")
         self._title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        hint = QLabel("CSV o Excel de Imagin y MyInvestor (los PDF no son compatibles). Kreix detecta el banco automáticamente.")
+        hint = QLabel("CSV o Excel de Imagin y MyInvestor, con o sin extensión (los PDF no son compatibles).")
         hint.setObjectName("Muted")
         hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
         button = QPushButton("Seleccionar archivos")

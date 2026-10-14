@@ -117,3 +117,23 @@ def test_logo_assets_load(qapp):
     assert not assets.wordmark(theme.DARK).isNull()
     assert not assets.wordmark(theme.LIGHT).isNull()
     assert not assets.app_icon().isNull()
+
+
+def test_reset_button_empties_the_dashboard(window):
+    window.import_view.import_paths([str(FIX / "imagin_sample.csv")])
+    assert window.dashboard._stack.currentIndex() == 1
+    window.reset_data()
+    assert window.dashboard._stack.currentIndex() == 0
+
+
+def test_file_dialog_shows_extensionless_files_by_default():
+    from ui.widgets.dropzone import FILE_FILTER
+
+    assert FILE_FILTER.split(";;")[0] == "Todos los archivos (*)"
+
+
+def test_drop_accepts_file_without_extension(window, tmp_path):
+    plain = tmp_path / "extractImagin"
+    plain.write_text((FIX / "imagin_sample.csv").read_text(encoding="utf-8"), encoding="utf-8")
+    drop(window.import_view.dropzone, [plain])
+    assert window.dashboard._stack.currentIndex() == 1
