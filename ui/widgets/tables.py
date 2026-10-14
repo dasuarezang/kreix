@@ -5,7 +5,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from PySide6.QtCore import QAbstractTableModel, QModelIndex, QSortFilterProxyModel, Qt
+from PySide6.QtCore import QAbstractTableModel, QModelIndex, QSortFilterProxyModel, Qt, QTimer
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QAbstractItemView, QHeaderView, QTableView
 
@@ -139,9 +139,19 @@ class DataTable(QTableView):
         for i, col in enumerate(self.model_.columns):
             header.setSectionResizeMode(i, QHeaderView.ResizeMode.Stretch if col.stretch else QHeaderView.ResizeMode.ResizeToContents)
 
+    def wrap_text(self) -> None:
+        """Los textos largos pasan a una segunda linea (altura de fila automatica) en vez de cortarse."""
+        self._wrap = True
+        self.setWordWrap(True)
+        self.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        # la altura de fila depende del ancho de las columnas: se recalcula cuando el diseno ya se ha asentado
+        self.horizontalHeader().sectionResized.connect(lambda *_: QTimer.singleShot(0, self._refit))
+
     def set_rows(self, rows: Sequence[Any]) -> None:
         self.model_.set_rows(rows)
         self._apply_widths()
+        if getattr(self, "_wrap", False):
+            self.resizeRowsToContents()
 
     def set_filter(self, predicate: Callable[[Any], bool] | None) -> None:
         self.proxy.set_predicate(predicate)
@@ -153,11 +163,41 @@ class DataTable(QTableView):
         return [str(self.proxy.index(row, c).data() or "") for c in range(self.proxy.columnCount())]
 
     def fit_height(self, max_rows: int = 8) -> None:
-        """Ajusta el alto a las filas (para tablas pequenas que no deben tener scroll propio)."""
-        rows = min(max(self.model_.rowCount(), 1), max_rows)
-        height = HEADER_HEIGHT + rows * ROW_HEIGHT + 4
-        self.setMinimumHeight(height)
-        self.setMaximumHeight(height if self.model_.rowCount() <= max_rows else 16777215)
+        """Ajusta el alto a las filas (para tablas pequenas que no deben tener scroll propio).
+        Se recalcula al cambiar el ancho: con texto en varias lineas, la altura de fila depende del ancho."""
+        self._fit_rows = max_rows
+        self._refit()
+
+    def _refit(self) -> None:
+        max_rows = getattr(self, "_fit_rows", None)
+        if max_rows is None or getattr(self, "_refitting", False):
+            return
+        self._refitting = True
+        try:
+            self._do_refit(max_rows)
+        finally:
+            self._refitting = False
+
+    def _do_refit(self, max_rows: int) -> None:
+        count = self.model_.rowCount()
+        if getattr(self, "_wrap", False) and count:
+            self.resizeRowsToContents()
+            body = sum(self.rowHeight(r) for r in range(min(count, max_rows)))
+        else:
+            body = min(max(count, 1), max_rows) * ROW_HEIGHT
+        height = HEADER_HEIGHT + body + 4
+        if height != self.minimumHeight() or height != self.maximumHeight():
+            self.setMinimumHeight(height)
+            self.setMaximumHeight(height if count <= max_rows else 16777215)
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        if getattr(self, "_fit_rows", None) is not None and getattr(self, "_wrap", False):
+            QTimer.singleShot(0, self._refit)
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        QTimer.singleShot(0, self._refit)
 
     def refresh_theme(self) -> None:
         self.viewport().update()

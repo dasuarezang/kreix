@@ -4,12 +4,10 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal
 
-import pandas as pd
-
 from core.categorizer import normalize
 from core.entities import FileKind, OperationDraft, ParseResult, PositionSnapshot
 from core.enums import Bank, OperationType
-from etl.common import HashFactory, ParseError, clean_text, to_date, to_decimal
+from etl.common import HashFactory, ParseError, Table, clean_text, to_date, to_decimal
 
 OPS_REQUIRED = {"fecha operacion", "isin", "tipo operacion", "participaciones", "importe"}
 PORTFOLIO_REQUIRED = {"producto", "isin", "participaciones totales", "valor liquidativo actual"}
@@ -24,14 +22,14 @@ def _operation_type(raw: str) -> OperationType | None:
     return None
 
 
-def parse_operations(df: pd.DataFrame, source_file: str) -> ParseResult:
-    missing = OPS_REQUIRED - set(df.columns)
+def parse_operations(table: Table, source_file: str) -> ParseResult:
+    missing = OPS_REQUIRED - set(table.columns)
     if missing:
         raise ParseError(f"Faltan columnas de operaciones de MyInvestor: {sorted(missing)}")
     hashes = HashFactory(Bank.MYINVESTOR.value)
     result = ParseResult(FileKind.MYINVESTOR_OPERATIONS, source_file)
 
-    for line, row in enumerate(df.to_dict("records"), start=2):
+    for line, row in enumerate(table.rows, start=2):
         status = normalize(str(row.get("estado") or "EJECUTADA"))
         if status != "EJECUTADA":
             result.warnings.append(f"Fila {line} omitida: estado '{row.get('estado')}' (no ejecutada).")
@@ -74,15 +72,15 @@ def parse_operations(df: pd.DataFrame, source_file: str) -> ParseResult:
     return result
 
 
-def parse_portfolio(df: pd.DataFrame, source_file: str, as_of: date | None = None) -> ParseResult:
+def parse_portfolio(table: Table, source_file: str, as_of: date | None = None) -> ParseResult:
     """El extracto de cartera no incluye fecha: se usa `as_of` (por defecto, hoy)."""
-    missing = PORTFOLIO_REQUIRED - set(df.columns)
+    missing = PORTFOLIO_REQUIRED - set(table.columns)
     if missing:
         raise ParseError(f"Faltan columnas de cartera de MyInvestor: {sorted(missing)}")
     as_of = as_of or date.today()
     result = ParseResult(FileKind.MYINVESTOR_PORTFOLIO, source_file)
 
-    for line, row in enumerate(df.to_dict("records"), start=2):
+    for line, row in enumerate(table.rows, start=2):
         try:
             units = to_decimal(row["participaciones totales"])
             nav = to_decimal(row["valor liquidativo actual"])

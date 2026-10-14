@@ -2,7 +2,6 @@ from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
-import pandas as pd
 import pytest
 
 from core.categorizer import Categorizer
@@ -114,11 +113,14 @@ def test_pdf_gets_a_clear_message(tmp_path):
 
 def test_excel_with_preamble(tmp_path):
     f = tmp_path / "imagin.xlsx"
-    pd.DataFrame(
-        [["Extracto de cuenta", None, None, None],
-         ["Concepto", "Fecha", "Importe", "Saldo"],
-         ["MERCADONA", "13/10/2026", -3.3, 36.7]]
-    ).to_excel(f, header=False, index=False)
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    ws = wb.active
+    for row in (["Extracto de cuenta", None, None, None], ["Concepto", "Fecha", "Importe", "Saldo"],
+                ["MERCADONA", "13/10/2026", -3.3, 36.7]):
+        ws.append(row)
+    wb.save(f)
     res = parse_file(f)
     assert res.transactions[0].amount == Decimal("-3.3")
     assert res.transactions[0].category is TxCategory.GROCERIES

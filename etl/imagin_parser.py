@@ -1,30 +1,28 @@
 """Parser del extracto de Imagin: Concepto;Fecha;Importe;Saldo (CSV con ';')."""
 from __future__ import annotations
 
-import pandas as pd
-
 from core.categorizer import Categorizer, normalize
 from core.entities import FileKind, ParseResult, TransactionDraft
 from core.enums import Bank
-from etl.common import HashFactory, ParseError, clean_text, to_date, to_decimal
+from etl.common import HashFactory, ParseError, Table, clean_text, to_date, to_decimal
 
 REQUIRED = {"concepto", "fecha", "importe", "saldo"}
 
 
-def parse(df: pd.DataFrame, source_file: str, categorizer: Categorizer | None = None) -> ParseResult:
-    missing = REQUIRED - set(df.columns)
+def parse(table: Table, source_file: str, categorizer: Categorizer | None = None) -> ParseResult:
+    missing = REQUIRED - set(table.columns)
     if missing:
         raise ParseError(f"Faltan columnas de Imagin: {sorted(missing)}")
     categorizer = categorizer or Categorizer()
     hashes = HashFactory(Bank.IMAGIN.value)
     result = ParseResult(FileKind.IMAGIN_STATEMENT, source_file)
 
-    for line, row in enumerate(df.itertuples(index=False), start=2):
+    for line, row in enumerate(table.rows, start=2):
         try:
-            description = clean_text(row.concepto)
-            booking = to_date(row.fecha)
-            amount = to_decimal(row.importe)
-            balance = to_decimal(row.saldo) if str(row.saldo or "").strip() else None
+            description = clean_text(row["concepto"])
+            booking = to_date(row["fecha"])
+            amount = to_decimal(row["importe"])
+            balance = to_decimal(row["saldo"]) if str(row["saldo"] or "").strip() else None
         except ParseError as exc:
             result.warnings.append(f"Fila {line} ignorada: {exc}")
             continue

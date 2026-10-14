@@ -79,9 +79,13 @@ Atajos: `Ctrl+1` a `Ctrl+7` cambian de página en el orden de la tabla y `Ctrl+T
 - **Los PDF todavía no se pueden importar.** Descarga el extracto en CSV o Excel desde tu banco.
 - El extracto de cartera de MyInvestor no incluye fecha, así que Kreix te pide a qué día corresponde.
 
-## Instalación
+## Instalación y ejecución
 
-Requiere Python 3.11 o superior (desarrollado y probado con 3.14).
+Requiere Python 3.11 o superior (desarrollado y probado con 3.14). Es ligero: solo `PySide6-Essentials`, `SQLAlchemy` y `openpyxl` (unos 215 MB en total) y arranca en alrededor de un segundo.
+
+**En Windows, lo más fácil:** haz doble clic en `Kreix.bat`. La primera vez crea el entorno e instala lo necesario; después abre la aplicación directamente.
+
+**A mano:**
 
 ```powershell
 git clone https://github.com/dasuarezang/kreix.git
@@ -91,7 +95,7 @@ python -m venv .venv
 .venv\Scripts\python main.py
 ```
 
-En macOS o Linux usa `.venv/bin/python` en lugar de `.venv\Scripts\python`.
+En macOS o Linux usa `.venv/bin/python` en lugar de `.venv\Scripts\python`. Para desarrollar (tests, generar capturas y fuentes) instala `requirements-dev.txt`.
 
 Si importaste algo mal, **Ajustes > Borrar todos los datos** deja la base de datos vacía (los ajustes se conservan) para volver a empezar.
 
@@ -122,7 +126,7 @@ Los datos se guardan en `%APPDATA%\Kreix\kreix.db` (Windows), `~/Library/Applica
 
 ## Arquitectura
 
-Clean Architecture: las dependencias apuntan hacia el dominio, y `core` no sabe nada de la interfaz, de la base de datos ni de pandas.
+Clean Architecture: las dependencias apuntan hacia el dominio, y `core` no sabe nada de la interfaz, de la base de datos ni de bibliotecas pesadas.
 
 ```
 main.py                 ensambla las capas y arranca la interfaz
@@ -155,6 +159,7 @@ Decisiones de diseño relevantes:
 ## Desarrollo
 
 ```powershell
+.venv\Scripts\python -m pip install -r requirements-dev.txt
 .venv\Scripts\python -m pytest -q          # toda la suite
 .venv\Scripts\python tools\screenshots.py  # regenera las capturas del README
 ```

@@ -33,6 +33,8 @@ class Palette:
     neutral: str         # tercera serie de los graficos
     hover: str           # fondo al pasar el raton
     grid: str            # lineas de cuadricula de los graficos
+    glow: str            # color del degradado de fondo (rojo en oscuro, amarillo en claro)
+    glow_alpha: int      # intensidad del degradado (0-255)
     series: tuple[str, ...]   # colores para graficos con muchas series (fondos)
 
 
@@ -40,14 +42,14 @@ DARK = Palette(
     name="dark", bg="#101418", side="#0B0E11", surface="#171C22", surface_alt="#1F252D", border="#262D37",
     text="#F3EFE7", muted="#8F9AA8", accent="#FFD23F", accent_hover="#FFDE6B", on_accent="#16181B",
     accent_soft="#2A2816", red="#F0555A", red_soft="#2D1C20", green="#3FC08F", green_soft="#17291F",
-    neutral="#6F7C8A", hover="#212832", grid="#232A33",
+    neutral="#6F7C8A", hover="#212832", grid="#232A33", glow="#E5484D", glow_alpha=70,
     series=("#FFD23F", "#F0555A", "#6F7C8A", "#F2A900", "#FF9AA0", "#A9B4C0"),
 )
 LIGHT = Palette(
     name="light", bg="#F5F0E6", side="#EDE6D8", surface="#FFFFFF", surface_alt="#F1EBDF", border="#E7E0D1",
     text="#1B1E22", muted="#6C7380", accent="#F5B800", accent_hover="#FFC81F", on_accent="#17191C",
     accent_soft="#FBF0CC", red="#D63B3B", red_soft="#FBE3E1", green="#1E9E6C", green_soft="#DDF3E8",
-    neutral="#8B94A0", hover="#F4EFE4", grid="#ECE6D8",
+    neutral="#8B94A0", hover="#F4EFE4", grid="#ECE6D8", glow="#F5B800", glow_alpha=85,
     series=("#F5B800", "#D63B3B", "#8B94A0", "#B07F00", "#E8590C", "#B7BEC8"),
 )
 PALETTES = {"dark": DARK, "light": LIGHT}
@@ -69,7 +71,8 @@ def stylesheet(p: Palette) -> str:
     display, display_bold, label = F.stack(F.DISPLAY), F.stack(F.DISPLAY_BOLD), F.stack(F.LABEL)
     return f"""
 QWidget {{ color: {p.text}; }}
-QMainWindow, QWidget#Root, QWidget#Page, QScrollArea, QScrollArea > QWidget > QWidget {{ background: {p.bg}; }}
+QMainWindow, QWidget#Root {{ background: {p.bg}; }}
+QWidget#Page, QScrollArea, QScrollArea > QWidget > QWidget {{ background: transparent; }}
 QScrollArea {{ border: none; }}
 QLabel {{ background: transparent; }}
 QToolTip {{
@@ -193,8 +196,10 @@ QComboBox QAbstractItemView {{
 }}
 QCalendarWidget QWidget {{ background: {p.surface}; color: {p.text}; }}
 QCalendarWidget QAbstractItemView {{ selection-background-color: {p.accent}; selection-color: {p.on_accent}; }}
+QMenu, QComboBox QAbstractItemView, QMessageBox, QInputDialog, QCalendarWidget {{ font-family: {medium}; font-size: 13px; }}
 QMenu {{ background: {p.surface}; color: {p.text}; border: 1px solid {p.border}; border-radius: 12px; padding: 6px; }}
-QMenu::item {{ padding: 9px 24px; border-radius: 8px; }}
+QMenu::item {{ padding: 9px 26px; border-radius: 8px; margin: 1px 0; }}
+QMenu::separator {{ height: 1px; background: {p.border}; margin: 6px 8px; }}
 QMenu::item:selected {{ background: {p.accent}; color: {p.on_accent}; }}
 QMenu::item:disabled {{ color: {p.muted}; }}
 QDialog, QMessageBox, QInputDialog {{ background: {p.surface}; color: {p.text}; }}
@@ -204,13 +209,13 @@ QTableView {{
     background: transparent; color: {p.text}; border: none; outline: none; gridline-color: transparent;
     selection-background-color: {p.accent_soft}; selection-color: {p.text};
 }}
-QTableView::item {{ padding: 0 12px; border: none; border-bottom: 1px solid {p.border}; }}
+QTableView::item {{ padding: 0 8px; border: none; border-bottom: 1px solid {p.border}; }}
 QTableView::item:hover {{ background: {p.hover}; }}
 QTableView::item:selected {{ background: {p.accent_soft}; color: {p.text}; }}
 QHeaderView {{ background: transparent; }}
 QHeaderView::section {{
     background: transparent; color: {p.muted}; font-family: {label}; font-size: 10px;
-    padding: 8px 12px; border: none; border-bottom: 1px solid {p.border};
+    padding: 8px 8px; border: none; border-bottom: 1px solid {p.border};
 }}
 QHeaderView::section:hover {{ color: {p.text}; }}
 QTableCornerButton::section {{ background: transparent; border: none; }}

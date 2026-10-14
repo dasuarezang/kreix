@@ -131,7 +131,7 @@ class InvestmentView(QWidget):
             Column("RENTAB.", lambda p: fmt_pct(_ret(p), 2, signed=True) if _ret(p) is not None else EMPTY,
                    lambda p: _ret(p) or Decimal(0), RIGHT, tone=lambda p: "negative" if (_ret(p) or 0) < 0 else "positive"),
         ], min_height=120)
-        self.positions_table.horizontalHeader().setMinimumSectionSize(70)
+        self.positions_table.wrap_text()
         self.positions_title = QLabel("Posiciones actuales")
         root.addWidget(self._table_card(self.positions_title, "Según el último extracto de cartera importado", self.positions_table))
 
@@ -140,10 +140,11 @@ class InvestmentView(QWidget):
             Column("FONDO", lambda o: o.product_name, lambda o: o.product_name.lower(), stretch=True),
             Column("ISIN", lambda o: o.isin, tone=lambda o: "muted"),
             Column("TIPO", lambda o: OPERATION_LABELS.get(o.op_type, o.op_type.value), tone=lambda o: "accent"),
-            Column("PARTICIPACIONES", lambda o: fmt_units(o.units), lambda o: o.units, RIGHT),
-            Column("VALOR LIQUIDATIVO", lambda o: fmt_eur(o.unit_price), lambda o: o.unit_price or Decimal(0), RIGHT),
+            Column("PARTIC.", lambda o: fmt_units(o.units), lambda o: o.units, RIGHT),
+            Column("VL", lambda o: fmt_eur(o.unit_price), lambda o: o.unit_price or Decimal(0), RIGHT),
             Column("IMPORTE", lambda o: fmt_eur(abs(o.amount)), lambda o: abs(o.amount), RIGHT),
         ], min_height=380)
+        self.operations_table.wrap_text()
         self.operations_title = QLabel("Operaciones")
         self._ops_count = QLabel("")
         root.addWidget(self._table_card(self.operations_title, "", self.operations_table, self._ops_count))

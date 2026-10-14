@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 
 from PySide6.QtCore import QSize, Qt
-from PySide6.QtGui import QKeySequence, QShortcut
+from PySide6.QtGui import QColor, QKeySequence, QPainter, QRadialGradient, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QButtonGroup, QFrame, QHBoxLayout, QLabel, QMainWindow, QMessageBox,
     QPushButton, QStackedWidget, QVBoxLayout, QWidget,
@@ -26,6 +26,24 @@ from ui.views.import_view import ImportView
 from ui.views.investment_view import InvestmentView
 from ui.views.settings_view import VERSION, SettingsView
 from ui.widgets.switch import ThemeToggle
+
+
+class Backdrop(QWidget):
+    """Fondo de la ventana: el color base y un resplandor en la esquina superior derecha."""
+
+    def paintEvent(self, _event) -> None:
+        pal = theme.current()
+        painter = QPainter(self)
+        painter.fillRect(self.rect(), QColor(pal.bg))
+        radius = max(self.width(), self.height()) * 0.85
+        gradient = QRadialGradient(self.width() * 0.92, -self.height() * 0.05, radius)
+        start = QColor(pal.glow)
+        start.setAlpha(pal.glow_alpha)
+        end = QColor(pal.glow)
+        end.setAlpha(0)
+        gradient.setColorAt(0.0, start)
+        gradient.setColorAt(1.0, end)
+        painter.fillRect(self.rect(), gradient)
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,7 +93,7 @@ class MainWindow(QMainWindow):
         self.settings_view.settings_changed.connect(self._on_settings_changed)
         self.settings_view.reset_requested.connect(self.confirm_reset)
 
-        root = QWidget()
+        root = Backdrop()
         root.setObjectName("Root")
         layout = QHBoxLayout(root)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -214,6 +232,7 @@ class MainWindow(QMainWindow):
         palette = theme.PALETTES[name]
         theme.set_current(palette)
         QApplication.instance().setStyleSheet(theme.stylesheet(palette))
+        self.centralWidget().update()
         self._logo.setPixmap(assets.wordmark(palette, 46))
         for pill, icon_name in self._pill_buttons.values():
             pill.setIcon(icons.button_icon(icon_name, palette))

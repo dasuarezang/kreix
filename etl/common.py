@@ -6,11 +6,10 @@ import hashlib
 import re
 from collections import Counter
 from datetime import date, datetime
+from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
-
-import pandas as pd
 
 from core.categorizer import normalize
 
@@ -27,8 +26,13 @@ def load_rows(path: Path) -> list[list[Any]]:
     """Lee CSV/TSV/TXT o Excel como lista de filas crudas (sin asumir cabecera)."""
     suffix = path.suffix.lower()
     if suffix in {".xlsx", ".xlsm", ".xls"}:
-        df = pd.read_excel(path, header=None, dtype=object)
-        return [[None if pd.isna(v) else v for v in row] for row in df.itertuples(index=False)]
+        from openpyxl import load_workbook          # solo se carga si se importa un Excel
+
+        workbook = load_workbook(path, read_only=True, data_only=True)
+        try:
+            return [list(row) for row in workbook.worksheets[0].iter_rows(values_only=True)]
+        finally:
+            workbook.close()
     raw = path.read_bytes()
     for enc in CSV_ENCODINGS:
         try:
@@ -53,12 +57,19 @@ def normalize_header(h: Any) -> str:
     return normalize(text).lower()
 
 
-def build_frame(rows: list[list[Any]], header_index: int) -> pd.DataFrame:
+@dataclass(slots=True)
+class Table:
+    """Tabla minima: nombres de columna normalizados y una fila (dict) por registro."""
+
+    columns: list[str]
+    rows: list[dict[str, Any]]
+
+
+def build_table(rows: list[list[Any]], header_index: int) -> Table:
     header = [normalize_header(h) for h in rows[header_index]]
-    body = [r for r in rows[header_index + 1:] if any(str(c).strip() for c in r if c is not None)]
     width = len(header)
-    body = [(list(r) + [None] * width)[:width] for r in body]
-    return pd.DataFrame(body, columns=header)
+    body = [r for r in rows[header_index + 1:] if any(str(c).strip() for c in r if c is not None)]
+    return Table(header, [dict(zip(header, (list(r) + [None] * width)[:width])) for r in body])
 
 
 # ---------------------------------------------------------------- conversiones

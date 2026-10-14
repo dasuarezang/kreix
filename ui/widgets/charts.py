@@ -781,7 +781,7 @@ class CategoryBarsChart(BaseChart):
         label_font = fonts.qfont(fonts.BODY_MEDIUM, 13)
         amount_font = fonts.qfont(fonts.DISPLAY_BOLD, 13)
         lfm, afm = QFontMetricsF(label_font), QFontMetricsF(amount_font)
-        label_w = min(max(lfm.horizontalAdvance(n) for n, _, _ in self._items) + 8, self.width() * 0.40)
+        label_w = min(max(lfm.horizontalAdvance(n) for n, _, _ in self._items) + 14, max(self.width() - 230, 90))
         amount_w = max(afm.horizontalAdvance(fmt_eur(a)) for _, a, _ in self._items) + 8
         pct_w = 46.0
         bar_left = label_w + 12
