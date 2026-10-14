@@ -1,0 +1,6 @@
+Fecha Operación;Fecha Valor;Producto;ISIN;Tipo Operación;Participaciones;Valor Liquidativo;Importe (€);Estado
+02/01/2026;04/01/2026;Fondo Test Uno;IE00TEST0001;Suscripción;10,0000;100,00;1000,00;Ejecutada
+01/02/2026;03/02/2026;Fondo Test Uno;IE00TEST0001;Suscripción;5,0000;102,00;510,00;Ejecutada
+01/03/2026;03/03/2026;Fondo Test Uno;IE00TEST0001;Reembolso;2,0000;110,00;220,00;Ejecutada
+01/04/2026;03/04/2026;Fondo Test Uno;IE00TEST0001;Suscripción;1,0000;111,00;111,00;Pendiente
+01/05/2026;03/05/2026;Fondo Test Uno;IE00TEST0001;Dividendo;0,0000;0,00;5,00;Ejecutada
