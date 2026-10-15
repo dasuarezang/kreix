@@ -14,17 +14,10 @@ from pathlib import Path
 from sqlalchemy import Engine, create_engine, event
 from sqlalchemy.pool import StaticPool
 
-from data.database import default_db_path, init_db
+from data.database import init_db
+from data.paths import default_vault_path, legacy_db_path  # noqa: F401  (se reexportan)
+from data.tracker import tracker_for
 from data.vault import EXTENSION, Vault
-
-
-def default_vault_path() -> Path:
-    return default_db_path().with_suffix(EXTENSION)
-
-
-def legacy_db_path() -> Path:
-    """La base sin cifrar de versiones anteriores (se migra la primera vez)."""
-    return default_db_path()
 
 
 def _memory_engine() -> Engine:
@@ -64,9 +57,9 @@ class SecureStore:
         self.engine = engine
         self._vault = vault
         self.dirty = False
-        event.listen(engine, "commit", self._mark_dirty)
+        tracker_for(engine).on_change(self._mark_dirty)          # solo cambios reales: leer una pagina no obliga a guardar
 
-    def _mark_dirty(self, _conn) -> None:
+    def _mark_dirty(self) -> None:
         self.dirty = True
 
     # ------------------------------------------------------------------ crear / abrir

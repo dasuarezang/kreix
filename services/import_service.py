@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core import metrics
-from core.entities import FileKind
+from core.entities import FileKind, ParseResult
 from core.enums import AccountKind, Bank
 from data.database import session_scope
 from data.hashing import scoped_hash
@@ -115,6 +115,22 @@ class ImportReport:
 class ImportService:
     def __init__(self, factory: sessionmaker[Session]) -> None:
         self._factory = factory
+        self._parsed: dict[tuple, ParseResult] = {}            # lo ultimo leido: la vista previa y la importacion no leen dos veces
+
+    def _parse(self, path: Path, portfolio_as_of: date | None, fund_isin: str | None) -> ParseResult:
+        """Lee un archivo; si es el mismo (misma ruta, tamano y fecha de modificacion) que se acaba de leer, reutiliza el resultado."""
+        try:
+            stat = path.stat()
+            key = (str(path), stat.st_size, stat.st_mtime_ns, portfolio_as_of, fund_isin)
+        except OSError:
+            return parse_file(path, portfolio_as_of, fund_isin)
+        found = self._parsed.get(key)
+        if found is None:
+            found = parse_file(path, portfolio_as_of, fund_isin)       # los errores no se guardan: se vuelven a intentar
+            self._parsed[key] = found
+            while len(self._parsed) > 4:
+                self._parsed.pop(next(iter(self._parsed)))
+        return found
 
     def funds(self) -> list[tuple[str, str]]:
         """(ISIN, nombre) de los fondos que ya conoce Kreix: a cual pertenece un historico de precios sin ISIN."""
@@ -131,6 +147,7 @@ class ImportService:
         for path in map(Path, paths):
             report.files.append(self._import_one(path, portfolio_as_of, account_id, fund_isin))
         report.reconciliation_warnings = self.reconciliation_warnings()
+        self._parsed.clear()                      # ya importado: no se guarda en memoria lo leido
         return report
 
     def preview(
@@ -143,7 +160,7 @@ class ImportService:
     def _preview_one(self, path: Path, portfolio_as_of: date | None, account_id: int | None,
                      fund_isin: str | None = None) -> FilePreview:
         try:
-            parsed = parse_file(path, portfolio_as_of, fund_isin)
+            parsed = self._parse(path, portfolio_as_of, fund_isin)
         except (ParseError, OSError, ValueError) as exc:
             return FilePreview(path.name, error=str(exc))
         out = FilePreview(path.name, parsed.kind, warnings=list(parsed.warnings))
@@ -203,7 +220,7 @@ class ImportService:
     def _import_one(self, path: Path, portfolio_as_of: date | None, account_id: int | None,
                     fund_isin: str | None = None) -> FileReport:
         try:
-            parsed = parse_file(path, portfolio_as_of, fund_isin)
+            parsed = self._parse(path, portfolio_as_of, fund_isin)
         except (ParseError, OSError, ValueError) as exc:
             return FileReport(path.name, error=str(exc))
         stats = InsertStats()

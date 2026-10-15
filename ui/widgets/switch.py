@@ -85,6 +85,17 @@ class ThemeToggle(QAbstractButton):
     def sizeHint(self) -> QSize:
         return QSize(self.WIDTH, self.HEIGHT)
 
+    def set_dark(self, dark: bool) -> None:
+        """Pone el conmutador en un modo sin emitir `toggled` (la ventana ya aplico el tema): la bola salta a su sitio."""
+        if self.isChecked() == dark:                      # ya esta asi (p. ej. lo acaba de pulsar el usuario): la animacion sigue
+            return
+        self.blockSignals(True)
+        self.setChecked(dark)
+        self.blockSignals(False)
+        self._anim.stop()
+        self._pos = 1.0 if dark else 0.0
+        self.update()
+
     def _get_pos(self) -> float:
         return self._pos
 

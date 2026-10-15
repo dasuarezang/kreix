@@ -11,21 +11,11 @@ from sqlalchemy import Engine, create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
 from data.hashing import scoped_hash
+from data.paths import default_db_path  # noqa: F401  (se reexporta: es la ruta de siempre)
 from data.models import Base
 
-SCHEMA_VERSION = 4  # v2: los hashes incluyen la cuenta; v3: reglas de categoria y presupuestos; v4: metas e historico de precios
+SCHEMA_VERSION = 5  # v2: hashes con cuenta; v3: reglas y presupuestos; v4: metas e historico de precios; v5: marcas de pagos recurrentes
 _HASHED_TABLES = ("transactions", "investment_operations")
-
-
-def default_db_path() -> Path:
-    """Carpeta de datos por usuario, fuera del codigo (los datos son privados)."""
-    if sys.platform == "win32":
-        root = Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming"))
-    elif sys.platform == "darwin":
-        root = Path.home() / "Library" / "Application Support"
-    else:
-        root = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share"))
-    return root / "Kreix" / "kreix.db"
 
 
 def make_engine(url: str | None = None) -> Engine:

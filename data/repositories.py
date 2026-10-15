@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import date, timezone
 from decimal import Decimal
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import Session
 
@@ -18,7 +18,7 @@ from core.entities import OperationDraft, PositionSnapshot, TransactionDraft
 from core.enums import AccountKind, Bank, TxCategory
 from data.hashing import scoped_hash
 from data.models import (
-    Account, Budget, CategoryRule, Goal, Investment, InvestmentOperation, PricePoint, Transaction, Valuation,
+    Account, Budget, CategoryRule, Goal, Investment, InvestmentOperation, PricePoint, RecurringMark, Transaction, Valuation,
 )
 
 
@@ -53,31 +53,29 @@ def get_or_create_investment(session: Session, isin: str, name: str) -> Investme
 
 
 def insert_transactions(session: Session, account_id: int, drafts: list[TransactionDraft]) -> InsertStats:
-    stats = InsertStats()
-    for d in drafts:
-        stmt = (
-            insert(Transaction)
-            .values(
-                account_id=account_id,
-                booking_date=d.booking_date,
-                description=d.description,
-                amount=d.amount,
-                balance_after=d.balance_after,
-                category=d.category,
-                tx_hash=scoped_hash(account_id, d.tx_hash),
-                source_file=d.source_file,
-            )
-            .on_conflict_do_nothing(index_elements=["tx_hash"])
-        )
-        added = session.execute(stmt).rowcount
-        stats += InsertStats(inserted=added, skipped=1 - added)
-    return stats
+    """Inserta en bloque (un solo `executemany`): con decenas de miles de filas, una sentencia por fila tardaba segundos.
+    Las que ya existen (mismo `tx_hash`) se ignoran, incluidas las repetidas dentro del propio archivo."""
+    if not drafts:
+        return InsertStats()
+    rows = [
+        {
+            "account_id": account_id, "booking_date": d.booking_date, "description": d.description, "amount": d.amount,
+            "balance_after": d.balance_after, "category": d.category, "tx_hash": scoped_hash(account_id, d.tx_hash),
+            "source_file": d.source_file,
+        }
+        for d in drafts
+    ]
+    before = session.scalar(select(func.count()).select_from(Transaction)) or 0
+    session.execute(insert(Transaction).on_conflict_do_nothing(index_elements=["tx_hash"]), rows)
+    added = (session.scalar(select(func.count()).select_from(Transaction)) or 0) - before
+    return InsertStats(inserted=added, skipped=len(rows) - added)
 
 
 def insert_operations(session: Session, account_id: int, drafts: list[OperationDraft]) -> InsertStats:
     stats = InsertStats()
+    funds: dict[str, Investment] = {}                  # un fondo se busca una sola vez por archivo
     for d in drafts:
-        inv = get_or_create_investment(session, d.isin, d.product_name)
+        inv = funds.get(d.isin) or funds.setdefault(d.isin, get_or_create_investment(session, d.isin, d.product_name))
         stmt = (
             insert(InvestmentOperation)
             .values(
@@ -317,3 +315,21 @@ def save_price_points(session: Session, rows: list[tuple[str, date, Decimal]]) -
 
 def list_price_points(session: Session) -> list[PricePoint]:
     return list(session.scalars(select(PricePoint).order_by(PricePoint.isin, PricePoint.as_of)))
+
+
+# ------------------------------------------------------------------ pagos recurrentes marcados a mano
+def get_recurring_marks(session: Session) -> dict[str, bool]:
+    return {m.key: m.include for m in session.scalars(select(RecurringMark))}
+
+
+def set_recurring_mark(session: Session, key: str, include: bool | None) -> None:
+    """`True`: es recurrente aunque Kreix no lo detecte; `False`: no lo es aunque lo detecte; `None`: vuelve a la deteccion."""
+    mark = session.get(RecurringMark, key)
+    if include is None:
+        if mark is not None:
+            session.delete(mark)
+    elif mark is None:
+        session.add(RecurringMark(key=key, include=include))
+    else:
+        mark.include = include
+    session.flush()

@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QComboBox, QFrame, QHBoxLayout, QLabel, QPushButto
 
 from core.entities import PositionSnapshot
 from services.investment_service import InvestmentService, InvestmentViewData
+from ui.popups import Combo
 from ui.format import EMPTY, fmt_date, fmt_eur, fmt_pct, fmt_units, month_long, operation_label
 from ui.views.accounts_view import signed_eur
 from ui.headlines import evolution_headline, fund_headline
@@ -123,7 +124,7 @@ class InvestmentView(QWidget):
         root.addLayout(row)
 
         self.funds_chart = FundsChart()
-        self.fund_combo = QComboBox()
+        self.fund_combo = Combo()
         self.fund_combo.setAccessibleName(tr("Fondo"))
         self.fund_combo.setMinimumWidth(260)
         self.fund_combo.currentIndexChanged.connect(self._on_fund_picked)

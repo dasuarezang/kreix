@@ -201,6 +201,15 @@ class Goal(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
+class RecurringMark(Base):
+    """Lo que el usuario ha dicho de un comercio: es un pago recurrente (`include`) o no lo es (excluido), por encima de la deteccion."""
+
+    __tablename__ = "recurring_marks"
+
+    key: Mapped[str] = mapped_column(String(80), primary_key=True)      # clave del comercio (core.recurring.merchant_key)
+    include: Mapped[bool] = mapped_column()
+
+
 class PricePoint(Base):
     """Valor liquidativo de un fondo en un dia, importado de un historico de precios (CSV)."""
 

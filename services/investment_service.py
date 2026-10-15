@@ -13,6 +13,7 @@ from core.investment_metrics import InvestmentSummary, available_months, summari
 from core.metrics import AllocationSlice, WealthPoint
 from core.periods import GLOBAL, Period
 from data.database import session_scope
+from data.tracker import tracker_for
 from etl.reconcile import reconcile_portfolio
 from services.mappers import load_operations, load_prices, load_snapshots
 
@@ -44,8 +45,12 @@ class InvestmentViewData:
 class InvestmentService:
     def __init__(self, factory: sessionmaker[Session]) -> None:
         self._factory = factory
+        self._tracker = tracker_for(factory.kw["bind"])
 
     def view(self, month: date | None = None) -> InvestmentViewData:
+        return self._tracker.cached(("investment", month), lambda: self._view(month))
+
+    def _view(self, month: date | None) -> InvestmentViewData:
         with session_scope(self._factory) as s:
             ops, snaps, prices = load_operations(s), load_snapshots(s), load_prices(s)
         trades = [o for o in ops if o.op_type in (OperationType.BUY, OperationType.SELL)]

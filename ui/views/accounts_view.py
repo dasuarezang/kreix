@@ -19,6 +19,7 @@ from data.repositories import AccountError, RuleError
 from services.accounts_service import AccountsService, AccountsViewData
 from services.category_service import CategoryService
 from services.movements_export import ExportError, write_movements
+from ui.popups import Combo, Menu
 from ui.dialogs import ALL_CATEGORIES as CATEGORY_CHOICES
 from ui.dialogs import BudgetDialog, RuleDialog
 from ui.feedback import Feedback, snapshot_of, tell
@@ -97,7 +98,7 @@ class AccountsView(QWidget):
         self.header = PageHeader(tr("Cuentas"), eyebrow=tr("Tus cuentas"))
         self.account_picker = AccountPicker()
         self.manage = QPushButton(tr("Gestionar cuentas"))
-        menu = QMenu(self.manage)
+        menu = Menu(self.manage)
         self.act_add = menu.addAction(tr("Añadir cuenta…"))
         self.act_rename = menu.addAction(tr("Renombrar cuenta…"))
         self.act_delete = menu.addAction(tr("Eliminar cuenta…"))
@@ -170,6 +171,7 @@ class AccountsView(QWidget):
         panels.setSpacing(28)
         panels.addWidget(self.budget_panel, 5)
         panels.addWidget(self.recurring_panel, 5)
+        self.recurring_panel.table.context_requested.connect(self._show_recurring_menu)
         root.addLayout(panels)
         root.addWidget(self._build_movements())
 
@@ -198,7 +200,7 @@ class AccountsView(QWidget):
         self.search.setPlaceholderText(tr("Buscar por concepto…"))
         self.search.setClearButtonEnabled(True)
         self.search.setAccessibleName(tr("Buscar movimientos"))
-        self.category_filter = QComboBox()
+        self.category_filter = Combo()
         self.category_filter.setAccessibleName(tr("Filtrar por categoría"))
         self._count = QLabel("")
         self._count.setObjectName("Small")
@@ -408,7 +410,7 @@ class AccountsView(QWidget):
                                 n).format(n=n, category=category_label(category)))
 
     def _show_row_menu(self, tx: TransactionDraft, pos: QPoint) -> None:
-        menu = QMenu(self)
+        menu = Menu(self)
         if self._categories is not None:
             sub = menu.addMenu(tr("Cambiar categoría"))
             for cat in CATEGORY_CHOICES:
@@ -422,8 +424,56 @@ class AccountsView(QWidget):
             rule = menu.addAction(tr("Crear regla para «{description}»…").format(description=merchant_key(tx.description) or tx.description))
             rule.triggered.connect(lambda _=False: self.create_rule(tx))
             menu.addSeparator()
+        self._add_recurring_action(menu, tx)
         copy = menu.addAction(tr("Copiar concepto"))
         copy.triggered.connect(lambda _=False: QGuiApplication.clipboard().setText(tx.description))
+        self._run_menu(menu, pos)
+
+    # ------------------------------------------------------------------ pagos recurrentes marcados a mano
+    def recurring_action(self, tx: TransactionDraft) -> tuple[str, bool | None] | None:
+        """Lo que se ofrece para un gasto en el menu: (texto, que marca guardar) o None si no procede. Kreix detecta solo
+        las suscripciones; esto deja al usuario decidir: anadir una que no detecta, o quitar una que no lo es."""
+        key = merchant_key(tx.description)
+        if tx.amount >= 0 or not key:
+            return None
+        mark = self._service.recurring_marks().get(key)
+        if mark is True:
+            return tr("Dejar de marcar «{name}» como pago recurrente").format(name=key), None
+        if mark is False:
+            return tr("Volver a detectar «{name}» automáticamente").format(name=key), None
+        detected = any(merchant_key(r.name) == key for r in self._data.recurring)
+        if detected:
+            return tr("«{name}» no es un pago recurrente").format(name=key), False
+        return tr("Marcar «{name}» como pago recurrente").format(name=key), True
+
+    def _add_recurring_action(self, menu: QMenu, tx: TransactionDraft) -> None:
+        offer = self.recurring_action(tx)
+        if offer is None:
+            return
+        text, include = offer
+        action = menu.addAction(text)
+        action.triggered.connect(lambda _=False: self.set_recurring(tx.description, include))
+
+    def set_recurring(self, description: str, include: bool | None) -> bool:
+        snapshot = snapshot_of(self.feedback)
+        if not self._service.set_recurring(description, include):
+            return False
+        name = merchant_key(description)
+        self.categories_changed.emit()                        # se recalculan los pagos recurrentes y los proximos pagos
+        message = {True: tr("«{name}» cuenta ahora como pago recurrente."),
+                   False: tr("«{name}» ya no cuenta como pago recurrente."),
+                   None: tr("Kreix vuelve a decidir solo sobre «{name}».")}[include]
+        tell(self.feedback, message.format(name=name), snapshot)
+        return True
+
+    def _show_recurring_menu(self, item, pos: QPoint) -> None:
+        menu = Menu(self)
+        if item.manual:
+            action = menu.addAction(tr("Dejar de marcar como pago recurrente"))
+            action.triggered.connect(lambda _=False: self.set_recurring(item.name, None))
+        else:
+            action = menu.addAction(tr("No es un pago recurrente"))
+            action.triggered.connect(lambda _=False: self.set_recurring(item.name, False))
         self._run_menu(menu, pos)
 
     def _run_menu(self, menu: QMenu, pos: QPoint) -> None:

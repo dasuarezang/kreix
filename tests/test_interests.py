@@ -193,7 +193,7 @@ def test_home_hides_what_does_not_interest_the_user(window):
     assert d.setup.subtitle.text().endswith("de 2 hechos")                       # cuenta + presupuesto
     window._apply_interests(False, True, "x")                                  # solo inversiones
     assert d.card_savings.isHidden() and d.flow_card.isHidden() and d.upcoming.isHidden() and d.budgets.isHidden()
-    assert not d.card_return.isHidden() and not d.allocation_card.isHidden()
+    assert not d.card_return.isHidden() and d.allocation_card.isHidden()        # liquidez frente a inversion: solo con las dos
     assert [p[0] for p in d.card_net.split._parts] == ["Inversión"] and d.card_net._sub.text() == "Lo que tienes invertido"
     assert d.setup.subtitle.text() == "2 de 2 hechos" or not d.setup.isVisibleTo(d)
     window._apply_interests(True, True, "x")
@@ -245,3 +245,50 @@ def test_the_interests_survive_a_restart(tmp_path, qapp):
         assert second.settings_view.interests.values() == (False, True)
     finally:
         dispose_windows(second)
+
+
+# ---------------------------------------------------------------- lo que no interesa deja de contar en Inicio (sin borrar nada)
+def test_net_worth_and_charts_only_count_what_interests_the_user_and_nothing_is_deleted(window):
+    from ui.format import fmt_eur
+
+    window.import_view.import_paths([str(p) for p in FILES])
+    d = window.dashboard
+    data = window._svc.dashboard.load()
+    assert data.cash is not None and data.portfolio_value > 0
+    total_text = fmt_eur(data.cash + data.portfolio_value)
+    window._apply_interests(True, True, "x")
+    assert d.card_net._value.text() == total_text and len(d.wealth._series) >= 2 and len(d.flow._series) == 3
+    value_line = list(d.wealth._series[1].values)                               # "Valor de la cartera" con las dos activas
+    net_line = list(d.wealth._series[0].values)
+
+    window._apply_interests(True, False, "x")                                   # ya no le interesan las inversiones
+    assert d.card_net._value.text() == fmt_eur(data.cash)                       # el patrimonio es solo lo de las cuentas
+    assert "100,0" in d.card_net.split._parts[0][1] and len(d.card_net.split._parts) == 1
+    assert [s.name for s in d.wealth._series] == ["Patrimonio neto"]            # sin valor de cartera ni aportaciones
+    assert d.wealth._series[0].values[-1] == float(data.cash)
+    assert d.wealth._series[0].values != net_line                               # ya no suma la cartera
+    assert [s.name for s in d.flow._series] == ["Ingresos", "Gastos"]           # sin aportaciones a inversion
+    assert "aportaste" not in d.flow_card._headline.text()
+
+    window._apply_interests(False, True, "x")                                   # y ahora solo las inversiones
+    assert d.card_net._value.text() == fmt_eur(data.portfolio_value)
+    assert d.wealth._series[0].values == value_line                              # el patrimonio es la cartera
+    assert [s.name for s in d.wealth._series] == ["Patrimonio neto", "Aportado"]
+
+    window._apply_interests(True, True, "x")                                    # al volver a interesar, vuelve todo
+    assert d.card_net._value.text() == total_text and len(d.flow._series) == 3
+    after = window._svc.dashboard.load()
+    assert (after.cash, after.portfolio_value) == (data.cash, data.portfolio_value)   # los datos nunca se tocaron
+    assert window._svc.transfer.summary().operations > 0 and window._svc.transfer.summary().transactions > 0
+
+
+def test_changing_interests_repaints_home_without_reloading_the_data(window, monkeypatch):
+    window.import_view.import_paths([str(p) for p in FILES])
+    d = window.dashboard
+    window._apply_interests(True, True, "x")
+    first = d.card_net._value.text()
+    monkeypatch.setattr(window._svc.dashboard, "load", lambda *a, **k: (_ for _ in ()).throw(AssertionError("no debe recargar")))
+    d.set_interests(True, False)
+    assert d.card_net._value.text() != first
+    d.set_interests(True, True)
+    assert d.card_net._value.text() == first

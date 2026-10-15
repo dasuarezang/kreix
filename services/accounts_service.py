@@ -15,11 +15,13 @@ from core.entities import TransactionDraft
 from core.enums import AccountKind, Bank
 from core.metrics import FlowOptions, MonthlyFlow
 from core.periods import GLOBAL, Period, month_start, previous_month_end
-from core.recurring import Recurring, detect_recurring
+from core.recurring import Recurring, detect_recurring, merchant_key
 from data.database import session_scope
+from data.tracker import tracker_for
 from data.models import Account, Transaction
+from data.repositories import get_recurring_marks, set_recurring_mark
 from data.repositories import add_account, delete_account, get_budgets, list_accounts, rename_account
-from services.mappers import load_transactions
+from services.mappers import cached_transactions
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,6 +56,7 @@ class AccountsViewData:
 class AccountsService:
     def __init__(self, factory: sessionmaker[Session]) -> None:
         self._factory = factory
+        self._tracker = tracker_for(factory.kw["bind"])
 
     # -- gestion de cuentas ------------------------------------------------
     def accounts(self) -> list[AccountInfo]:
@@ -72,6 +75,20 @@ class AccountsService:
     def delete(self, account_id: int) -> None:
         with session_scope(self._factory) as s:
             delete_account(s, account_id)
+
+    def recurring_marks(self) -> dict[str, bool]:
+        with session_scope(self._factory) as s:
+            return get_recurring_marks(s)
+
+    def set_recurring(self, description: str, include: bool | None) -> bool:
+        """Marca un comercio (por el concepto de uno de sus cargos) como pago recurrente (`True`), como que no lo es (`False`) o
+        deja que Kreix decida (`None`). Devuelve False si el concepto no da una clave de comercio."""
+        key = merchant_key(description)
+        if not key:
+            return False
+        with session_scope(self._factory) as s:
+            set_recurring_mark(s, key, include)
+        return True
 
     def search_movements(self, text: str, limit: int = 6) -> list[TransactionDraft]:
         """Los movimientos mas recientes cuyo concepto contiene el texto (para el buscador global)."""
@@ -95,13 +112,19 @@ class AccountsService:
         month: date | None = None,
         options: FlowOptions = FlowOptions(),
     ) -> AccountsViewData:
-        """`account_ids=None` son todas las cuentas; `month=None` es el periodo global."""
+        """`account_ids=None` son todas las cuentas; `month=None` es el periodo global.
+        El resultado se reutiliza mientras no cambien los datos (cambiar de pestana y volver es instantaneo)."""
+        key = ("accounts", None if account_ids is None else tuple(account_ids), month, options)
+        return self._tracker.cached(key, lambda: self._view(account_ids, month, options))
+
+    def _view(self, account_ids: list[int] | None, month: date | None, options: FlowOptions) -> AccountsViewData:
         accounts = self.accounts()
         valid = {a.id for a in accounts}
         selected = [i for i in (account_ids if account_ids is not None else sorted(valid)) if i in valid]
+        txs = [t for t in cached_transactions(self._factory) if t.account_id in selected]
         with session_scope(self._factory) as s:
-            txs = [t for t in load_transactions(s) if t.account_id in selected]
             budgets = get_budgets(s)
+            marks = get_recurring_marks(s)
 
         period = Period.month(month) if month else GLOBAL
         inside = [t for t in txs if period.contains(t.booking_date)]
@@ -125,6 +148,6 @@ class AccountsService:
             movements=metrics.order_movements(inside, newest_first=True),
             previous=previous,
             previous_month=previous_month,
-            recurring=detect_recurring(txs),
+            recurring=detect_recurring(txs, marks=marks),
             budgets=budget_lines(budgets, breakdown, 1 if month else max(len(months), 1)),
         )

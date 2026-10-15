@@ -8,9 +8,11 @@ from __future__ import annotations
 import re
 from collections import defaultdict
 from dataclasses import dataclass
+from functools import lru_cache
 from datetime import date, timedelta
 from decimal import Decimal
 from statistics import median
+from collections.abc import Mapping
 from typing import Iterable
 
 from core.categorizer import normalize
@@ -32,16 +34,25 @@ class Recurring:
     last_date: date
     next_date: date             # fecha estimada del siguiente cargo
     category: TxCategory
+    manual: bool = False        # lo marco el usuario (Kreix no lo habria detectado, o no del todo)
+    gap_days: int = 30          # dias entre cargos
 
 
+@lru_cache(maxsize=65536)
 def merchant_key(description: str) -> str:
     """Clave del comercio: sin numeros ni referencias, que cambian de un cargo a otro."""
     words = [w for w in re.split(r"[^A-Z.]+", normalize(description)) if len(w) > 1]
     return " ".join(words[:3])
 
 
-def detect_recurring(transactions: Iterable[TransactionDraft], today: date | None = None) -> list[Recurring]:
-    """Pagos recurrentes activos, de mayor a menor importe. `today` por defecto es el ultimo dia con datos."""
+def detect_recurring(transactions: Iterable[TransactionDraft], today: date | None = None,
+                     marks: Mapping[str, bool] | None = None) -> list[Recurring]:
+    """Pagos recurrentes activos, de mayor a menor importe. `today` por defecto es el ultimo dia con datos.
+
+    `marks` es lo que el usuario ha decidido por comercio (clave de `merchant_key`): `True` lo trata como recurrente aunque
+    Kreix no lo detecte (con el ritmo y el importe que se vean en sus cargos; si solo hay uno, mensual) y `False` lo quita
+    aunque Kreix lo detecte."""
+    marks = marks or {}
     txs = list(transactions)
     if not txs:
         return []
@@ -53,7 +64,15 @@ def detect_recurring(transactions: Iterable[TransactionDraft], today: date | Non
 
     found: list[Recurring] = []
     for key, rows in groups.items():
+        mark = marks.get(key)
+        if mark is False:
+            continue
         rows.sort(key=lambda t: t.booking_date)
+        if mark:
+            item = _manual(rows, reference)
+            if item is not None:
+                found.append(item)
+            continue
         months = {(t.booking_date.year, t.booking_date.month) for t in rows}
         if len(rows) < MIN_OCCURRENCES or len(months) < MIN_OCCURRENCES:
             continue
@@ -75,5 +94,29 @@ def detect_recurring(transactions: Iterable[TransactionDraft], today: date | Non
     return sorted(found, key=lambda r: r.amount, reverse=True)
 
 
+MANUAL_GAP = (7, 400)           # ritmos que se aceptan en un pago marcado a mano (semanal ... anual)
+
+
+def _manual(rows: list[TransactionDraft], reference: date) -> Recurring | None:
+    """Un pago que el usuario ha marcado: su ritmo sale de sus cargos (mensual si solo hay uno)."""
+    gaps = [(b.booking_date - a.booking_date).days for a, b in zip(rows, rows[1:])]
+    gap = round(median(gaps)) if gaps else 30
+    if not MANUAL_GAP[0] <= gap <= MANUAL_GAP[1]:
+        gap = 30
+    last = rows[-1]
+    if (reference - last.booking_date).days > max(ACTIVE_WITHIN_DAYS, round(gap * 1.5)):
+        return None                                     # lleva demasiado sin cobrarse: se da por cancelado
+    return Recurring(
+        name=last.description, amount=Decimal(median([-t.amount for t in rows])), occurrences=len(rows),
+        last_date=last.booking_date, next_date=last.booking_date + timedelta(days=gap), category=last.category,
+        manual=True, gap_days=gap,
+    )
+
+
 def monthly_cost(items: Iterable[Recurring]) -> Decimal:
-    return sum((r.amount for r in items), Decimal(0))
+    """Lo que suman los pagos al mes. Los de ritmo mensual cuentan su importe; los marcados a mano con otro ritmo se
+    reparten (uno anual cuenta un doceavo)."""
+    total = Decimal(0)
+    for r in items:
+        total += r.amount if MONTHLY_GAP[0] <= r.gap_days <= MONTHLY_GAP[1] else r.amount * 30 / r.gap_days
+    return total

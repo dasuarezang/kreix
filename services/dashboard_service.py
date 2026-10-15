@@ -13,10 +13,11 @@ from core.budget import BudgetLine, budget_lines
 from core.metrics import AllocationSlice, FlowOptions, MonthlyFlow, WealthPoint
 from core.recurring import Recurring, detect_recurring
 from data.database import session_scope
+from data.tracker import tracker_for
 from core.goals import Goal
-from data.repositories import get_budgets, last_import_date, list_goals
+from data.repositories import get_budgets, get_recurring_marks, last_import_date, list_goals
 from etl.reconcile import reconcile_portfolio
-from services.mappers import load_operations, load_prices, load_snapshots, load_transactions
+from services.mappers import cached_transactions, load_operations, load_prices, load_snapshots
 
 FLOW_MONTHS = 12
 UPCOMING_DAYS = 35       # pagos recurrentes que se esperan en este plazo desde el ultimo dia con datos
@@ -53,14 +54,21 @@ class DashboardData:
 class DashboardService:
     def __init__(self, factory: sessionmaker[Session]) -> None:
         self._factory = factory
+        self._tracker = tracker_for(factory.kw["bind"])
 
     def load(self, options: FlowOptions = FlowOptions()) -> DashboardData:
+        # El resultado se reutiliza mientras no cambien los datos: volver a Inicio no vuelve a calcularlo todo.
+        return self._tracker.cached(("dashboard", options), lambda: self._load(options))
+
+    def _load(self, options: FlowOptions) -> DashboardData:
+        txs = cached_transactions(self._factory)
         with session_scope(self._factory) as s:
-            txs, ops, snaps = load_transactions(s), load_operations(s), load_snapshots(s)
+            ops, snaps = load_operations(s), load_snapshots(s)
             prices = load_prices(s)
             budgets = get_budgets(s)
             imported = last_import_date(s)
             goals = [Goal(g.id, g.name, g.target, g.saved, g.deadline) for g in list_goals(s)]
+            marks = get_recurring_marks(s)
         if not (txs or ops or snaps):
             return DashboardData()
 
@@ -97,7 +105,7 @@ class DashboardService:
                 data.month_savings_rate = current.savings_rate
             last_day = max(t.booking_date for t in txs)
             data.upcoming = sorted(
-                (r for r in detect_recurring(txs) if (r.next_date - last_day).days <= UPCOMING_DAYS),
+                (r for r in detect_recurring(txs, marks=marks) if (r.next_date - last_day).days <= UPCOMING_DAYS),
                 key=lambda r: r.next_date)
             data.has_budgets = bool(budgets)
             this_month = [t for t in txs if metrics.month_start(t.booking_date) == data.report_month]

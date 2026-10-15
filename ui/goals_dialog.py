@@ -101,19 +101,23 @@ class GoalsDialog(BrandDialog):
         self._service = service
         self.did_change = False
         self.setWindowTitle(tr("Metas de ahorro"))
-        self.setMinimumWidth(560)
+        self.setMinimumWidth(780)                    # que quepan los nombres, los importes y los tres botones de cada meta
         self._rows = QVBoxLayout()
         self._rows.setSpacing(10)
         self.add_button = QPushButton(tr("Nueva meta…"))
-        self.add_button.setObjectName("Primary")
         self.add_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.add_button.clicked.connect(self.prompt_add)
-        close = QPushButton(tr("Cerrar"))
-        close.clicked.connect(self.accept)
+        self.done_button = QPushButton(tr("Hecho"))            # cierra el cuadro: lo apuntado ya esta guardado
+        self.done_button.setObjectName("Primary")
+        self.done_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.done_button.setDefault(True)
+        self.done_button.setMinimumWidth(110)
+        self.add_button.setMinimumWidth(self.add_button.sizeHint().width())
+        self.done_button.clicked.connect(self.accept)
         bottom = QHBoxLayout()
         bottom.addWidget(self.add_button)
         bottom.addStretch(1)
-        bottom.addWidget(close)
+        bottom.addWidget(self.done_button)
         col = self.frame(tr("Metas de ahorro"),
                          tr("Apunta lo que vas guardando para cada meta. Kreix no mueve dinero: solo lleva la cuenta."))
         col.addLayout(self._rows)
@@ -146,12 +150,15 @@ class GoalsDialog(BrandDialog):
         text.setSpacing(0)
         text.addWidget(name)
         text.addWidget(amounts)
+        name.setMinimumWidth(220)
         lay.addLayout(text, 1)
+        lay.setSpacing(10)
         for label, slot in ((tr("Apuntar ahorro"), self._contribute), (tr("Editar"), self._edit), (tr("Eliminar"), self._delete)):
             button = QPushButton(label)
             button.setCursor(Qt.CursorShape.PointingHandCursor)
             button.setAccessibleName(f"{label}: {goal.name}")
             button.clicked.connect(partial(slot, goal))
+            button.setMinimumWidth(button.sizeHint().width())      # nunca mas estrecho que su texto
             lay.addWidget(button)
         return row
 

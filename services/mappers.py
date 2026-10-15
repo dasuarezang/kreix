@@ -1,31 +1,40 @@
 """Filas de la base de datos -> objetos de dominio de `core` (lo que consumen las metricas)."""
 from __future__ import annotations
 
+from datetime import date
+from decimal import Decimal
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.entities import OperationDraft, PositionSnapshot, PricePointDraft, TransactionDraft
-from data.models import Account, Investment, InvestmentOperation, PricePoint, Transaction, Valuation
+from core.enums import Bank, TxCategory
+from data.models import SCALE, Account, Investment, InvestmentOperation, PricePoint, Valuation
+
+
+_TX_SQL = (
+    "SELECT a.bank, t.booking_date, t.description, t.amount, t.balance_after, t.category, t.tx_hash, t.source_file, "
+    "t.account_id, t.category_is_manual FROM transactions t JOIN accounts a ON a.id = t.account_id "
+    "ORDER BY t.booking_date, t.id"
+)
+_BANKS = {b.name: b for b in Bank}
+_CATEGORIES = {c.name: c for c in TxCategory}
 
 
 def load_transactions(session: Session) -> list[TransactionDraft]:
-    # Se leen solo las columnas (sin instanciar entidades ORM): con miles de movimientos es mucho mas rapido.
-    t = Transaction
-    rows = session.execute(
-        select(
-            Account.bank, t.booking_date, t.description, t.amount, t.balance_after, t.category,
-            t.tx_hash, t.source_file, t.account_id, t.category_is_manual,
-        )
-        .join(Account, Account.id == t.account_id)
-        .order_by(t.booking_date, t.id)
-    )
+    # Se leen las columnas en crudo y se convierten a mano (igual que haria el ORM con sus tipos): con decenas de miles de
+    # movimientos, pasar por la capa de tipos de SQLAlchemy fila a fila era lo que mas tardaba.
+    scale = Decimal(SCALE)
+    from_iso = date.fromisoformat
     return [
         TransactionDraft(
-            bank=bank, booking_date=day, description=desc, amount=amount, balance_after=balance,
-            category=category, tx_hash=tx_hash, source_file=source or "", account_id=account_id,
+            bank=_BANKS[bank], booking_date=from_iso(day), description=desc,
+            amount=Decimal(amount) / scale, balance_after=None if balance is None else Decimal(balance) / scale,
+            category=_CATEGORIES[category], tx_hash=tx_hash, source_file=source or "", account_id=account_id,
             is_manual=bool(manual),
         )
-        for bank, day, desc, amount, balance, category, tx_hash, source, account_id, manual in rows
+        for bank, day, desc, amount, balance, category, tx_hash, source, account_id, manual
+        in session.connection().exec_driver_sql(_TX_SQL).fetchall()       # de golpe: iterar el cursor fila a fila cuesta mas
     ]
 
 
@@ -66,3 +75,16 @@ def load_snapshots(session: Session) -> list[PositionSnapshot]:
 def load_prices(session: Session) -> list[PricePointDraft]:
     rows = session.execute(select(PricePoint.isin, PricePoint.as_of, PricePoint.unit_price).order_by(PricePoint.isin, PricePoint.as_of))
     return [PricePointDraft(isin, day, price) for isin, day, price in rows]
+
+
+def cached_transactions(factory) -> list[TransactionDraft]:
+    """Los movimientos tal como estan ahora, leidos una sola vez mientras los datos no cambien (cambiar de mes, de cuenta o de
+    pagina no los vuelve a leer). Quien los reciba no debe modificar la lista (son movimientos inmutables)."""
+    from data.database import session_scope
+    from data.tracker import tracker_for
+
+    def read() -> list[TransactionDraft]:
+        with session_scope(factory) as s:
+            return load_transactions(s)
+
+    return tracker_for(factory.kw["bind"]).cached(("transactions",), read)

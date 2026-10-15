@@ -100,6 +100,14 @@ def to_date(value: Any) -> date:
     if isinstance(value, date):
         return value
     text = str(value).strip()
+    if len(text) >= 10:                              # camino rapido para los formatos habituales (strptime es muy lento)
+        try:
+            if text[2] in "/-" and text[5] == text[2]:
+                return date(int(text[6:10]), int(text[3:5]), int(text[:2]))
+            if text[4] == "-" and text[7] == "-":
+                return date(int(text[:4]), int(text[5:7]), int(text[8:10]))
+        except ValueError:
+            pass
     for fmt, size in (("%d/%m/%Y", 10), ("%Y-%m-%d", 10), ("%d-%m-%Y", 10)):
         try:
             return datetime.strptime(text[:size], fmt).date()

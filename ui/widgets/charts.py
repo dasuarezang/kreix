@@ -8,6 +8,8 @@ el raton. Usan la paleta y las tipografias del tema activo.
 from __future__ import annotations
 
 import math
+from bisect import bisect_left
+from types import SimpleNamespace
 from dataclasses import dataclass
 from datetime import date
 from typing import Sequence
@@ -65,27 +67,50 @@ def lighter(c: QColor, amount: int = 112) -> QColor:
 
 def monotone_path(points: Sequence[QPointF]) -> QPainterPath:
     """Curva suave que pasa por los puntos sin pasarse (interpolacion monotona: no inventa picos ni valores negativos)."""
+    return monotone_path_xy([p.x() for p in points], [p.y() for p in points])
+
+
+def monotone_path_xy(xs: Sequence[float], ys: Sequence[float]) -> QPainterPath:
+    """Lo mismo con listas de coordenadas (sin crear un QPointF por punto y por tangente: con miles de puntos es mucho mas rapido)."""
     path = QPainterPath()
-    n = len(points)
+    n = len(xs)
     if n == 0:
         return path
-    path.moveTo(points[0])
+    path.moveTo(xs[0], ys[0])
     if n == 1:
         return path
-    dx = [points[i + 1].x() - points[i].x() for i in range(n - 1)]
-    slope = [(points[i + 1].y() - points[i].y()) / dx[i] if dx[i] else 0.0 for i in range(n - 1)]
-    tangent = [slope[0]] + [
-        0.0 if slope[i - 1] * slope[i] <= 0 else 2 * slope[i - 1] * slope[i] / (slope[i - 1] + slope[i])
-        for i in range(1, n - 1)
-    ] + [slope[-1]]
+    dx = [xs[i + 1] - xs[i] for i in range(n - 1)]
+    slope = [(ys[i + 1] - ys[i]) / dx[i] if dx[i] else 0.0 for i in range(n - 1)]
+    tangent = [slope[0]]
+    for i in range(1, n - 1):
+        a, b = slope[i - 1], slope[i]
+        tangent.append(0.0 if a * b <= 0 else 2 * a * b / (a + b))
+    tangent.append(slope[-1])
+    cubic = path.cubicTo
     for i in range(n - 1):
         h = dx[i] / 3.0
-        path.cubicTo(
-            QPointF(points[i].x() + h, points[i].y() + tangent[i] * h),
-            QPointF(points[i + 1].x() - h, points[i + 1].y() - tangent[i + 1] * h),
-            points[i + 1],
-        )
+        cubic(xs[i] + h, ys[i] + tangent[i] * h, xs[i + 1] - h, ys[i + 1] - tangent[i + 1] * h, xs[i + 1], ys[i + 1])
     return path
+
+
+def decimate(xs: Sequence[float], ys: Sequence[float], buckets: int) -> tuple[list[float], list[float]]:
+    """Reduce una serie larga a unos pocos puntos por cubeta de pantalla conservando los extremos (el primero, el ultimo y el
+    minimo y el maximo de cada cubeta): a escala de pixel el trazo es el mismo, con muchos menos puntos que calcular."""
+    n = len(xs)
+    if n <= buckets * 4 or buckets < 1:
+        return list(xs), list(ys)
+    size = n / buckets
+    keep: list[int] = [0]
+    for b in range(buckets):
+        lo, hi = int(b * size), min(int((b + 1) * size), n)
+        if hi <= lo:
+            continue
+        chunk = ys[lo:hi]
+        low, high = lo + chunk.index(min(chunk)), lo + chunk.index(max(chunk))
+        keep.extend(sorted({low, high}))
+    keep.append(n - 1)
+    ordered = sorted(set(keep))
+    return [xs[i] for i in ordered], [ys[i] for i in ordered]
 
 
 def rounded_top(rect: QRectF, radius: float) -> QPainterPath:
@@ -350,14 +375,13 @@ class FlowChart(BarsChart):
     def __init__(self) -> None:
         super().__init__(stacked=True, min_height=300)
 
-    def set_data(self, flows: list[MonthlyFlow]) -> None:
-        self.set_bars(
-            [month_short(f.month)[:3] for f in flows],
-            [month_long(f.month).capitalize() for f in flows],
-            [BarSeries(tr("Ingresos"), "accent", [float(f.income) for f in flows]),
-             BarSeries(tr("Gastos"), "red", [float(f.expenses) for f in flows]),
-             BarSeries(tr("Aportaciones"), "neutral", [float(f.contributions) for f in flows])] if flows else [],
-        )
+    def set_data(self, flows: list[MonthlyFlow], contributions: bool = True) -> None:
+        series = [BarSeries(tr("Ingresos"), "accent", [float(f.income) for f in flows]),
+                  BarSeries(tr("Gastos"), "red", [float(f.expenses) for f in flows])]
+        if contributions:                                   # sin inversiones no hay aportaciones que mostrar
+            series.append(BarSeries(tr("Aportaciones"), "neutral", [float(f.contributions) for f in flows]))
+        self.set_bars([month_short(f.month)[:3] for f in flows], [month_long(f.month).capitalize() for f in flows],
+                      series if flows else [])
 
 
 class IncomeExpenseChart(BarsChart):
@@ -396,14 +420,23 @@ class LineChart(BaseChart):
         self._series: list[LineSeries] = []
         self._daily = daily
         self._include_zero = True
+        self._epoch = 0                                    # sube con cada cambio de datos: invalida la geometria guardada
+        self._geo: SimpleNamespace | None = None
+        self._geo_key: tuple | None = None
 
     @property
     def has_data(self) -> bool:
         return bool(self._xs)
 
-    def set_lines(self, xs: list[date], series: list[LineSeries], daily: bool = False, include_zero: bool = True) -> None:
+    def set_lines(self, xs: list[date], series: list[LineSeries], daily: bool = False, include_zero: bool = True,
+                  animate: bool = True) -> None:
         self._xs, self._series, self._daily, self._include_zero = xs, series, daily, include_zero
-        self._restart_animation()
+        self._epoch += 1
+        self._geo = None
+        if animate:
+            self._restart_animation()
+        else:
+            self.update()                                  # solo cambian los colores (cambio de tema): sin repetir la entrada
 
     def _use_days(self) -> bool:
         """Etiquetas por dia si el rango es corto; por mes si es largo."""
@@ -414,7 +447,11 @@ class LineChart(BaseChart):
     def _x_label(self, d: date) -> str:
         return f"{d.day} {months_short()[d.month - 1]}" if self._use_days() else month_short(d)
 
-    def paint_chart(self, p: QPainter, pal: Palette) -> None:
+    # -- geometria: solo cambia con el tamano o con los datos, no con el raton ni con la animacion ----------------------
+    def _geometry(self) -> SimpleNamespace:
+        key = (self.width(), self.height(), self._epoch)
+        if self._geo is not None and self._geo_key == key:
+            return self._geo
         values = [v for s in self._series for v in s.values]
         low = min(0.0, min(values)) if self._include_zero else min(values)
         high = max(values)
@@ -426,52 +463,71 @@ class LineChart(BaseChart):
         top_pad, bottom_pad = 34, 28
         plot = QRectF(left_pad + 6, top_pad, self.width() - left_pad - 20, self.height() - top_pad - bottom_pad)
 
-        self.draw_legend(p, pal, [(s.name, color(pal, s.color_key)) for s in self._series], left_pad, 14)
-
         def y_of(v: float) -> float:
             return plot.bottom() - plot.height() * ((v - low) / (high - low))
-
-        p.setFont(axis_font)
-        for t in ticks:
-            y = y_of(t)
-            p.setPen(QPen(color(pal, "grid" if t else "border"), 1))
-            p.drawLine(QPointF(plot.left(), y), QPointF(plot.right(), y))
-            p.setPen(color(pal, "muted"))
-            p.drawText(QRectF(0, y - 9, left_pad - 2, 18), Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
-                       axis_label(t))
 
         n = len(self._xs)
         ordinals = [d.toordinal() for d in self._xs]
         span = (ordinals[-1] - ordinals[0]) or 1
-
-        def x_of(i: int) -> float:
-            return plot.center().x() if n == 1 else plot.left() + plot.width() * (ordinals[i] - ordinals[0]) / span
-
-        # etiquetas del eje X: unas pocas, repartidas
+        xs_px = [plot.center().x()] if n == 1 else [plot.left() + plot.width() * (o - ordinals[0]) / span for o in ordinals]
         count = min(n, max(2, int(plot.width() // 95)))
         shown = sorted({round(k * (n - 1) / (count - 1)) for k in range(count)}) if n > 1 else [0]
-        hover = self._nearest(x_of, n)
-        p.setFont(axis_font)
+        drawn = []                                          # por serie: sus puntos, la linea y (si lleva relleno) el area
+        scale_y = plot.height() / (high - low)
+        bottom = plot.bottom()
+        for s in sorted(self._series, key=lambda s: not s.fill):          # el relleno, debajo de las lineas
+            ys_px = [bottom - scale_y * (v - low) for v in s.values]
+            pts = [QPointF(x, y) for x, y in zip(xs_px, ys_px)] if n <= 4 else []     # solo se pintan con pocos puntos
+            line = QPainterPath()
+            area = None
+            if n > 1:
+                # con miles de puntos (un saldo diario de anos) basta con unos pocos por pixel: ver `decimate`
+                px, py = decimate(xs_px, ys_px, max(int(plot.width() * 0.6), 40))
+                line = monotone_path_xy(px, py)
+                if s.fill:
+                    area = QPainterPath(line)
+                    area.lineTo(px[-1], bottom)
+                    area.lineTo(px[0], bottom)
+                    area.closeSubpath()
+            drawn.append((s, pts, line, area))
+        self._geo_key = key
+        self._geo = SimpleNamespace(ticks=ticks, axis_font=axis_font, left_pad=left_pad, plot=plot, y_of=y_of, n=n,
+                                    xs_px=xs_px, shown=shown, drawn=drawn)
+        return self._geo
+
+    def paint_chart(self, p: QPainter, pal: Palette) -> None:
+        g = self._geometry()
+        plot, n, y_of, xs_px = g.plot, g.n, g.y_of, g.xs_px
+        self.draw_legend(p, pal, [(s.name, color(pal, s.color_key)) for s in self._series], g.left_pad, 14)
+
+        p.setFont(g.axis_font)
+        for t in g.ticks:
+            y = y_of(t)
+            p.setPen(QPen(color(pal, "grid" if t else "border"), 1))
+            p.drawLine(QPointF(plot.left(), y), QPointF(plot.right(), y))
+            p.setPen(color(pal, "muted"))
+            p.drawText(QRectF(0, y - 9, g.left_pad - 2, 18), Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
+                       axis_label(t))
+
+        # etiquetas del eje X: unas pocas, repartidas
+        shown = g.shown
+        hover = self._nearest(xs_px, n)
+        p.setFont(g.axis_font)
         for i in shown:
             p.setPen(color(pal, "text" if i == hover else "muted"))
             align = (Qt.AlignmentFlag.AlignLeft if i == shown[0] else Qt.AlignmentFlag.AlignRight if i == shown[-1]
                      else Qt.AlignmentFlag.AlignHCenter) if n > 1 else Qt.AlignmentFlag.AlignHCenter
             w = 70.0
-            x = x_of(i)
+            x = xs_px[i]
             left = x if align == Qt.AlignmentFlag.AlignLeft else x - w if align == Qt.AlignmentFlag.AlignRight else x - w / 2
             p.drawText(QRectF(left, plot.bottom() + 8, w, 18), align, self._x_label(self._xs[i]))
 
         # revelado de izquierda a derecha
         p.save()
         p.setClipRect(QRectF(plot.left() - 8, 0, (plot.width() + 24) * self._progress, self.height()))
-        for s in sorted(self._series, key=lambda s: not s.fill):          # el relleno, debajo de las lineas
-            pts = [QPointF(x_of(i), y_of(v)) for i, v in enumerate(s.values)]
+        for s, pts, line, area in g.drawn:
             base = color(pal, s.color_key)
-            if s.fill and n > 1:
-                area = QPainterPath(monotone_path(pts))
-                area.lineTo(pts[-1].x(), plot.bottom())
-                area.lineTo(pts[0].x(), plot.bottom())
-                area.closeSubpath()
+            if area is not None:
                 gradient = QLinearGradient(0, plot.top(), 0, plot.bottom())
                 top_c, bottom_c = QColor(base), QColor(base)
                 top_c.setAlpha(30)
@@ -489,7 +545,7 @@ class LineChart(BaseChart):
                 pen.setDashPattern([2.2, 3.2])
             p.setPen(pen)
             p.setBrush(Qt.BrushStyle.NoBrush)
-            p.drawPath(monotone_path(pts) if n > 1 else QPainterPath())
+            p.drawPath(line)
             if n == 1 or (n <= 4 and s.fill):
                 p.setPen(QPen(color(pal, "surface"), 2))
                 p.setBrush(base)
@@ -499,7 +555,7 @@ class LineChart(BaseChart):
 
         # punto final destacado (halo) en la serie principal
         main = next((s for s in self._series if s.fill), self._series[0])
-        end = QPointF(x_of(n - 1), y_of(main.values[-1]))
+        end = QPointF(xs_px[n - 1], y_of(main.values[-1]))
         if self._progress > 0.98 and hover is None:
             halo = color(pal, main.color_key, 60)
             p.setPen(Qt.PenStyle.NoPen)
@@ -510,7 +566,7 @@ class LineChart(BaseChart):
             p.drawEllipse(end, 3.8, 3.8)
 
         if hover is not None:
-            x = x_of(hover)
+            x = xs_px[hover]
             p.setPen(QPen(color(pal, "muted", 120), 1, Qt.PenStyle.DashLine))
             p.drawLine(QPointF(x, plot.top()), QPointF(x, plot.bottom()))
             for s in self._series:
@@ -521,12 +577,19 @@ class LineChart(BaseChart):
             self.draw_tooltip(p, pal, title, [(color(pal, s.color_key), s.name, fmt_eur(s.values[hover]))
                                               for s in self._series])
 
-    def _nearest(self, x_of, n: int) -> int | None:
+    def _nearest(self, xs_px: list[float], n: int) -> int | None:
+        """El punto mas cercano al raton (los x van en orden: biseccion en vez de recorrerlos todos)."""
         if self._mouse is None or n == 0:
             return None
         if not (0 <= self._mouse.y() <= self.height()):
             return None
-        return min(range(n), key=lambda i: abs(x_of(i) - self._mouse.x()))
+        x = self._mouse.x()
+        i = bisect_left(xs_px, x)
+        if i == 0:
+            return 0
+        if i == n:
+            return n - 1
+        return i - 1 if abs(xs_px[i - 1] - x) <= abs(xs_px[i] - x) else i
 
 
 class WealthChart(LineChart):
@@ -534,15 +597,18 @@ class WealthChart(LineChart):
 
     EMPTY_TEXT = N_("Importa tus extractos para ver la evolución")
 
-    def set_data(self, points: list[WealthPoint]) -> None:
+    def set_data(self, points: list[WealthPoint], value_line: bool = True, contributions: bool = True) -> None:
+        """`value_line`: la linea del valor de la cartera (solo tiene sentido junto a las cuentas); `contributions`: lo aportado
+        (solo si interesan las inversiones)."""
         if not points:
             self.set_lines([], [])
             return
-        self.set_lines([w.date for w in points], [
-            LineSeries(tr("Patrimonio neto"), "accent", [float(w.net_worth) for w in points], 1.9, fill=True),
-            LineSeries(tr("Valor de la cartera"), "text", [float(w.invested_value) for w in points], 1.3),
-            LineSeries(tr("Aportado"), "neutral", [float(w.contributions) for w in points], 1.2, dashed=True),
-        ])
+        series = [LineSeries(tr("Patrimonio neto"), "accent", [float(w.net_worth) for w in points], 1.9, fill=True)]
+        if value_line:
+            series.append(LineSeries(tr("Valor de la cartera"), "text", [float(w.invested_value) for w in points], 1.3))
+        if contributions:
+            series.append(LineSeries(tr("Aportado"), "neutral", [float(w.contributions) for w in points], 1.2, dashed=True))
+        self.set_lines([w.date for w in points], series)
 
 
 class PortfolioChart(LineChart):
@@ -576,13 +642,13 @@ class FundsChart(LineChart):
         self._apply()
 
     def refresh_theme(self) -> None:
-        self._apply()                       # los colores de cada fondo salen de la paleta del tema
+        self._apply(animate=False)          # los colores de cada fondo salen de la paleta del tema
         super().refresh_theme()
 
-    def _apply(self) -> None:
+    def _apply(self, animate: bool = True) -> None:
         shown = [f for f in self._funds if self._only in (None, f.isin)]
         if not shown or not shown[0].points:
-            self.set_lines([], [])
+            self.set_lines([], [], animate=animate)
             return
         xs = [w.date for w in shown[0].points]
         if len(shown) == 1:
@@ -590,11 +656,11 @@ class FundsChart(LineChart):
             self.set_lines(xs, [
                 LineSeries(f.name, "accent", [float(w.invested_value) for w in f.points], 1.9, fill=True),
                 LineSeries(tr("Aportado"), "neutral", [float(w.contributions) for w in f.points], 1.2, dashed=True),
-            ])
+            ], animate=animate)
             return
         palette = theme.current().series
         self.set_lines(xs, [LineSeries(f.name, palette[i % len(palette)], [float(w.invested_value) for w in f.points], 1.7)
-                            for i, f in enumerate(shown)])
+                            for i, f in enumerate(shown)], animate=animate)
 
 
 class BalanceChart(LineChart):

@@ -90,9 +90,10 @@ HELP: dict[str, dict] = {
     "Pagos recurrentes": {
         "term": "Pagaments recurrents",
         "plain": "Subscripcions i rebuts que es repeteixen cada mes per un import semblant (Netflix, el gimnàs, la llum...). Serveixen per saber quants diners tens compromesos abans de començar el mes.",
-        "how": "Kreix els detecta sol: un càrrec que es repeteix almenys tres mesos seguits, cada uns 30 dies i amb un import estable (fins a un 20 % de diferència). Si un càrrec no torna a aparèixer en un mes i mig, es dona per cancel·lat. La data del pròxim càrrec és una estimació.",
+        "how": "Kreix els detecta sol: un càrrec que es repeteix almenys tres mesos seguits, cada uns 30 dies i amb un import estable (fins a un 20 % de diferència). Si un càrrec no torna a aparèixer en un mes i mig, es dona per cancel·lat. La data del pròxim càrrec és una estimació. Els «Pròxims pagaments» d'Inici són aquests mateixos pagaments, només els que toquen les properes setmanes.",
         "example": "Netflix cobra 12,99 € cada mes: es mostra com 12,99 € al mes i 155,88 € a l'any.",
         "note": "El supermercat no apareix aquí encara que gastis cada setmana: varia d'import i es repeteix més d'una vegada al mes.",
+        "todo": "Si Kreix no detecta una subscripció, o en detecta una que no ho és, prem ••• (o clic dret) sobre un dels seus moviments a Comptes i tria «Marcar com a pagament recurrent» o «No és un pagament recurrent». Un pagament marcat per tu apareix encara que només tingui un càrrec: Kreix fa servir el ritme que vegi en els seus càrrecs (mensual si només n'hi ha un).",
         "keywords": ["subscripcions", "rebuts", "domiciliacions", "fixos", "mensuals"],
     },
     "Cambiar la categoría de un movimiento": {

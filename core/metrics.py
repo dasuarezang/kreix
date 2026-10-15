@@ -121,13 +121,14 @@ def _chain_order(group: list[TransactionDraft]) -> list[TransactionDraft]:
     puede resolver sin ambiguedad, conserva el orden de entrada."""
     if len(group) < 2 or any(t.balance_after is None for t in group):
         return list(group)
+    previous = [t.balance_after - t.amount for t in group]  # type: ignore[operator]  # saldo anterior de cada uno, una sola vez
     balances = {t.balance_after for t in group}
-    starts = [t for t in group if t.balance_after - t.amount not in balances]  # type: ignore[operator]
+    starts = [t for t, prev in zip(group, previous) if prev not in balances]
     if len(starts) != 1:
         return list(group)
     by_previous: dict[Decimal, list[TransactionDraft]] = defaultdict(list)
-    for t in group:
-        by_previous[t.balance_after - t.amount].append(t)  # type: ignore[operator]
+    for t, prev in zip(group, previous):
+        by_previous[prev].append(t)
     ordered = [starts[0]]
     used = {id(starts[0])}
     while True:
@@ -139,9 +140,28 @@ def _chain_order(group: list[TransactionDraft]) -> list[TransactionDraft]:
     return ordered if len(ordered) == len(group) else list(group)
 
 
+_CHRONO_MEMO: list[tuple[tuple[int, ...], list[TransactionDraft], list[TransactionDraft]]] = []
+_CHRONO_MEMO_SIZE = 4
+
+
 def chronological(transactions: Iterable[TransactionDraft]) -> list[TransactionDraft]:
     """De mas antiguo a mas reciente. Entre dias, por fecha; dentro de un dia, por la
-    cadena de saldos de cada cuenta (el orden en que se guardaron no importa)."""
+    cadena de saldos de cada cuenta (el orden en que se guardaron no importa).
+
+    Una vista pide este orden varias veces sobre los mismos movimientos (saldo, serie de saldos, tabla): como los
+    movimientos son inmutables, el resultado se recuerda por la identidad de los que entran."""
+    txs = transactions if isinstance(transactions, list) else list(transactions)
+    key = tuple(map(id, txs))
+    for known, _source, result in _CHRONO_MEMO:
+        if known == key:
+            return list(result)
+    ordered = _chronological(txs)
+    _CHRONO_MEMO.append((key, txs, ordered))                 # se guarda tambien `txs`: mientras viva, sus ids no se reutilizan
+    del _CHRONO_MEMO[:-_CHRONO_MEMO_SIZE]
+    return list(ordered)
+
+
+def _chronological(transactions: Iterable[TransactionDraft]) -> list[TransactionDraft]:
     by_day: dict[date, dict[int | None, list[TransactionDraft]]] = defaultdict(lambda: defaultdict(list))
     for t in transactions:
         by_day[t.booking_date][t.account_id].append(t)

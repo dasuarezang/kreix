@@ -178,3 +178,41 @@ def test_home_shows_the_net_worth_change_against_last_month(window):
     assert data.net_worth_change == data.wealth[-1].net_worth - data.wealth[-2].net_worth
     chips = [c.text() for c in window.dashboard.card_net._chip_widgets]
     assert any("frente al mes pasado" in t for t in chips)
+
+
+def test_the_user_can_mark_and_unmark_a_recurring_payment_from_a_movement(loaded):
+    window = loaded
+    view = window.accounts_view
+    mercadona = next(t for t in view._data.movements if "MERCADONA" in t.description)
+    offer = view.recurring_action(mercadona)
+    assert offer is not None and "Marcar" in offer[0] and offer[1] is True                  # Kreix no lo detecta: se ofrece marcarlo
+    assert "MERCADONA" not in [r.name for r in view._data.recurring]
+    assert view.set_recurring(mercadona.description, True)
+    assert any("MERCADONA" in r.name and r.manual for r in view._data.recurring)
+    shown = [view.recurring_panel.table.cell_texts(i)[0] for i in range(view.recurring_panel.table.proxy.rowCount())]
+    assert any("MERCADONA" in t and "marcado por ti" in t for t in shown)
+    assert "Dejar de marcar" in view.recurring_action(mercadona)[0] and view.recurring_action(mercadona)[1] is None
+    window.dashboard.set_data(window._svc.dashboard.load())                                  # y tambien en Proximos pagos
+    assert any("MERCADONA" in r.name for r in window._svc.dashboard.load().upcoming)
+    assert view.set_recurring(mercadona.description, None)
+    assert "MERCADONA" not in [r.name for r in view._data.recurring]
+
+
+def test_the_user_can_say_a_detected_payment_is_not_recurring(loaded):
+    view = loaded.accounts_view
+    netflix = next(t for t in view._data.movements if "NETFLIX" in t.description)
+    text, include = view.recurring_action(netflix)
+    assert "no es un pago recurrente" in text and include is False
+    view.set_recurring(netflix.description, False)
+    assert not [r for r in view._data.recurring if "NETFLIX" in r.name]
+    assert not [r for r in loaded._svc.dashboard.load().upcoming if "NETFLIX" in r.name]
+    assert "Volver a detectar" in view.recurring_action(netflix)[0]
+
+
+def test_net_worth_shows_liquidity_and_investment_with_their_share(window):
+    window.start_demo()
+    parts = window.dashboard.card_net.split._parts
+    assert [p[0] for p in parts] == ["Liquidez", "Inversión"]
+    assert all("€" in p[1] and "%" in p[1] for p in parts)                                    # importe y porcentaje del patrimonio
+    shares = [float(p[1].split("·")[-1].replace("%", "").replace(",", ".").strip()) for p in parts]
+    assert abs(sum(shares) - 100) < 0.2

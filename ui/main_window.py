@@ -740,7 +740,10 @@ class MainWindow(QMainWindow):
     def apply_theme(self, name: str, persist: bool = False) -> None:
         palette = theme.PALETTES[name]
         theme.set_current(palette)
-        QApplication.instance().setStyleSheet(theme.stylesheet(palette))
+        app = QApplication.instance()
+        sheet = theme.stylesheet(palette)
+        if app.styleSheet() != sheet:                    # repulir toda la interfaz es lo mas caro del cambio de tema: solo si cambia
+            app.setStyleSheet(sheet)
         self.centralWidget().update()
         self._logo.setPixmap(assets.wordmark(palette, 46))
         self.data_button.setIcon(icons.button_icon("database", palette))
@@ -748,9 +751,7 @@ class MainWindow(QMainWindow):
             item.setIcon(icons.button_icon(icon_name, palette))
         for pill, icon_name in self._pill_buttons.values():
             pill.setIcon(icons.button_icon(icon_name, palette))
-        if self.theme_switch.isChecked() != (name == "dark"):
-            self.theme_switch.setChecked(name == "dark")
-        self.theme_switch.update()
+        self.theme_switch.set_dark(name == "dark")       # sin volver a disparar el cambio de tema
         self.dashboard.refresh_theme()
         self.accounts_view.refresh_theme()
         self.investment_view.refresh_theme()

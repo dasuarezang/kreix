@@ -6,6 +6,7 @@ from datetime import date
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QComboBox, QHBoxLayout, QPushButton, QWidget
 
+from ui.popups import Combo
 from ui.format import month_long
 from core.i18n import tr, N_
 
@@ -26,7 +27,7 @@ class PeriodBar(QWidget):
             button.setToolTip(tip)
             button.setAccessibleName(tip)
             button.setFixedWidth(38)
-        self.combo = QComboBox()
+        self.combo = Combo()
         self.combo.setMinimumWidth(190)
         self.combo.setAccessibleName(tr("Periodo"))
         self.combo.addItem(tr(GLOBAL_LABEL), None)

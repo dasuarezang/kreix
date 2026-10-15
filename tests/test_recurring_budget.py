@@ -66,3 +66,31 @@ def test_budget_lines_sorted_by_use_with_states():
     avg = budget_lines({TxCategory.GROCERIES: D(100)}, spending, months=3)[0]
     assert avg.spent == D(90) and avg.state == "warn"
     assert isinstance(avg, BudgetLine)
+
+
+# ---------------------------------------------------------------- pagos recurrentes marcados a mano
+def test_a_payment_the_user_marks_appears_even_with_a_single_charge():
+    rows = monthly("NETFLIX.COM", "-12.99") + [tx(date(2026, 9, 10), "SEGURO HOGAR MAPFRE", "-45.00", TxCategory.OTHER)]
+    assert [r.name for r in detect_recurring(rows)] == ["NETFLIX.COM"]                     # Kreix solo detecta Netflix
+    found = detect_recurring(rows, marks={merchant_key("SEGURO HOGAR MAPFRE"): True})
+    seguro = next(r for r in found if r.name == "SEGURO HOGAR MAPFRE")
+    assert seguro.manual and seguro.amount == D("45.00") and seguro.next_date == date(2026, 10, 10)   # un solo cargo: mensual
+    assert not next(r for r in found if r.name == "NETFLIX.COM").manual
+
+
+def test_a_manual_payment_uses_the_rhythm_of_its_charges_and_a_yearly_one_counts_a_twelfth():
+    yearly = [tx(date(2024, 3, 1), "SEGURO COCHE", "-360", TxCategory.OTHER), tx(date(2025, 3, 1), "SEGURO COCHE", "-360", TxCategory.OTHER),
+              tx(date(2026, 3, 1), "SEGURO COCHE", "-360", TxCategory.OTHER)]
+    today = date(2026, 9, 1)
+    found = detect_recurring(yearly, today=today, marks={merchant_key("SEGURO COCHE"): True})
+    assert len(found) == 1 and found[0].gap_days == 365 and found[0].next_date == date(2027, 3, 1)
+    assert monthly_cost(found).quantize(D("0.01")) == D("29.59")                           # 360 x 30 / 365
+    gone = detect_recurring(yearly, today=date(2028, 9, 1), marks={merchant_key("SEGURO COCHE"): True})
+    assert gone == []                                                                      # lleva demasiado sin cobrarse
+
+
+def test_a_payment_the_user_excludes_disappears_even_if_kreix_detects_it():
+    rows = monthly("NETFLIX.COM", "-12.99")
+    assert detect_recurring(rows)
+    assert detect_recurring(rows, marks={merchant_key("NETFLIX.COM"): False}) == []
+    assert detect_recurring(rows, marks={}) == detect_recurring(rows)                       # sin marcas, como siempre

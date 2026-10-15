@@ -1,6 +1,8 @@
 """Paneles de la pestana Cuentas: presupuestos del periodo y pagos recurrentes."""
 from __future__ import annotations
 
+from decimal import Decimal
+
 from PySide6.QtCore import QPointF, QRectF, QSize, Qt, Signal
 from PySide6.QtGui import QColor, QFontMetricsF, QPainter
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
@@ -145,12 +147,18 @@ class BudgetPanel(Panel):
             self.subtitle.setText(tr("Sin presupuestos todavía"))
 
 
+def _payment_name(r: Recurring) -> str:
+    """El concepto del pago; si lo marco el usuario, se dice."""
+    return tr("{name}  ·  marcado por ti").format(name=r.name) if r.manual else r.name
+
+
 class UpcomingPanel(Panel):
-    """Inicio: los pagos recurrentes que se esperan en las proximas semanas."""
+    """Inicio: los pagos recurrentes que se esperan en las proximas semanas (los mismos que ve Cuentas en Pagos recurrentes,
+    pero solo los que tocan pronto: ordenados por fecha)."""
 
     def __init__(self) -> None:
         columns = [
-            Column(tr("PAGO"), lambda r: r.name, lambda r: r.name.lower(), stretch=True),
+            Column(tr("PAGO"), _payment_name, lambda r: r.name.lower(), stretch=True),
             Column(tr("IMPORTE"), lambda r: fmt_eur(r.amount), lambda r: r.amount, RIGHT),
             Column(tr("FECHA"), lambda r: fmt_date(r.next_date), lambda r: r.next_date, RIGHT, tone=lambda r: "accent"),
         ]
@@ -173,7 +181,7 @@ class UpcomingPanel(Panel):
         self.table.set_rows(items)
         if items:
             self.table.fit_height(6)
-            self.subtitle.setText(tr("{items} en los próximos pagos (fechas estimadas)").format(items=fmt_eur(monthly_cost(items))))
+            self.subtitle.setText(tr("{items} en los próximos pagos (fechas estimadas)").format(items=fmt_eur(sum((r.amount for r in items), Decimal(0)))))
         else:
             self.subtitle.setText(tr("Sin pagos recurrentes a la vista"))
 
@@ -184,7 +192,7 @@ class UpcomingPanel(Panel):
 class RecurringPanel(Panel):
     def __init__(self) -> None:
         columns = [
-            Column(tr("PAGO"), lambda r: r.name, lambda r: r.name.lower(), stretch=True),
+            Column(tr("PAGO"), _payment_name, lambda r: r.name.lower(), stretch=True),
             Column(tr("IMPORTE"), lambda r: fmt_eur(r.amount), lambda r: r.amount, RIGHT),
             Column(tr("PRÓXIMO"), lambda r: fmt_date(r.next_date), lambda r: r.next_date, RIGHT, tone=lambda r: "accent"),
         ]

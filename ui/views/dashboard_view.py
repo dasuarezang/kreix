@@ -9,6 +9,11 @@ from PySide6.QtWidgets import (
     QFrame, QHBoxLayout, QLabel, QPushButton, QScrollArea, QStackedLayout, QVBoxLayout, QWidget,
 )
 
+from dataclasses import replace
+from decimal import Decimal
+from types import SimpleNamespace
+
+from core.metrics import WealthPoint
 from services.dashboard_service import DashboardData
 from ui.format import fmt_date, fmt_datetime_long, fmt_eur, fmt_pct
 from ui.views.accounts_view import signed_eur
@@ -37,6 +42,7 @@ class DashboardView(QWidget):
         super().__init__(parent)
         self.setObjectName("Page")
         self._setup_hidden = False
+        self._data: DashboardData | None = None
         self._user_name = ""
         self._interests = (True, True)       # (cuentas, inversiones)
         self.clock: Callable[[], datetime] = datetime.now      # las pruebas lo sustituyen
@@ -46,8 +52,7 @@ class DashboardView(QWidget):
         self._greeting_timer = QTimer(self)
         self._greeting_timer.setInterval(1000)       # el reloj de Inicio se actualiza cada segundo (solo repinta si cambia)
         self._greeting_timer.timeout.connect(self.update_greeting)
-        self._greeting_timer.start()
-        self.update_greeting()
+        self.update_greeting()                         # el reloj solo corre mientras Inicio esta a la vista (ver showEvent)
 
     # ------------------------------------------------------------------ construccion
     def _build_empty(self) -> QWidget:
@@ -134,14 +139,34 @@ class DashboardView(QWidget):
 
     # ------------------------------------------------------------------ datos
     def set_data(self, d: DashboardData) -> None:
+        self._data = d                                      # se recuerda: al cambiar lo que interesa, Inicio se vuelve a pintar
         self._stack.setCurrentIndex(1 if d.has_data else 0)
         if not d.has_data:
             return
+        self._render(d)
+
+    def _shown(self, d: DashboardData) -> SimpleNamespace:
+        """Los numeros de Inicio segun lo que le interesa al usuario. Los datos no se tocan: lo que no interesa solo deja de
+        contar y de mostrarse (si vuelve a interesar, vuelve con todo)."""
+        accounts, investments = self._interests
+        cash = (d.cash or Decimal(0)) if accounts else Decimal(0)
+        invested = d.portfolio_value if investments else Decimal(0)
+        points = [WealthPoint(w.date, w.cash if accounts else Decimal(0), w.invested_value if investments else Decimal(0),
+                              w.contributions if investments else Decimal(0),
+                              (w.cash if accounts else Decimal(0)) + (w.invested_value if investments else Decimal(0)))
+                  for w in d.wealth]
+        flows = [f if investments else replace(f, contributions=Decimal(0)) for f in d.flows]
+        change = points[-1].net_worth - points[-2].net_worth if len(points) >= 2 else None
+        return SimpleNamespace(cash=cash, invested=invested, net_worth=cash + invested, points=points, flows=flows,
+                               change=change)
+
+    def _render(self, d: DashboardData) -> None:
+        shown = self._shown(d)
         self.header.set_subtitle(tr("Fecha de última actualización de datos: {date}").format(date=fmt_date(d.last_update)) if d.last_update else "")
 
         reliable = not d.warnings and d.xirr is not None and d.twr is not None
         net = self.card_net
-        net.set_content(fmt_eur(d.net_worth), {
+        net.set_content(fmt_eur(shown.net_worth), {
             (True, True): tr("Todo lo que tienes: cuentas más inversiones"),
             (True, False): tr("Lo que tienes en tus cuentas"),
             (False, True): tr("Lo que tienes invertido"),
@@ -153,15 +178,16 @@ class DashboardView(QWidget):
             chips.append((tr("TIR {xirr} anual").format(xirr=fmt_pct(d.xirr)), ""))
         if not self._interests[1]:
             chips = []                              # el rendimiento y la TIR son de las inversiones
-        if d.net_worth_change is not None and d.net_worth_change != 0:
-            chips.insert(0, (tr("{amount} frente al mes pasado").format(amount=signed_eur(d.net_worth_change)),
-                             "negative" if d.net_worth_change < 0 else "positive"))
+        if shown.change is not None and shown.change != 0:
+            chips.insert(0, (tr("{amount} frente al mes pasado").format(amount=signed_eur(shown.change)),
+                             "negative" if shown.change < 0 else "positive"))
         net.set_chips(chips)
-        net.trend.set_values([float(w.net_worth) for w in d.wealth])
-        total = float(d.net_worth) or 1.0
-        parts = [
-            (tr("Liquidez"), fmt_eur(d.cash or 0), max(float(d.cash or 0), 0) / total, "neutral"),
-            (tr("Inversión"), fmt_eur(d.portfolio_value), float(d.portfolio_value) / total, "accent"),
+        net.trend.set_values([float(w.net_worth) for w in shown.points])
+        total = float(shown.net_worth) or 1.0
+        cash, invested = float(shown.cash), float(shown.invested)
+        parts = [   # el importe y, a su lado, lo que supone sobre el patrimonio neto que se muestra
+            (tr("Liquidez"), f"{fmt_eur(shown.cash)}  ·  {fmt_pct(cash / total)}", max(cash, 0) / total, "neutral"),
+            (tr("Inversión"), f"{fmt_eur(shown.invested)}  ·  {fmt_pct(invested / total)}", invested / total, "accent"),
         ]
         accounts, investments = self._interests
         net.split.set_parts([part for part, keep in zip(parts, (accounts, investments)) if keep])
@@ -204,11 +230,11 @@ class DashboardView(QWidget):
         self.budgets.set_state(d.budgets, d.has_budgets)
         self.goals.set_goals(d.goals, self.clock().date())
         self.allocation_card.set_headline(allocation_headline(d.cash, d.portfolio_value, d.net_worth))
-        self.flow_card.set_headline(flow_headline(d.flows))
-        self.wealth_card.set_headline(wealth_headline(d.wealth))
+        self.flow_card.set_headline(flow_headline(shown.flows))
+        self.wealth_card.set_headline(wealth_headline(shown.points))
         self.donut.set_data(d.allocation)
-        self.flow.set_data(d.flows)
-        self.wealth.set_data(d.wealth)
+        self.flow.set_data(shown.flows, contributions=investments)               # sin inversiones, no hay aportaciones
+        self.wealth.set_data(shown.points, value_line=accounts and investments, contributions=investments)
 
     def set_interests(self, accounts: bool, investments: bool) -> None:
         """Muestra solo lo que le interesa al usuario: sin inversiones no hay rendimiento ni reparto de activos; sin
@@ -216,12 +242,23 @@ class DashboardView(QWidget):
         self._interests = (accounts, investments)
         self.onboarding.set_interests(accounts, investments)
         self.card_return.setVisible(investments)
-        self.allocation_card.setVisible(investments)
+        self.allocation_card.setVisible(accounts and investments)               # liquidez frente a inversion: con las dos
         self.card_savings.setVisible(accounts)
         self.flow_card.setVisible(accounts)
         self.upcoming.setVisible(accounts)
         self.budgets.setVisible(accounts)
         self.goals.setVisible(accounts)
+        if getattr(self, "_data", None) is not None and self._data.has_data:
+            self._render(self._data)                                            # el patrimonio y las graficas dejan de contar lo que no interesa
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        self.update_greeting()                          # al volver, la hora ya esta al dia
+        self._greeting_timer.start()
+
+    def hideEvent(self, event) -> None:
+        super().hideEvent(event)
+        self._greeting_timer.stop()                     # en otra pagina no hay nada que repintar cada segundo
 
     def set_user_name(self, name: str) -> None:
         self._user_name = name

@@ -160,9 +160,10 @@ ENTRIES: tuple[HelpEntry, ...] = (
         "Sirven para saber cuánto dinero tienes comprometido antes de empezar el mes.",
         "Kreix los detecta solo: un cargo que se repite al menos tres meses seguidos, cada unos 30 días y con un importe "
         "estable (hasta un 20 % de diferencia). Si un cargo no vuelve a aparecer en mes y medio, se da por cancelado. "
-        "La fecha del próximo cargo es una estimación.",
+        "La fecha del próximo cargo es una estimación. Los «Próximos pagos» de Inicio son estos mismos pagos, solo los que tocan en las próximas semanas.",
         "Netflix cobra 12,99 € cada mes: se muestra como 12,99 € al mes y 155,88 € al año.",
         "El supermercado no aparece aquí aunque gastes cada semana: varía de importe y se repite más de una vez al mes.",
+        "Si Kreix no detecta una suscripción, o detecta una que no lo es, pulsa ••• (o clic derecho) sobre uno de sus movimientos en Cuentas y elige «Marcar como pago recurrente» o «No es un pago recurrente». Un pago marcado por ti aparece aunque solo tenga un cargo: Kreix usa el ritmo que vea en sus cargos (mensual si solo hay uno).",
         keywords=("suscripciones", "recibos", "domiciliaciones", "fijos", "mensuales"),
     ),
     HelpEntry(

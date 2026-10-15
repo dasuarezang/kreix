@@ -110,6 +110,8 @@ Atajos: `Ctrl+1` a `Ctrl+7` cambian de página en el orden de la tabla (Importar
 
 **Presupuestos.** En Cuentas, el panel *Presupuestos* (botón *Definir presupuestos*) fija un tope mensual por categoría. La barra se pone verde mientras te sobra, amarilla al pasar del 85 % y roja al superarlo. Con un mes elegido compara el gasto de ese mes; con todo el historial, el gasto medio mensual.
 
+**Tú decides qué es un pago recurrente.** Kreix detecta solo las suscripciones, pero puedes corregirlo: con ••• (o clic derecho) sobre un gasto en la tabla de movimientos, *Marcar «…» como pago recurrente* lo añade aunque Kreix no lo detecte (con un solo cargo vale: usa el ritmo que vea en sus cargos, mensual si solo hay uno; uno anual cuenta un doceavo al mes) y *«…» no es un pago recurrente* lo quita si Kreix lo detectó por error. Lo mismo desde el panel *Pagos recurrentes* con clic derecho. Los marcados por ti llevan «marcado por ti» y se pueden desmarcar para que Kreix vuelva a decidir. **Próximos pagos** (Inicio) son estos mismos pagos recurrentes, pero solo los que tocan en las próximas semanas, ordenados por fecha; *Pagos recurrentes* (Cuentas) los lista todos con lo que suman al mes y al año.
+
 **Pagos recurrentes.** Un cargo cuenta como recurrente si se repite al menos tres meses seguidos, cada unos 30 días y con un importe estable (hasta un 20 % de diferencia); si deja de aparecer durante mes y medio se da por cancelado. El supermercado no entra: varía de importe y se repite más de una vez al mes. Los traspasos, Bizum e ingresos nunca cuentan.
 
 **Exportar movimientos.** El botón *Exportar* de la tabla guarda en CSV (UTF-8, separado por `;`, coma decimal) o Excel (importes como números) las filas que se ven, con el filtro y el orden actuales. No exporta a PDF.
@@ -175,7 +177,7 @@ Tus datos nunca se guardan en claro. La primera vez que abres Kreix creas una **
 
 | Métrica | Definición |
 |---|---|
-| **Patrimonio neto** | Saldo de Imagin + valor de mercado de la última foto de cartera de cada fondo. |
+| **Patrimonio neto** | Saldo de Imagin + valor de mercado de la última foto de cartera de cada fondo. Inicio muestra debajo cuánto es liquidez y cuánto inversión, y qué porcentaje del patrimonio es cada parte. |
 | **Rendimiento global** | (valor de mercado - capital invertido) / capital invertido, según el extracto de cartera. |
 | **Tasa de ahorro** | (ingresos - gastos) / ingresos del mes. Puede ser negativa. |
 | **TIR** | Tasa interna de retorno anualizada con fechas irregulares (XIRR, base 365 días). |
@@ -200,12 +202,13 @@ services/               casos de uso: importar, resumen, cuentas, inversión, ca
                         ajustes, exportar movimientos, exportar/restaurar
 etl/                    lectores de CSV/Excel y parsers (Imagin, MyInvestor), cuadre
 data/                   modelos SQLAlchemy, repositorios idempotentes, migraciones y almacén cifrado
-                        (vault.py: PBKDF2 + Fernet; secure_store.py: base en memoria respaldada por el .krx)
+                        (vault.py: PBKDF2 + Fernet; secure_store.py: base en memoria respaldada por el .krx;
+                        tracker.py: detector de cambios reales y caché de resultados)
 core/                   lógica pura: métricas (generales, por cuenta y de inversión),
                         periodos, categorizador, pagos recurrentes, presupuestos, entidades, enumeraciones
 logo-mejorado/          logotipos e iconos de la marca (SVG como fuente; `tools/build_logos.py` regenera PNG e .ico)
 assets/fonts/           tipografías incluidas (Montserrat y DM Sans, licencia OFL)
-tools/                  capturas, generador de fuentes y atajo para los datos de demostración
+tools/                  capturas, benchmark de rendimiento, generador de fuentes y atajo para los datos de demostración
                         (la lógica de los datos de ejemplo vive en services/demo_data.py)
 tests/                  suite de pruebas
 ```
@@ -215,6 +218,10 @@ Decisiones de diseño relevantes:
 - **Dinero exacto.** Los importes se guardan como enteros escalados (x10⁶) mediante un tipo propio, `Decimal6`. No hay errores de coma flotante y `SUM()` sigue funcionando en SQL.
 - **Idempotencia.** Cada movimiento tiene un `tx_hash` único (que incluye la cuenta) y se inserta con `ON CONFLICT DO NOTHING`. Las bases de datos anteriores se migran solas al abrir (`PRAGMA user_version`).
 - **Cifrado en reposo sin tocar la lógica.** Los servicios siguen usando el mismo `Engine` de SQLAlchemy; por debajo es una base SQLite en memoria que se carga y se guarda cifrada (`data/secure_store.py`), así que ni los servicios ni las vistas saben que hay cifrado.
+- **Arranque rápido.** La pantalla de bloqueo aparece en unos 0,3 s: al abrir solo se importa lo imprescindible (Qt, la pantalla de bloqueo y el cifrado), y SQLAlchemy, los servicios y la ventana principal se cargan en un hilo mientras escribes la contraseña. Tras desbloquear, la ventana está lista en poco más de un segundo (la derivación de la clave, que es lo que protege tus datos, no se toca). Excel (`openpyxl`) solo se carga cuando exportas a Excel.
+- **Cálculos que se reutilizan.** Cada pantalla guarda su resultado mientras los datos no cambien (un detector de cambios reales mira si se ha escrito alguna fila): volver a Inicio, Cuentas o Inversiones, o cambiar de mes, no recalcula todo, y leer una pantalla nunca obliga a volver a guardar el archivo cifrado. Los movimientos se leen de la base una sola vez y en crudo, el orden cronológico se recuerda y los textos de los conceptos se normalizan una vez.
+- **Importación en bloque.** Los movimientos se insertan con un único `executemany` (20.000 movimientos en alrededor de 1 s, antes 9 s), las fechas habituales se leen sin `strptime` y la vista previa y la importación no leen el archivo dos veces.
+- **Interfaz sin trabajo de más.** Las columnas de las tablas toman su ancho una sola vez (cambiar de tema con 20.000 filas pasó de 10 s a menos de 1 s); el cambio de tema aplica la hoja de estilos una sola vez, y no si no ha cambiado; las gráficas guardan su geometría (el ratón y la animación no la recalculan) y reducen las series largas a unos pocos puntos por píxel conservando los extremos; el reloj y el cielo de Inicio solo corren mientras se ven (y el cielo se detiene al minimizar); redimensionar la ventana ya no recalcula la altura de las filas en cada imagen.
 - **Fluidez.** Las tablas ordenan en el propio modelo (claves precalculadas y `list.sort`), no con el orden de Qt: 20 000 movimientos se ordenan en menos de medio segundo en lugar de cuatro. Las series de patrimonio ordenan una sola vez los saldos por cuenta y buscan por bisección, y solo se recalcula la página visible.
 - **Gráficos propios**, pintados con QPainter (barras redondeadas con degradado, curvas suaves, donut con leyenda e importes), con animación de entrada y tarjeta de detalle al pasar el ratón. Se adaptan al tema activo.
 
@@ -233,6 +240,14 @@ Decisiones de diseño relevantes:
 .venv\Scripts\python -m pytest -q          # toda la suite
 .venv\Scripts\python tools\screenshots.py  # regenera las capturas del README
 ```
+
+Para medir el rendimiento con un volumen grande de datos inventados (nunca toca tus datos):
+
+```powershell
+.venv\Scripts\python tools\benchmark.py 20000      # 20.000 movimientos: importar, cargar cada página, tema, redimensionar...
+```
+
+`tests/test_performance.py` no usa cronómetros: comprueba, contando trabajo (consultas, llamadas, objetos reutilizados), que las optimizaciones siguen en pie.
 
 Los tests de interfaz usan Qt sin pantalla (`QT_QPA_PLATFORM=offscreen`) y simulan el arrastre de archivos. Las pruebas del ETL y de los servicios usan archivos de ejemplo inventados en `tests/fixtures/`.
 

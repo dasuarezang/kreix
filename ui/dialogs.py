@@ -10,6 +10,8 @@ from PySide6.QtWidgets import (
 
 from core.budget import BUDGETABLE
 from core.enums import TxCategory
+from ui.popups import Combo
+from ui.system_language import system_language  # noqa: F401  (se reexporta)
 from ui.format import category_label
 from ui.widgets.brand_dialog import BrandDialog
 from ui.widgets.interests import InterestPicker
@@ -23,7 +25,7 @@ ALL_CATEGORIES = tuple(TxCategory)
 
 
 def category_combo(selected: TxCategory | None = None, categories=ALL_CATEGORIES) -> QComboBox:
-    combo = QComboBox()
+    combo = Combo()
     for cat in categories:
         combo.addItem(category_label(cat), cat)
     if selected is not None:
@@ -153,11 +155,6 @@ class WelcomeDialog(BrandDialog):
 
     def result_language(self) -> str:
         return self.languages.language()
-
-
-def system_language() -> str:
-    """El idioma del sistema si Kreix lo tiene (castellano, catalan o ingles); si no, castellano."""
-    return i18n.normalize_language(QLocale.system().name()[:2].lower())
 
 
 class BudgetDialog(BrandDialog):

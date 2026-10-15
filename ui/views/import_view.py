@@ -13,6 +13,7 @@ from core.entities import FileKind
 from services.accounts_service import AccountInfo
 from services.import_service import FilePreview, FileReport, ImportReport, ImportService
 from services.transfer_service import EXTENSION
+from ui.popups import Combo
 from ui.feedback import Feedback, snapshot_of, tell
 from ui.format import fmt_date
 from ui.widgets.cards import PageHeader, repolish
@@ -171,7 +172,7 @@ class ImportView(QWidget):
         as_of_row.addLayout(as_of_col, 1)
         as_of_row.addWidget(self.as_of)
 
-        self.account_combo = QComboBox()
+        self.account_combo = Combo()
         self.account_combo.setMinimumWidth(230)
         self.account_combo.setAccessibleName(tr("Cuenta de destino"))
         self.account_combo.addItem(tr("Imagin (se creará al importar)"), None)
@@ -187,7 +188,7 @@ class ImportView(QWidget):
         account_row.addLayout(account_col, 1)
         account_row.addWidget(self.account_combo)
 
-        self.fund_combo = QComboBox()
+        self.fund_combo = Combo()
         self.fund_combo.setMinimumWidth(230)
         self.fund_combo.setAccessibleName(tr("Fondo del histórico"))
         self.fund_combo.addItem(tr("Detectarlo por el archivo"), None)

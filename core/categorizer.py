@@ -7,6 +7,7 @@ asi "SUPERMERC" casa con "PROXIM SUPERMERCA" pero "DIA" no casa con "MEDIAMARKT"
 from __future__ import annotations
 
 import re
+from functools import lru_cache
 import unicodedata
 from collections.abc import Sequence
 from decimal import Decimal
@@ -46,6 +47,7 @@ DEFAULT_RULES: Rules = [
 ]
 
 
+@lru_cache(maxsize=65536)          # funcion pura y los mismos conceptos se repiten mucho (comercios, suscripciones)
 def normalize(text: str) -> str:
     """Mayusculas, sin acentos y espacios colapsados."""
     decomposed = unicodedata.normalize("NFKD", text)
@@ -66,8 +68,16 @@ class Categorizer:
     def __init__(self, rules: Rules | None = None, user_rules: Sequence[tuple[str, TxCategory]] = ()) -> None:
         own: Rules = [(cat, (kw,)) for kw, cat in user_rules]
         self._compiled = _compile(own + (rules or DEFAULT_RULES))
+        self._memo: dict[tuple[str, bool], TxCategory] = {}      # el resultado solo depende del concepto y del signo
 
     def categorize(self, description: str, amount: Decimal) -> TxCategory:
+        key = (description, amount > 0)
+        found = self._memo.get(key)
+        if found is None:
+            found = self._memo[key] = self._categorize(description, amount)
+        return found
+
+    def _categorize(self, description: str, amount: Decimal) -> TxCategory:
         text = normalize(description)
         for category, pattern in self._compiled:
             if pattern.search(text):

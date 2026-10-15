@@ -10,6 +10,7 @@ from functools import partial
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QCheckBox, QMenu, QPushButton, QWidget, QWidgetAction
 
+from ui.popups import Menu
 from core.i18n import tr, trn
 
 
@@ -26,7 +27,7 @@ class AccountPicker(QPushButton):
         self._ids: set[int] | None = None                  # None = todas
         self._boxes: dict[int, QCheckBox] = {}
         self._all_box: QCheckBox | None = None
-        self._menu = QMenu(self)
+        self._menu = Menu(self)
         self.setMenu(self._menu)
         self._refresh_label()
 

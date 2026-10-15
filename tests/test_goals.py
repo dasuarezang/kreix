@@ -77,3 +77,12 @@ def test_goals_dialog_actions_and_home_panel(window):
     window.dashboard.set_data(window._svc.dashboard.load())
     assert panel.bars._goals == [] and panel.manage_button.text() == "Crear una meta"
     dialog.close()
+
+
+def test_goals_dialog_has_a_done_button_that_closes_it(window):
+    dialog = GoalsDialog(window._svc.goals, window)
+    assert dialog.done_button.text() == "Hecho" and dialog.done_button.objectName() == "Primary"
+    assert dialog.add_button.objectName() != "Primary"                      # el boton principal es Hecho
+    dialog.show()
+    dialog.done_button.click()
+    assert dialog.result() == 1

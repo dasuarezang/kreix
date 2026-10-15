@@ -10,7 +10,7 @@ from typing import Any
 
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, QPoint, QSortFilterProxyModel, Qt, QTimer, Signal
 from PySide6.QtGui import QColor
-from PySide6.QtWidgets import QAbstractItemView, QHeaderView, QTableView
+from PySide6.QtWidgets import QAbstractItemView, QHeaderView, QStyleOptionViewItem, QTableView
 
 from ui import fonts, theme
 
@@ -19,6 +19,8 @@ LEFT = Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
 RIGHT = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
 ROW_HEIGHT = 38
 HEADER_HEIGHT = 38
+RESIZE_REFIT_MS = 45      # al redimensionar, el alto de las filas con texto largo se reajusta como mucho cada tanto
+SAMPLE_ROWS = 800        # filas que se miden para el ancho de las columnas
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,6 +113,8 @@ class FilterProxy(QSortFilterProxyModel):
         self.sourceModel().sort(column, order)
 
     def set_predicate(self, predicate: Callable[[Any], bool] | None) -> None:
+        if predicate is None and self._predicate is None:
+            return                                      # sigue sin filtro: no hay que volver a recorrer todas las filas
         self.beginFilterChange()
         self._predicate = predicate
         self.endFilterChange()
@@ -161,16 +165,37 @@ class DataTable(QTableView):
             self.context_requested.emit(self.row_data(index.row()), self.viewport().mapToGlobal(pos))
 
     def _apply_widths(self) -> None:
+        """Las columnas con contenido toman el ancho que piden SUS textos una sola vez (al recibir las filas) y se quedan
+        fijas. Con `ResizeToContents` Qt las recalculaba, mirando miles de filas, en cada cambio de estilo o de tema
+        (con 20.000 movimientos, 10 segundos). El ancho es el mismo que calcularia Qt: el del delegado (con el relleno de la
+        hoja de estilos) para las celdas mas largas, y el de la cabecera si es mayor."""
         header = self.horizontalHeader()
         header.setStretchLastSection(False)
+        rows = self.model_._rows
+        step = max(len(rows) // SAMPLE_ROWS, 1)
+        candidates = range(0, len(rows), step)                  # filas repartidas por toda la tabla, no solo las primeras
+        option = QStyleOptionViewItem()
+        option.initFrom(self)
+        option.widget = self                                    # la hoja de estilos (relleno de las celdas) se aplica por el widget
+        option.font = self.font()
+        delegate = self.itemDelegate()
         for i, col in enumerate(self.model_.columns):
-            header.setSectionResizeMode(i, QHeaderView.ResizeMode.Stretch if col.stretch else QHeaderView.ResizeMode.ResizeToContents)
+            if col.stretch:
+                header.setSectionResizeMode(i, QHeaderView.ResizeMode.Stretch)
+                continue
+            # la fuente es de cifras de ancho fijo: los textos mas largos son los mas anchos; basta medir unos pocos
+            longest = sorted(candidates, key=lambda r: len(col.text(rows[r])), reverse=True)[:12]
+            cell = max((delegate.sizeHint(option, self.model_.index(r, i)).width() for r in longest), default=0)
+            header.setSectionResizeMode(i, QHeaderView.ResizeMode.Fixed)
+            header.resizeSection(i, max(cell, header.sectionSizeHint(i)))
 
     def wrap_text(self) -> None:
         """Los textos largos pasan a una segunda linea (altura de fila automatica) en vez de cortarse."""
         self._wrap = True
         self.setWordWrap(True)
-        self.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        # Las filas se miden de forma explicita (`resizeRowsToContents`, espaciada al redimensionar): con ResizeToContents Qt
+        # las volvia a medir en cada cambio de ancho, imagen a imagen.
+        self.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
         # la altura de fila depende del ancho de las columnas: se recalcula cuando el diseno ya se ha asentado
         self.horizontalHeader().sectionResized.connect(self._refit_soon)
 
@@ -195,15 +220,18 @@ class DataTable(QTableView):
         self._fit_rows = max_rows
         self._refit()
 
-    def _refit_soon(self, *_args) -> None:
+    def _refit_soon(self, *_args, delay: int = 0) -> None:
         """Reajusta el alto en cuanto el diseno se asiente. El temporizador cuelga de la tabla: si la tabla desaparece antes,
-        no se ejecuta (un QTimer.singleShot suelto disparaba sobre una tabla ya destruida)."""
+        no se ejecuta (un QTimer.singleShot suelto disparaba sobre una tabla ya destruida). Con `delay` (al redimensionar la
+        ventana) los reajustes se espaciaron: durante un arrastre se recalcula unas pocas veces por segundo, no en cada imagen."""
         timer = getattr(self, "_refit_timer", None)
         if timer is None:
             timer = self._refit_timer = QTimer(self)
             timer.setSingleShot(True)
             timer.timeout.connect(self._refit)
-        timer.start(0)
+        if delay and timer.isActive():
+            return                                      # ya hay uno pendiente: se aprovecha
+        timer.start(delay)
 
     def _refit(self) -> None:
         max_rows = getattr(self, "_fit_rows", None)
@@ -230,7 +258,7 @@ class DataTable(QTableView):
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
         if getattr(self, "_fit_rows", None) is not None and getattr(self, "_wrap", False):
-            self._refit_soon()
+            self._refit_soon(delay=RESIZE_REFIT_MS)
 
     def showEvent(self, event) -> None:
         super().showEvent(event)

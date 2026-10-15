@@ -27,6 +27,7 @@ from pathlib import Path
 from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from data.tracker import tracker_for
 from data.vault import MAGIC, CorruptVaultError, SessionSeal, Vault, WrongPasswordError
 from data.database import SCHEMA_VERSION, init_db, session_scope
 from data.models import Account, Investment, InvestmentOperation, Transaction, Valuation
@@ -188,6 +189,7 @@ class TransferService:
         finally:
             src.close()
         init_db(self._engine)
+        tracker_for(self._engine).bump()            # la copia entra sin pasar por SQL: se avisa a los que miran cambios
 
     # ------------------------------------------------------------------ leer un archivo
     @contextmanager
@@ -252,4 +254,5 @@ class TransferService:
             finally:
                 src.close()
         init_db(self._engine)           # si el archivo es de una version anterior, se migra
+        tracker_for(self._engine).bump()
         return summary

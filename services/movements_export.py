@@ -6,8 +6,6 @@ from collections.abc import Mapping, Sequence
 from decimal import Decimal
 from pathlib import Path
 
-from openpyxl import Workbook
-from openpyxl.styles import Font
 
 from core.entities import TransactionDraft
 from core.i18n import tr, N_
@@ -48,6 +46,9 @@ def write_movements(
                 for day, account, concept, category, amount, balance in rows:
                     writer.writerow([f"{day:%d/%m/%Y}", account, concept, category, _spanish(amount), _spanish(balance)])
         else:
+            from openpyxl import Workbook                   # solo se carga al exportar a Excel (tarda unos 300 ms)
+            from openpyxl.styles import Font
+
             book = Workbook()
             sheet = book.active
             sheet.title = tr("Movimientos")

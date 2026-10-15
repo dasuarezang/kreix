@@ -138,12 +138,14 @@ def test_the_sky_goes_through_a_closed_cycle_over_24_hours():
         assert min(run) == 0 and max(run) > 0.97                                   # sale y se pone: recorre todo el arco
 
 
-def test_the_sun_and_the_moon_rise_and_set_below_the_horizon_so_the_cycle_is_continuous(qapp):
+def test_the_sun_and_the_moon_rise_and_set_half_out_so_the_cycle_has_no_blind_spot(qapp):
     sky = SkyWidget()
     start, middle, end = sky._arc_point(0.0), sky._arc_point(0.5), sky._arc_point(1.0)
-    hidden_from = SkyWidget.BASE + 2                                               # el horizonte: lo de debajo se recorta
-    assert start.y() - RADIUS >= hidden_from and end.y() - RADIUS >= hidden_from   # al salir y al ponerse esta del todo oculto
-    assert middle.y() < start.y() - 30 and start.x() < middle.x() < end.x()
+    horizon = SkyWidget.BASE + 2                                                   # el horizonte: lo de debajo se recorta
+    for edge in (start, end):                                                      # al salir y al ponerse: mas o menos medio disco a la vista
+        assert edge.y() - RADIUS < horizon - RADIUS * 0.6 and edge.y() < horizon
+    assert middle.y() < start.y() - 25 and start.x() < middle.x() < end.x()
+    assert sky._arc_point(1.0 + 0.08).y() > end.y() and sky._arc_point(-0.08).y() > start.y()    # fuera del recorrido se hunden
     assert abs(middle.x() - SkyWidget.W / 2) < 1                                   # a mediodia, en lo alto y en el centro
     sky.deleteLater()
 
@@ -163,8 +165,9 @@ def test_the_astro_appears_gradually_at_dawn_and_dusk(qapp):
     for hour in (6.0, 6.5, 7.5, 10.0, 20.0, 20.8, 21.0, 21.5, 23.0):
         sky.set_hour(hour)
         counts[hour] = _visible_pixels(sky)
-    assert counts[6.0] == 0 and counts[21.0] == 0                                  # justo al salir o ponerse no se ve nada
-    assert 0 < counts[6.5] < counts[7.5] < counts[10.0]                            # va asomando por el horizonte
+    assert counts[6.0] > 0 and counts[21.0] > 0                                    # en el relevo no hay punto ciego: se intuyen
+    assert counts[6.0] < counts[7.5] < counts[10.0]                                # el sol va subiendo
+    assert counts[21.0] > counts[10.0] * 0.25                                      # y en el relevo se ve bastante, aunque no completo
     assert counts[20.8] < counts[20.0] and counts[21.5] > 0 and counts[23.0] > counts[21.5]
     sky.deleteLater()
 
@@ -281,3 +284,23 @@ def test_stripes_fade_from_the_strongest_bar_to_the_weakest(qapp):
         inside = a > 20
     assert len(peaks) == 4 and peaks == sorted(peaks, reverse=True) and peaks[0] == 255 and peaks[-1] < 90
     mark.deleteLater()
+
+
+def test_the_day_night_loop_never_leaves_the_sky_empty(qapp):
+    from ui.widgets.sky import sky_bodies
+
+    sky = SkyWidget()
+    dusk, dawn = sky_bodies(21.0), sky_bodies(6.0)
+    assert [k for k, *_ in dusk] == ["moon"] and [k for k, *_ in dawn] == ["sun"]                  # uno solo: sale la luna y el sol ya no esta
+    for hour in (20.99, 21.0, 21.5, 22.0, 5.99, 6.0, 6.5):                                          # y nunca conviven, a ninguna hora
+        assert len(sky_bodies(hour)) == 1
+    assert [k for k, *_ in sky_bodies(13.0)] == ["sun"] and [k for k, *_ in sky_bodies(2.0)] == ["moon"]
+    noon = None
+    least = None
+    for quarter in range(96):
+        sky.set_hour(quarter / 4)
+        pixels = _visible_pixels(sky)
+        noon = pixels if quarter == 52 else noon
+        least = pixels if least is None else min(least, pixels)
+    assert least > 100 and noon is not None and least > noon * 0.2                  # ni a las 21:00 ni a las 6:00 queda vacio
+    sky.deleteLater()

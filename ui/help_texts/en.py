@@ -90,9 +90,10 @@ HELP: dict[str, dict] = {
     "Pagos recurrentes": {
         "term": "Recurring payments",
         "plain": "Subscriptions and bills that repeat every month for a similar amount (Netflix, the gym, electricity...). They tell you how much money you have committed before the month starts.",
-        "how": "Kreix detects them by itself: a charge that repeats at least three months in a row, about every 30 days and for a stable amount (up to a 20% difference). If a charge doesn't show up again within a month and a half, it is considered cancelled. The date of the next charge is an estimate.",
+        "how": "Kreix detects them by itself: a charge that repeats at least three months in a row, about every 30 days and for a stable amount (up to a 20% difference). If a charge doesn't show up again within a month and a half, it is considered cancelled. The date of the next charge is an estimate. The «Upcoming payments» on Home are these same payments, only the ones due in the next few weeks.",
         "example": "Netflix charges €12.99 every month: it is shown as €12.99 a month and €155.88 a year.",
         "note": "Groceries do not appear here even if you spend every week: the amount varies and it repeats more than once a month.",
+        "todo": "If Kreix does not detect a subscription, or detects one that is not, click ••• (or right-click) on one of its transactions in Accounts and choose «Mark as a recurring payment» or «Not a recurring payment». A payment you mark appears even with a single charge: Kreix uses the rhythm it sees in its charges (monthly if there is only one).",
         "keywords": ["subscriptions", "bills", "direct debits", "fixed", "monthly"],
     },
     "Cambiar la categoría de un movimiento": {

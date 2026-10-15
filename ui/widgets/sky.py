@@ -10,7 +10,7 @@ import math
 import time
 from dataclasses import dataclass
 
-from PySide6.QtCore import QPointF, QRectF, QSize, Qt, QTimer
+from PySide6.QtCore import QEvent, QPointF, QRectF, QSize, Qt, QTimer
 from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen, QRadialGradient
 from PySide6.QtWidgets import QWidget
 
@@ -19,6 +19,7 @@ from ui.widgets import charts
 from core.i18n import tr
 
 DAWN, DUSK = 6.0, 21.0            # el sol sale a las 6 y se pone a las 21
+LEAD_H = 1.25                     # (solo para el hundimiento de `_arc_point` fuera del recorrido: hoy no se usa)
 SUN_HIGH = QColor("#FFD23F")
 SUN_LOW = QColor("#FF8A3D")
 MOON = QColor("#F3EFE7")
@@ -41,6 +42,21 @@ def sky_state(hour: float) -> SkyState:
         return SkyState("sun", (hour - DAWN) / (DUSK - DAWN))
     night = (hour - DUSK) % 24                 # horas desde las 21: de 0 a 9
     return SkyState("moon", night / (24 - DUSK + DAWN))
+
+
+def sky_bodies(hour: float) -> list[tuple[str, float, float, float]]:
+    """El astro que se ve a una hora, como (tipo, avance, horas del recorrido, presencia). Siempre hay uno solo: cuando sale
+    la luna el sol ya no esta, y al reves. No hay hueco porque ambos salen y se ponen con la mitad del disco a la vista
+    (ver `_arc_point`): en el relevo uno desaparece y el otro asoma justo en ese momento."""
+    state = sky_state(hour)
+    span = (DUSK - DAWN) if state.kind == "sun" else (24 - DUSK + DAWN)
+    return [(state.kind, state.progress, span, 1.0)]
+
+
+def _presence(progress: float, span_hours: float) -> float:
+    """1 mientras el astro recorre su arco; fuera de el, baja a 0 en `LEAD_H` horas."""
+    excess = max(-progress, progress - 1.0, 0.0) * span_hours
+    return max(0.0, 1.0 - excess / LEAD_H)
 
 
 def _mix(a: QColor, b: QColor, t: float) -> QColor:
@@ -87,6 +103,8 @@ class SkyWidget(QWidget):
         return self._timer.isActive()
 
     def set_hour(self, hour: float) -> None:
+        if hour == self._hour:
+            return                                     # nada ha cambiado: ni se repinta ni se recalcula la descripcion
         self._hour = hour
         self._refresh_description()
         self.update()
@@ -108,7 +126,8 @@ class SkyWidget(QWidget):
 
     # -- animacion: solo corre mientras se ve ---------------------------------
     def _sync_timer(self) -> None:
-        if self._animated and charts.ANIMATIONS and self.isVisible():
+        window = self.window()
+        if self._animated and charts.ANIMATIONS and self.isVisible() and not window.isMinimized():
             if not self._timer.isActive():
                 self._timer.start()
         else:
@@ -116,24 +135,33 @@ class SkyWidget(QWidget):
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
+        self.window().installEventFilter(self)           # para parar la animacion al minimizar la ventana
         self._sync_timer()
 
     def hideEvent(self, event) -> None:
         super().hideEvent(event)
         self._timer.stop()
 
+    def eventFilter(self, obj, event) -> bool:
+        if event.type() == QEvent.Type.WindowStateChange:
+            self._sync_timer()
+        return False
+
     def _tick(self) -> None:
         self._phase = time.monotonic() - self._start
         self.update()
 
     # -- pintado --------------------------------------------------------------
-    def _arc_point(self, progress: float) -> QPointF:
-        """El astro sale por el horizonte (izquierda), sube hasta lo alto del arco y se pone por el otro lado (derecha):
-        al principio y al final del recorrido su centro queda por debajo del horizonte, oculto."""
-        low = self.BASE + RADIUS + 4
+    def _arc_point(self, progress: float, span_hours: float = DUSK - DAWN) -> QPointF:
+        """El astro sale por el horizonte (izquierda), sube hasta lo alto del arco y se pone por el otro lado (derecha).
+        Al salir y al ponerse su centro esta sobre el horizonte, con la mitad a la vista: no desaparece del todo de golpe y no
+        hay punto ciego, pero tampoco conviven: en el relevo se cambia de astro (el uno se va y el otro ya esta saliendo)."""
+        edge = self.BASE + 1.0
         high = 18.0
-        x = 12 + progress * (self.W - 24)
-        y = low - math.sin(math.pi * progress) ** 0.85 * (low - high)
+        inside = max(0.0, min(1.0, progress))
+        x = 12 + inside * (self.W - 24) + (progress - inside) * span_hours * 3.0
+        y = edge - math.sin(math.pi * inside) ** 0.85 * (edge - high)
+        y += abs(progress - inside) * span_hours * (RADIUS * 1.7 / LEAD_H)      # al alejarse del recorrido, se hunde
         return QPointF(x, y)
 
     def paintEvent(self, _event) -> None:
@@ -142,13 +170,13 @@ class SkyWidget(QWidget):
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         p.scale(self.SCALE, self.SCALE)
         t = self._phase if (self._animated and charts.ANIMATIONS) else 0.0
-        state = self.state
         self._paint_horizon(p, pal)
         p.setClipRect(QRectF(0, 0, self.W, self.BASE + 2))     # lo que queda bajo el horizonte no se ve: sale y se pone
-        if state.kind == "sun":
-            self._paint_sun(p, pal, state.progress, t)
-        else:
-            self._paint_moon(p, pal, state.progress, t)
+        for kind, progress, span, presence in sky_bodies(self._hour):
+            if kind == "sun":
+                self._paint_sun(p, pal, progress, t, presence)
+            else:
+                self._paint_moon(p, pal, progress, t, presence)
 
     def _paint_horizon(self, p: QPainter, pal) -> None:
         pen = QPen(_alpha(QColor(pal.muted), 0.35), 1.6)
@@ -161,8 +189,9 @@ class SkyWidget(QWidget):
         y los rayos aparezcan poco a poco al salir y se apaguen al ponerse (sin 'dientes' sueltos sobre la linea)."""
         return max(0.0, min(1.0, (self.BASE + RADIUS + 4 - center.y()) / (RADIUS * 2.4)))
 
-    def _paint_sun(self, p: QPainter, pal, progress: float, t: float) -> None:
-        low = 1 - math.sin(math.pi * progress) ** 0.55         # 0 a mediodia, 1 en el horizonte
+    def _paint_sun(self, p: QPainter, pal, progress: float, t: float, presence: float = 1.0) -> None:
+        inside = max(0.0, min(1.0, progress))
+        low = 1 - math.sin(math.pi * inside) ** 0.55           # 0 a mediodia, 1 en el horizonte
         high = SUN_HIGH_LIGHT if pal.name == "light" else SUN_HIGH
         color = _mix(high, SUN_LOW, low * 1.15)
         center = self._arc_point(progress) + QPointF(0, math.sin(t * 1.3) * 1.3)   # un ligero vaiven
@@ -196,13 +225,13 @@ class SkyWidget(QWidget):
         p.setBrush(disc)
         p.drawEllipse(center, radius, radius)
 
-        self._paint_cloud(p, pal, t)
+        self._paint_cloud(p, pal, t, presence)
 
-    def _paint_cloud(self, p: QPainter, pal, t: float) -> None:
+    def _paint_cloud(self, p: QPainter, pal, t: float, presence: float = 1.0) -> None:
         """Una nube suave cruza el cielo cada medio minuto, por delante del sol, y se funde en los bordes."""
         span = self.W + 44
         x = ((t * 3.2) % span) - 28
-        fade = max(0.0, min(1.0, (x + 6) / 18, (self.W - x - 20) / 18))
+        fade = max(0.0, min(1.0, (x + 6) / 18, (self.W - x - 20) / 18)) * presence
         if fade <= 0:
             return
         p.setPen(Qt.PenStyle.NoPen)
@@ -211,11 +240,13 @@ class SkyWidget(QWidget):
             p.drawEllipse(QPointF(x + dx, 15 + dy), r, r)
         p.drawRoundedRect(QRectF(x, 15, 26, 5), 2.5, 2.5)
 
-    def _paint_moon(self, p: QPainter, pal, progress: float, t: float) -> None:
+    def _paint_moon(self, p: QPainter, pal, progress: float, t: float, presence: float = 1.0) -> None:
         moon_color = MOON_LIGHT if pal.name == "light" else MOON
-        center = self._arc_point(progress) + QPointF(0, math.sin(t * 1.0) * 1.2)
+        center = self._arc_point(progress, 24 - DUSK + DAWN) + QPointF(0, math.sin(t * 1.0) * 1.2)
         radius = RADIUS
-        night_fade = min(1.0, math.sin(math.pi * progress) * 2.4)     # al anochecer y al amanecer hay menos estrellas
+        inside = max(0.0, min(1.0, progress))
+        # al anochecer y al amanecer hay menos estrellas, pero no ninguna: asi se intuye que la noche llega
+        night_fade = presence * max(0.25, min(1.0, math.sin(math.pi * inside) * 2.4))
 
         stars = ((14, 12, 0.0), (30, 22, 1.7), (58, 9, 3.1), (76, 21, 4.4), (68, 38, 2.3), (22, 36, 5.2))
         for x, y, shift in stars:
