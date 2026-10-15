@@ -38,5 +38,6 @@ def window(qapp):
 
     fonts.setup_application(qapp)
     w = build_window("sqlite:///:memory:", "memoria")
+    w.eager = True
     yield w
     dispose_windows(w)

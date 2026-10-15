@@ -183,13 +183,14 @@ QFrame#DropZone[dragging="true"] {{ background: {p.accent_soft}; border: 2px das
 QFrame#DropZone QLabel {{ background: transparent; }}
 
 /* ---------------------------------------------------------------- entradas */
-QComboBox, QLineEdit, QDateEdit {{
+QComboBox, QLineEdit, QDateEdit, QDoubleSpinBox {{
     background: {p.surface_alt}; color: {p.text}; border: 1px solid {p.surface_alt};
     border-radius: 12px; padding: 8px 14px; min-height: 20px; font-family: {medium};
 }}
-QComboBox:hover, QLineEdit:hover, QDateEdit:hover {{ border-color: {p.border}; }}
-QComboBox:focus, QLineEdit:focus, QDateEdit:focus {{ border: 2px solid {p.accent}; padding: 7px 13px; }}
+QComboBox:hover, QLineEdit:hover, QDateEdit:hover, QDoubleSpinBox:hover {{ border-color: {p.border}; }}
+QComboBox:focus, QLineEdit:focus, QDateEdit:focus, QDoubleSpinBox:focus {{ border: 2px solid {p.accent}; padding: 7px 13px; }}
 QComboBox::drop-down, QDateEdit::drop-down {{ border: none; width: 28px; }}
+QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {{ width: 0; border: none; }}
 QComboBox QAbstractItemView {{
     background: {p.surface}; color: {p.text}; border: 1px solid {p.border}; border-radius: 10px;
     selection-background-color: {p.accent}; selection-color: {p.on_accent}; outline: none; padding: 4px;
@@ -203,6 +204,8 @@ QMenu::separator {{ height: 1px; background: {p.border}; margin: 6px 8px; }}
 QMenu::item:selected {{ background: {p.accent}; color: {p.on_accent}; }}
 QMenu::item:disabled {{ color: {p.muted}; }}
 QDialog, QMessageBox, QInputDialog {{ background: {p.surface}; color: {p.text}; }}
+QDialog QLabel {{ background: transparent; }}
+QDialog QLabel#Muted {{ color: {p.muted}; }}
 
 /* ---------------------------------------------------------------- tablas */
 QTableView {{

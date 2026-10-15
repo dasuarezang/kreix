@@ -8,14 +8,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import Session
 
+from core.categorizer import Categorizer, normalize
 from core.entities import OperationDraft, PositionSnapshot, TransactionDraft
-from core.enums import AccountKind, Bank
+from core.enums import AccountKind, Bank, TxCategory
 from data.hashing import scoped_hash
-from data.models import Account, Investment, InvestmentOperation, Transaction, Valuation
+from data.models import Account, Budget, CategoryRule, Investment, InvestmentOperation, Transaction, Valuation
 
 
 @dataclass(frozen=True, slots=True)
@@ -163,3 +164,85 @@ def delete_account(session: Session, account_id: int) -> None:
     if account is None:
         raise AccountError("La cuenta no existe.")
     session.delete(account)  # sus movimientos y operaciones caen en cascada
+
+
+# ----------------------------------------------------------------- categorias y presupuestos
+class RuleError(ValueError):
+    """Regla de categoria no valida (palabra clave demasiado corta, inexistente...)."""
+
+
+MIN_KEYWORD = 2
+
+
+def list_rules(session: Session) -> list[CategoryRule]:
+    return list(session.scalars(select(CategoryRule).order_by(CategoryRule.id)))
+
+
+def user_categorizer(session: Session) -> Categorizer:
+    return Categorizer(user_rules=[(r.keyword, r.category) for r in list_rules(session)])
+
+
+def recategorize(session: Session) -> int:
+    """Vuelve a aplicar las reglas a los movimientos que el usuario no ha categorizado a mano.
+    Devuelve cuantos han cambiado de categoria."""
+    categorizer = user_categorizer(session)
+    rows = session.execute(
+        select(Transaction.id, Transaction.description, Transaction.amount, Transaction.category)
+        .where(Transaction.category_is_manual.is_(False))
+    )
+    changes = []
+    for row_id, description, amount, current in rows:
+        wanted = categorizer.categorize(description, amount)
+        if wanted != current:
+            changes.append({"id": row_id, "category": wanted})
+    if changes:
+        session.execute(update(Transaction), changes)
+    return len(changes)
+
+
+def add_rule(session: Session, keyword: str, category: TxCategory) -> CategoryRule:
+    keyword = normalize(keyword)
+    if len(keyword) < MIN_KEYWORD:
+        raise RuleError(f"La palabra clave necesita al menos {MIN_KEYWORD} caracteres.")
+    rule = session.scalar(select(CategoryRule).where(CategoryRule.keyword == keyword))
+    if rule is None:
+        rule = CategoryRule(keyword=keyword, category=category)
+        session.add(rule)
+    else:
+        rule.category = category
+    session.flush()
+    return rule
+
+
+def delete_rule(session: Session, rule_id: int) -> None:
+    rule = session.get(CategoryRule, rule_id)
+    if rule is None:
+        raise RuleError("La regla no existe.")
+    session.delete(rule)
+    session.flush()
+
+
+def set_transaction_category(session: Session, tx_hash: str, category: TxCategory | None) -> None:
+    """Fija la categoria de un movimiento a mano; con `None` vuelve a la automatica."""
+    tx = session.scalar(select(Transaction).where(Transaction.tx_hash == tx_hash))
+    if tx is None:
+        raise RuleError("El movimiento no existe.")
+    if category is None:
+        tx.category_is_manual = False
+        tx.category = user_categorizer(session).categorize(tx.description, tx.amount)
+    else:
+        tx.category_is_manual = True
+        tx.category = category
+
+
+def get_budgets(session: Session) -> dict[TxCategory, Decimal]:
+    return {b.category: b.amount for b in session.scalars(select(Budget))}
+
+
+def set_budgets(session: Session, budgets: dict[TxCategory, Decimal]) -> None:
+    """Sustituye los presupuestos; los importes a cero o negativos equivalen a no tener presupuesto."""
+    session.execute(delete(Budget))
+    for category, amount in budgets.items():
+        if amount > 0:
+            session.add(Budget(category=category, amount=amount))
+    session.flush()

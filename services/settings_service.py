@@ -39,6 +39,16 @@ class SettingsService:
             transfers_in_as_income=stored.get("transfers_in_as_income", "1") == "1",
         )
 
+    def load_state(self) -> dict[str, str]:
+        """Estado de la interfaz (ultima pagina, tamano de la ventana): claves con prefijo `ui.`."""
+        with session_scope(self._factory) as s:
+            return {row.key[3:]: row.value for row in s.scalars(select(Setting)) if row.key.startswith("ui.")}
+
+    def save_state(self, **values: str | int) -> None:
+        with session_scope(self._factory) as s:
+            for key, value in values.items():
+                s.merge(Setting(key=f"ui.{key}", value=str(value)))
+
     def save(self, settings: AppSettings) -> None:
         values = {
             "theme": settings.theme,

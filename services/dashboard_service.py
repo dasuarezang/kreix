@@ -8,12 +8,17 @@ from decimal import Decimal
 from sqlalchemy.orm import Session, sessionmaker
 
 from core import metrics
+from core.account_metrics import expense_breakdown
+from core.budget import BudgetLine, budget_lines
 from core.metrics import AllocationSlice, FlowOptions, MonthlyFlow, WealthPoint
+from core.recurring import Recurring, detect_recurring
 from data.database import session_scope
+from data.repositories import get_budgets
 from etl.reconcile import reconcile_portfolio
 from services.mappers import load_operations, load_snapshots, load_transactions
 
 FLOW_MONTHS = 12
+UPCOMING_DAYS = 35       # pagos recurrentes que se esperan en este plazo desde el ultimo dia con datos
 
 
 @dataclass(slots=True)
@@ -33,6 +38,9 @@ class DashboardData:
     flows: list[MonthlyFlow] = field(default_factory=list)
     wealth: list[WealthPoint] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    upcoming: list[Recurring] = field(default_factory=list)       # proximos pagos recurrentes, el mas cercano primero
+    budget_alerts: list[BudgetLine] = field(default_factory=list)  # presupuestos cerca del tope o superados este mes
+    has_budgets: bool = False
 
 
 class DashboardService:
@@ -42,6 +50,7 @@ class DashboardService:
     def load(self, options: FlowOptions = FlowOptions()) -> DashboardData:
         with session_scope(self._factory) as s:
             txs, ops, snaps = load_transactions(s), load_operations(s), load_snapshots(s)
+            budgets = get_budgets(s)
         if not (txs or ops or snaps):
             return DashboardData()
 
@@ -67,6 +76,14 @@ class DashboardService:
             if current:
                 data.month_income, data.month_expenses = current.income, current.expenses
                 data.month_savings_rate = current.savings_rate
+            last_day = max(t.booking_date for t in txs)
+            data.upcoming = sorted(
+                (r for r in detect_recurring(txs) if (r.next_date - last_day).days <= UPCOMING_DAYS),
+                key=lambda r: r.next_date)
+            data.has_budgets = bool(budgets)
+            this_month = [t for t in txs if metrics.month_start(t.booking_date) == data.report_month]
+            data.budget_alerts = [
+                line for line in budget_lines(budgets, expense_breakdown(this_month, options)) if line.state != "ok"]
 
         points = [t.booking_date for t in txs] + [o.trade_date for o in ops] + [p.as_of for p in snaps]
         data.wealth = metrics.wealth_evolution(txs, ops, snaps, metrics.month_ends(min(points), max(points)))

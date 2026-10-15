@@ -9,18 +9,23 @@ from data.models import Account, Investment, InvestmentOperation, Transaction, V
 
 
 def load_transactions(session: Session) -> list[TransactionDraft]:
+    # Se leen solo las columnas (sin instanciar entidades ORM): con miles de movimientos es mucho mas rapido.
+    t = Transaction
     rows = session.execute(
-        select(Transaction, Account.bank)
-        .join(Account, Account.id == Transaction.account_id)
-        .order_by(Transaction.booking_date, Transaction.id)
+        select(
+            Account.bank, t.booking_date, t.description, t.amount, t.balance_after, t.category,
+            t.tx_hash, t.source_file, t.account_id, t.category_is_manual,
+        )
+        .join(Account, Account.id == t.account_id)
+        .order_by(t.booking_date, t.id)
     )
     return [
         TransactionDraft(
-            bank=bank, booking_date=t.booking_date, description=t.description, amount=t.amount,
-            balance_after=t.balance_after, category=t.category, tx_hash=t.tx_hash,
-            source_file=t.source_file or "", account_id=t.account_id,
+            bank=bank, booking_date=day, description=desc, amount=amount, balance_after=balance,
+            category=category, tx_hash=tx_hash, source_file=source or "", account_id=account_id,
+            is_manual=bool(manual),
         )
-        for t, bank in rows
+        for bank, day, desc, amount, balance, category, tx_hash, source, account_id, manual in rows
     ]
 
 

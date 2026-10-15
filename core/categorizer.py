@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from collections.abc import Sequence
 from decimal import Decimal
 
 from core.enums import TxCategory
@@ -60,8 +61,11 @@ def _compile(rules: Rules) -> list[tuple[TxCategory, re.Pattern[str]]]:
 
 
 class Categorizer:
-    def __init__(self, rules: Rules | None = None) -> None:
-        self._compiled = _compile(rules or DEFAULT_RULES)
+    """`user_rules` (palabra clave -> categoria) se evaluan antes que las de serie."""
+
+    def __init__(self, rules: Rules | None = None, user_rules: Sequence[tuple[str, TxCategory]] = ()) -> None:
+        own: Rules = [(cat, (kw,)) for kw, cat in user_rules]
+        self._compiled = _compile(own + (rules or DEFAULT_RULES))
 
     def categorize(self, description: str, amount: Decimal) -> TxCategory:
         text = normalize(description)

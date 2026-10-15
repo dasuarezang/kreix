@@ -11,6 +11,7 @@ from ui import assets
 from ui.format import fmt_eur, fmt_pct, month_long
 from ui.widgets.cards import ChartCard, HeroCard, PageHeader, StatCard
 from ui.widgets.charts import DonutChart, FlowChart, WealthChart
+from ui.widgets.panels import AlertsPanel, UpcomingPanel
 
 
 class DashboardView(QWidget):
@@ -85,6 +86,14 @@ class DashboardView(QWidget):
         top.addLayout(side, 4)
         root.addLayout(top)
 
+        self.upcoming = UpcomingPanel()
+        self.alerts = AlertsPanel()
+        attention = QHBoxLayout()
+        attention.setSpacing(16)
+        attention.addWidget(self.upcoming, 5)
+        attention.addWidget(self.alerts, 5)
+        root.addLayout(attention)
+
         self.donut, self.flow, self.wealth = DonutChart(), FlowChart(), WealthChart()
         row = QHBoxLayout()
         row.setSpacing(16)
@@ -147,6 +156,8 @@ class DashboardView(QWidget):
                 f"<b>La cartera no cuadra con las operaciones importadas.</b> {d.warnings[0]}{more} "
                 "La TIR y el TWR no se muestran hasta que cuadre."
             )
+        self.upcoming.set_items(d.upcoming)
+        self.alerts.set_state(d.budget_alerts, d.has_budgets)
         self.donut.set_data(d.allocation)
         self.flow.set_data(d.flows)
         self.wealth.set_data(d.wealth)
@@ -155,3 +166,5 @@ class DashboardView(QWidget):
         for chart in (self.donut, self.flow, self.wealth):
             chart.refresh_theme()
         self.card_net.refresh_theme()
+        self.upcoming.refresh_theme()
+        self.alerts.bars.update()

@@ -29,6 +29,7 @@ class TransactionDraft:
     tx_hash: str
     source_file: str
     account_id: int | None = None   # lo rellena la capa de datos al leer de la base
+    is_manual: bool = False         # categoria elegida por el usuario: ninguna regla la cambia
 
 
 @dataclass(frozen=True, slots=True)

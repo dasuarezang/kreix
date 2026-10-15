@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from data.hashing import scoped_hash
 from data.models import Base
 
-SCHEMA_VERSION = 2  # v2: los hashes de movimientos incluyen la cuenta
+SCHEMA_VERSION = 3  # v2: los hashes incluyen la cuenta; v3: reglas de categoria y presupuestos
 _HASHED_TABLES = ("transactions", "investment_operations")
 
 

@@ -16,6 +16,8 @@ from data.repositories import (
     InsertStats,
     get_or_create_account,
     list_accounts,
+    list_rules,
+    recategorize,
     insert_operations,
     insert_transactions,
     upsert_valuations,
@@ -93,6 +95,8 @@ class ImportService:
                 if target is None:
                     return FileReport(path.name, parsed.kind, error="La cuenta de destino ya no existe.")
                 stats = insert_transactions(s, target, parsed.transactions)
+                if list_rules(s):                       # los movimientos nuevos tambien siguen las reglas del usuario
+                    recategorize(s)
             elif parsed.kind is FileKind.MYINVESTOR_OPERATIONS:
                 acc = get_or_create_account(
                     s, Bank.MYINVESTOR, AccountKind.INVESTMENT, ACCOUNT_NAMES[Bank.MYINVESTOR]

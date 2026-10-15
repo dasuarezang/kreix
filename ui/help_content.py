@@ -132,6 +132,45 @@ ENTRIES: tuple[HelpEntry, ...] = (
         keywords=("media",),
     ),
     HelpEntry(
+        S_ACCOUNTS, "Comparación con el mes anterior",
+        "Cuando miras un mes, las cifras de Ingresos y Gastos dicen cuánto han subido o bajado respecto al mes de antes, "
+        "para que veas si vas mejor o peor sin hacer cuentas.",
+        "(importe de este mes - importe del mes anterior) ÷ importe del mes anterior. Solo aparece si el mes anterior "
+        "tiene datos. Si la diferencia es menor del 0,5 %, Kreix dice «Igual que».",
+        "Gastaste 400 € en agosto y 440 € en septiembre: «+10 % frente a ago 26».",
+        keywords=("variación", "mes anterior", "comparar"),
+    ),
+    HelpEntry(
+        S_ACCOUNTS, "Presupuestos",
+        "Un tope de gasto al mes en una categoría (por ejemplo, 250 € en supermercado). Kreix te enseña cuánto llevas "
+        "gastado y cuánto te queda, y avisa en rojo cuando te pasas.",
+        "Gasto de la categoría en el periodo frente a tu tope. Barra verde: vas bien; amarilla: has usado más del 85 %; "
+        "roja: te has pasado. Si miras todo el historial, se compara el gasto medio mensual con el tope.",
+        "Tu tope de ocio es 60 € y llevas 51 €: barra amarilla, «Quedan 9,00 €».",
+        "Los traspasos entre tus cuentas y las aportaciones a inversión no son gasto y no tienen presupuesto.",
+        keywords=("tope", "límite", "gastar", "presupuesto"),
+    ),
+    HelpEntry(
+        S_ACCOUNTS, "Pagos recurrentes",
+        "Suscripciones y recibos que se repiten cada mes por un importe parecido (Netflix, el gimnasio, la luz...). "
+        "Sirven para saber cuánto dinero tienes comprometido antes de empezar el mes.",
+        "Kreix los detecta solo: un cargo que se repite al menos tres meses seguidos, cada unos 30 días y con un importe "
+        "estable (hasta un 20 % de diferencia). Si un cargo no vuelve a aparecer en mes y medio, se da por cancelado. "
+        "La fecha del próximo cargo es una estimación.",
+        "Netflix cobra 12,99 € cada mes: se muestra como 12,99 € al mes y 155,88 € al año.",
+        "El supermercado no aparece aquí aunque gastes cada semana: varía de importe y se repite más de una vez al mes.",
+        keywords=("suscripciones", "recibos", "domiciliaciones", "fijos", "mensuales"),
+    ),
+    HelpEntry(
+        S_ACCOUNTS, "Cambiar la categoría de un movimiento",
+        "Si Kreix pone un movimiento en la categoría equivocada, haz clic derecho sobre él y elige otra. Tu elección "
+        "nunca se cambia sola. También puedes volver a la categoría automática.",
+        "Con «Crear regla para…» le dices a Kreix que todos los conceptos con esa palabra van a una categoría, también "
+        "los que importes en el futuro. Tus reglas mandan sobre las que trae Kreix y se gestionan en Ajustes.",
+        "Pones la regla «PANADERIA» → Restaurantes: todos los pagos de panadería pasan a Restaurantes.",
+        keywords=("recategorizar", "reglas", "clasificar", "categorizar", "corregir"),
+    ),
+    HelpEntry(
         S_ACCOUNTS, "Mayor gasto",
         "El pago individual más grande del periodo. Útil para detectar gastos puntuales que distorsionan el mes.",
         "El movimiento negativo de mayor importe que cuenta como gasto.",
@@ -355,6 +394,15 @@ ENTRIES: tuple[HelpEntry, ...] = (
         "Al importar eliges a qué cuenta va cada extracto. La cartera de inversión es una sola.",
     ),
     HelpEntry(
+        S_USE, "Exportar movimientos a CSV o Excel",
+        "En Cuentas, el botón Exportar guarda en un archivo CSV o Excel los movimientos que estás viendo, para abrirlos "
+        "en una hoja de cálculo o llevárselos a tu asesor.",
+        "Se exportan solo las filas visibles, con el filtro y el orden que tengas en la tabla. Los importes van como "
+        "números en Excel y con coma decimal en CSV. Kreix no exporta a PDF.",
+        "",
+        keywords=("csv", "excel", "descargar", "hoja de cálculo", "xlsx"),
+    ),
+    HelpEntry(
         S_USE, "Exportar e importar tus datos",
         "Exportar crea un único archivo .kreix con todos tus datos para guardarlo o llevarlo a otro ordenador. "
         "En el otro equipo, arrástralo a Importar: sus datos serán idénticos a los de origen.",
@@ -374,7 +422,8 @@ ENTRIES: tuple[HelpEntry, ...] = (
     HelpEntry(
         S_USE, "Atajos de teclado",
         "Ctrl+1 Resumen, Ctrl+2 Cuentas, Ctrl+3 Inversiones, Ctrl+4 Importar, Ctrl+5 Exportar, Ctrl+6 Ajustes, "
-        "Ctrl+7 Ayuda. Ctrl+T cambia entre modo claro y oscuro.",
+        "Ctrl+7 Ayuda. Ctrl+T cambia entre modo claro y oscuro, Ctrl+F busca en tus movimientos y F5 recalcula "
+        "la página.",
         "",
         "",
         keywords=("teclado", "ctrl"),

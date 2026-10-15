@@ -15,6 +15,7 @@ Convenciones:
 """
 from __future__ import annotations
 
+from bisect import bisect_right
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date
@@ -147,7 +148,10 @@ def chronological(transactions: Iterable[TransactionDraft]) -> list[TransactionD
     out: list[TransactionDraft] = []
     for day in sorted(by_day):
         for group in by_day[day].values():
-            out.extend(_chain_order(group))
+            if len(group) == 1:
+                out.append(group[0])
+            else:
+                out.extend(_chain_order(group))
     return out
 
 
@@ -173,10 +177,9 @@ def total_cash(transactions: Iterable[TransactionDraft], as_of: date | None = No
     return sum(balances, ZERO) if balances else None
 
 
-def balance_series(
-    transactions: Iterable[TransactionDraft], start: date | None = None, end: date | None = None
-) -> list[tuple[date, Decimal]]:
-    """Saldo (sumando cuentas) al cierre de cada dia con movimientos dentro de [start, end]."""
+def _closing_balances(transactions: Iterable[TransactionDraft]) -> dict[int | None, dict[date, Decimal]]:
+    """Por cuenta, el saldo al cierre de cada dia con movimientos (ordenado por fecha).
+    Se ordena una sola vez: asi las series largas no repiten el trabajo por cada fecha."""
     by_account: dict[int | None, list[TransactionDraft]] = defaultdict(list)
     for t in transactions:
         if t.balance_after is not None:
@@ -187,6 +190,14 @@ def balance_series(
         for t in chronological(rows):
             days[t.booking_date] = t.balance_after  # type: ignore[assignment]  # el ultimo del dia gana
         closing[acc] = days
+    return closing
+
+
+def balance_series(
+    transactions: Iterable[TransactionDraft], start: date | None = None, end: date | None = None
+) -> list[tuple[date, Decimal]]:
+    """Saldo (sumando cuentas) al cierre de cada dia con movimientos dentro de [start, end]."""
+    closing = _closing_balances(transactions)
     all_days = sorted({d for days in closing.values() for d in days})
     series: list[tuple[date, Decimal]] = []
     current: dict[int | None, Decimal] = {}
@@ -427,9 +438,14 @@ def wealth_evolution(
 ) -> list[WealthPoint]:
     pf = _Portfolio(operations, snapshots)
     trades = [o for o in operations if o.op_type in _TRADES]
+    series = [(sorted(days), days) for days in _closing_balances(transactions).values()]
     points: list[WealthPoint] = []
     for d in dates:
-        cash = total_cash(transactions, as_of=d) or ZERO
+        cash = ZERO
+        for ordered, days in series:
+            i = bisect_right(ordered, d)
+            if i:
+                cash += days[ordered[i - 1]]
         invested = pf.value(d, include_day=True)
         contributed = sum((-o.amount for o in trades if o.trade_date <= d), ZERO)
         points.append(WealthPoint(d, cash, invested, contributed, cash + invested))

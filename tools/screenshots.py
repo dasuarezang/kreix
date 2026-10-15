@@ -17,11 +17,14 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tools"))
 
+from decimal import Decimal  # noqa: E402
+
 from PySide6.QtCore import QDate  # noqa: E402
 from PySide6.QtTest import QTest  # noqa: E402
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
 import demo_data  # noqa: E402
+from core.enums import TxCategory  # noqa: E402
 from main import build_window  # noqa: E402
 
 
@@ -48,11 +51,17 @@ def main() -> None:
     window.import_view.import_paths([str(p) for p in sorted((tmp / "demo").glob("*.csv"))])
     shot("importar-oscuro")
 
+    # presupuestos de demostracion, para que se vean los paneles de Resumen y Cuentas
+    window._svc.categories.save_budgets({TxCategory.GROCERIES: Decimal(250), TxCategory.LEISURE: Decimal(30),
+                                         TxCategory.DINING: Decimal(60), TxCategory.TRANSPORT: Decimal(40)})
+    window.refresh()
+
     tabs = (("resumen", window.SUMMARY), ("cuentas", window.ACCOUNTS), ("inversion", window.INVESTMENT),
             ("ayuda", window.HELP), ("exportar", window.EXPORT))
     for theme_name, suffix in (("dark", "oscuro"), ("light", "claro")):
         window.apply_theme(theme_name)
         for name, page in tabs:
+            window.resize(1280, 1900 if page == window.ACCOUNTS else 1180)    # Cuentas es la pagina mas larga
             window.navigate(page)
             shot(f"{name}-{suffix}")
     app.quit()

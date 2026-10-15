@@ -18,12 +18,16 @@
 
 - **Importa extractos arrastrándolos a la ventana.** Kreix detecta el banco y el tipo de archivo por las cabeceras, no por el nombre ni la extensión.
 - **Nunca duplica movimientos.** Puedes reimportar el mismo extracto, o varios que se solapan, y solo se añade lo nuevo. Dos pagos idénticos el mismo día se distinguen por el saldo posterior.
-- **Categoriza los gastos** con reglas por palabras clave (supermercado, suscripciones, ocio, restaurantes, transporte, vivienda, salud, Bizum...).
+- **Categoriza los gastos** con reglas por palabras clave (supermercado, suscripciones, ocio, restaurantes, transporte, vivienda, salud, Bizum...) y **tú mandas**: cambia la categoría de un movimiento con clic derecho o crea tus propias reglas.
+- **Presupuestos por categoría:** fija un tope mensual y mira cuánto llevas gastado; el Resumen avisa de los que estás a punto de superar o ya has superado.
+- **Pagos recurrentes:** detecta tus suscripciones y recibos mensuales, te dice cuánto suman al mes y al año y cuándo toca el siguiente.
+- **Comparación con el mes anterior** en ingresos y gastos.
 - **Calcula las métricas que importan:** patrimonio neto, rendimiento global, tasa de ahorro, TIR y TWR.
 - **Una pestaña para tus cuentas y otra para tu inversión**, cada una con sus métricas, sus gráficos y todos sus movimientos, para un mes concreto o para todo el historial (ver más abajo).
 - **Varias cuentas bancarias:** añade, renombra o elimina cuentas, y mira una sola o todas a la vez.
 - **Avisa de lo que no cuadra** en vez de importar en silencio: saldos con huecos, cartera que no coincide con las operaciones, importes incoherentes.
 - **Modo claro y oscuro** intercambiables en caliente (`Ctrl+T`), con la paleta amarilla y roja de la marca.
+- **Fluido con muchos datos:** los movimientos se ordenan, filtran y cargan en una fracción de segundo incluso con decenas de miles de filas, solo se recalcula la página que estás viendo y la ventana recuerda su tamaño y la última página.
 - **Privado por diseño:** todo se procesa y se guarda en tu equipo. No hay red, cuentas ni telemetría.
 
 ## Las pestañas
@@ -32,15 +36,15 @@ Arriba a la izquierda están las tres vistas de tus datos; abajo, en forma de p�
 
 | Pestaña | Para qué sirve |
 |---|---|
-| **Resumen** | Patrimonio neto, rendimiento global y tasa de ahorro del mes, con la distribución de activos y la evolución patrimonial. |
-| **Cuentas** | Todo lo de tus cuentas bancarias: saldo, ingresos, gastos, tasa de ahorro, gasto medio, mayor gasto y categoría principal; gastos por categoría, evolución del saldo, ingresos y gastos por mes; y la tabla de movimientos. |
+| **Resumen** | Patrimonio neto, rendimiento global y tasa de ahorro del mes; los próximos pagos recurrentes y los presupuestos del mes en riesgo; la distribución de activos y la evolución patrimonial. |
+| **Cuentas** | Todo lo de tus cuentas bancarias: saldo, ingresos, gastos, tasa de ahorro, gasto medio, mayor gasto y categoría principal; gastos por categoría, evolución del saldo, ingresos y gastos por mes; presupuestos, pagos recurrentes y la tabla de movimientos. |
 | **Inversiones** | Todo lo de tu cartera: valor, aportado, plusvalía, rentabilidad (TWR y TIR), distribución por fondo, aportado frente a valor, posiciones actuales y operaciones. |
 | **Importar** | Arrastra extractos y elige a qué cuenta pertenecen. También restaura un archivo `.kreix`. |
 | **Exportar** | Guarda todos tus datos en un único archivo `.kreix` para hacer una copia o llevarlos a otro ordenador. |
-| **Ajustes** | Qué cuenta como ingreso, borrar datos, ruta de la base de datos. |
+| **Ajustes** | Qué cuenta como ingreso, tus reglas de categorías, borrar datos, ruta de la base de datos. |
 | **Ayuda** | Qué significa cada cifra y cada gráfico, explicado sin tecnicismos y con ejemplos. |
 
-Atajos: `Ctrl+1` a `Ctrl+7` cambian de página en el orden de la tabla y `Ctrl+T` alterna el modo claro y oscuro.
+Atajos: `Ctrl+1` a `Ctrl+7` cambian de página en el orden de la tabla, `Ctrl+T` alterna el modo claro y oscuro, `Ctrl+F` va al buscador de movimientos y `F5` recalcula la página.
 
 **Ayuda.** Un menú de seis temas (Tu dinero de un vistazo, Tus cuentas bancarias, Tus inversiones, Rentabilidad, Avisos y Usar Kreix); cada botón abre su sección y una flecha vuelve al menú. Es un glosario para quien no sabe de finanzas: patrimonio neto, tasa de ahorro, valor liquidativo, plusvalía, TWR, TIR y el resto de términos que muestra Kreix. Cada uno explica qué es, cómo lo calcula Kreix y da un ejemplo con números. Buscar "tir" encuentra la TIR, pero no "invertir".
 
@@ -62,6 +66,14 @@ Atajos: `Ctrl+1` a `Ctrl+7` cambian de página en el orden de la tabla y `Ctrl+T
 - En Inversión, el mes muestra el valor estimado al cierre, lo aportado en el mes, la variación sin contar aportaciones y la rentabilidad del mes.
 
 **Movimientos.** La tabla de Cuentas ordena los movimientos del más reciente al más antiguo y, dentro de un mismo día, en su orden real (se reconstruye con la cadena de saldos). Se puede buscar por concepto, filtrar por categoría y ordenar pulsando cualquier cabecera. Con varias cuentas aparece una columna "Cuenta".
+
+**Categorías a tu gusto.** Clic derecho sobre un movimiento: *Cambiar categoría* (tu elección no la pisa ninguna regla), *Volver a la categoría automática* o *Crear regla para…*, que lleva a una categoría todos los conceptos con esa palabra, también los que importes después. Tus reglas mandan sobre las que trae Kreix y se gestionan en **Ajustes > Reglas de categorías**.
+
+**Presupuestos.** En Cuentas, el panel *Presupuestos* (botón *Definir presupuestos*) fija un tope mensual por categoría. La barra se pone verde mientras te sobra, amarilla al pasar del 85 % y roja al superarlo. Con un mes elegido compara el gasto de ese mes; con todo el historial, el gasto medio mensual.
+
+**Pagos recurrentes.** Un cargo cuenta como recurrente si se repite al menos tres meses seguidos, cada unos 30 días y con un importe estable (hasta un 20 % de diferencia); si deja de aparecer durante mes y medio se da por cancelado. El supermercado no entra: varía de importe y se repite más de una vez al mes. Los traspasos, Bizum e ingresos nunca cuentan.
+
+**Exportar movimientos.** El botón *Exportar* de la tabla guarda en CSV (UTF-8, separado por `;`, coma decimal) o Excel (importes como números) las filas que se ven, con el filtro y el orden actuales. No exporta a PDF.
 
 **Varias cuentas.** En Cuentas, **Gestionar cuentas** permite añadir, renombrar y eliminar cuentas. En Importar eliges la cuenta de destino de cada extracto de Imagin. El mismo extracto importado en dos cuentas distintas no cuenta como duplicado. La cartera de inversión es una sola.
 
@@ -131,11 +143,12 @@ Clean Architecture: las dependencias apuntan hacia el dominio, y `core` no sabe 
 ```
 main.py                 ensambla las capas y arranca la interfaz
 ui/                     PySide6: ventana, vistas, gráficos, tema claro/oscuro
-services/               casos de uso: importar, resumen, cuentas, inversión, ajustes, exportar/restaurar
+services/               casos de uso: importar, resumen, cuentas, inversión, categorías y presupuestos,
+                        ajustes, exportar movimientos, exportar/restaurar
 etl/                    lectores de CSV/Excel y parsers (Imagin, MyInvestor), cuadre
 data/                   modelos SQLAlchemy, repositorios idempotentes y migraciones
 core/                   lógica pura: métricas (generales, por cuenta y de inversión),
-                        periodos, categorizador, entidades, enumeraciones
+                        periodos, categorizador, pagos recurrentes, presupuestos, entidades, enumeraciones
 logo-mejorado/          logotipos e iconos de la marca
 assets/fonts/           tipografías incluidas (Montserrat y DM Sans, licencia OFL)
 tools/                  datos de demostración, capturas y generador de fuentes
@@ -147,6 +160,7 @@ Decisiones de diseño relevantes:
 - **Dinero exacto.** Los importes se guardan como enteros escalados (x10⁶) mediante un tipo propio, `Decimal6`. No hay errores de coma flotante y `SUM()` sigue funcionando en SQL.
 - **Idempotencia.** Cada movimiento tiene un `tx_hash` único (que incluye la cuenta) y se inserta con `ON CONFLICT DO NOTHING`. Las bases de datos anteriores se migran solas al abrir (`PRAGMA user_version`).
 - **Preparado para cifrar.** El motor se crea en un único punto (`make_engine`), así que cambiar a una base cifrada (SQLCipher) no toca el resto del código.
+- **Fluidez.** Las tablas ordenan en el propio modelo (claves precalculadas y `list.sort`), no con el orden de Qt: 20 000 movimientos se ordenan en menos de medio segundo en lugar de cuatro. Las series de patrimonio ordenan una sola vez los saldos por cuenta y buscan por bisección, y solo se recalcula la página visible.
 - **Gráficos propios**, pintados con QPainter (barras redondeadas con degradado, curvas suaves, donut con leyenda e importes), con animación de entrada y tarjeta de detalle al pasar el ratón. Se adaptan al tema activo.
 
 ## Diseño
@@ -170,7 +184,6 @@ Los tests de interfaz usan Qt sin pantalla (`QT_QPA_PLATFORM=offscreen`) y simul
 
 - Migraciones de base de datos con Alembic.
 - Cifrado de la base de datos y del archivo `.kreix` exportado.
-- Reglas de categorización editables desde la interfaz.
 - Empaquetado como ejecutable (`.exe` / `.app`).
 
 ## Privacidad

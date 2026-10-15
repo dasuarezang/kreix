@@ -9,12 +9,14 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core import metrics
 from core.account_metrics import AccountSummary, CategoryAmount, available_months, expense_breakdown, summarize_account
+from core.budget import BudgetLine, budget_lines
 from core.entities import TransactionDraft
 from core.enums import AccountKind, Bank
 from core.metrics import FlowOptions, MonthlyFlow
-from core.periods import GLOBAL, Period
+from core.periods import GLOBAL, Period, month_start, previous_month_end
+from core.recurring import Recurring, detect_recurring
 from data.database import session_scope
-from data.repositories import add_account, delete_account, list_accounts, rename_account
+from data.repositories import add_account, delete_account, get_budgets, list_accounts, rename_account
 from services.mappers import load_transactions
 
 
@@ -37,6 +39,10 @@ class AccountsViewData:
     balance_series: list[tuple[date, Decimal]] = field(default_factory=list)
     monthly: list[MonthlyFlow] = field(default_factory=list)
     movements: list[TransactionDraft] = field(default_factory=list)   # del periodo, el mas reciente primero
+    previous: AccountSummary | None = None       # el mes anterior (solo si se mira un mes y hay datos en el)
+    previous_month: date | None = None
+    recurring: list[Recurring] = field(default_factory=list)          # pagos recurrentes activos
+    budgets: list[BudgetLine] = field(default_factory=list)           # presupuestos frente al gasto del periodo
 
     @property
     def has_movements(self) -> bool:
@@ -78,17 +84,30 @@ class AccountsService:
         selected = [i for i in (account_ids if account_ids is not None else sorted(valid)) if i in valid]
         with session_scope(self._factory) as s:
             txs = [t for t in load_transactions(s) if t.account_id in selected]
+            budgets = get_budgets(s)
 
         period = Period.month(month) if month else GLOBAL
         inside = [t for t in txs if period.contains(t.booking_date)]
+        months = available_months(txs)
+        breakdown = expense_breakdown(inside, options)
+        previous = previous_month = None
+        if month:
+            before = month_start(previous_month_end(month))
+            if before in months:
+                previous_month = before
+                previous = summarize_account(txs, Period.month(before), options)
         return AccountsViewData(
             accounts=accounts,
             selected=selected,
-            months=available_months(txs),
+            months=months,
             period=period,
             summary=summarize_account(txs, period, options) if txs else None,
-            categories=expense_breakdown(inside, options),
+            categories=breakdown,
             balance_series=metrics.balance_series(txs, period.start, period.end),
             monthly=metrics.monthly_cashflow(txs, options=options),
             movements=metrics.order_movements(inside, newest_first=True),
+            previous=previous,
+            previous_month=previous_month,
+            recurring=detect_recurring(txs),
+            budgets=budget_lines(budgets, breakdown, 1 if month else max(len(months), 1)),
         )

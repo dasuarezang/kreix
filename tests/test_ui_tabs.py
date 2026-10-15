@@ -164,3 +164,23 @@ def test_every_page_paints_in_both_themes(window, two_months):
     QTest.qWait(20)
     assert not window.grab().isNull()
     assert theme.current() is theme.DARK
+
+
+def test_refresh_only_reloads_the_visible_page_and_the_rest_on_entering(window, two_months, monkeypatch):
+    window.eager = False
+    calls = []
+    monkeypatch.setattr(window.accounts_view, "reload", lambda: calls.append("accounts"))
+    monkeypatch.setattr(window.investment_view, "reload", lambda: calls.append("investment"))
+    window.navigate(window.SUMMARY)
+    calls.clear()
+    window.refresh()
+    assert calls == []                                   # el Resumen esta a la vista: no se tocan las demas
+    window.navigate(window.ACCOUNTS)
+    assert calls == ["accounts"]
+    window.navigate(window.SUMMARY)
+    window.navigate(window.ACCOUNTS)
+    assert calls == ["accounts"]                         # ya cargada: no se recalcula al volver
+    window.refresh()
+    assert calls == ["accounts", "accounts"]             # la visible se recarga de inmediato
+    window.navigate(window.INVESTMENT)
+    assert calls[-1] == "investment"

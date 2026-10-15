@@ -46,7 +46,9 @@ def dialogs(monkeypatch):
 def build(tmp_path, name):
     from main import build_window
 
-    return build_window(f"sqlite:///{tmp_path / (name + '.db')}", name)
+    w = build_window(f"sqlite:///{tmp_path / (name + '.db')}", name)
+    w.eager = True
+    return w
 
 
 def drop(zone, paths):
@@ -111,6 +113,7 @@ REQUIRED_TERMS = [
     "Gasto medio", "Mayor gasto", "Categoría principal", "Movimientos", "Valor liquidativo", "Precio medio", "Aportado",
     "Valor de la cartera", "Aportación media mensual", "Posición mayor", "Operaciones", "ISIN", "Plusvalía",
     "Rentabilidad global", "TWR", "TIR", "Variación del mes", "Valor estimado", "Bizum", "Traspaso", "Participación",
+    "Presupuestos", "Pagos recurrentes", "Comparación con el mes anterior", "Cambiar la categoría",
 ]
 
 

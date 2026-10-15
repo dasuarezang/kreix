@@ -169,6 +169,25 @@ class Valuation(Base):
         return self.unit_price * self.units
 
 
+class CategoryRule(Base):
+    """Regla del usuario: los conceptos que contienen `keyword` van a `category`. Gana a las de serie."""
+
+    __tablename__ = "category_rules"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    keyword: Mapped[str] = mapped_column(String(80), unique=True)  # normalizada: mayusculas y sin acentos
+    category: Mapped[TxCategory] = mapped_column(Enum(TxCategory, native_enum=False, length=30))
+
+
+class Budget(Base):
+    """Presupuesto mensual de una categoria de gasto."""
+
+    __tablename__ = "budgets"
+
+    category: Mapped[TxCategory] = mapped_column(Enum(TxCategory, native_enum=False, length=30), primary_key=True)
+    amount: Mapped[Decimal] = mapped_column(Decimal6)
+
+
 class Setting(Base):
     """Preferencias de la app (tema, ultima carpeta de importacion...)."""
 

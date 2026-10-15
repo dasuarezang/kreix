@@ -1,11 +1,14 @@
-"""Tablas de datos: un modelo generico por columnas, con orden por cabecera y filtro."""
+"""Tablas de datos: un modelo generico por columnas, con orden por cabecera y filtro.
+
+El orden lo hace el propio modelo con `list.sort` y claves precalculadas (20.000 filas en milisegundos);
+el proxy solo filtra. Dejar que Qt ordene llamaria a Python en cada comparacion y tardaria segundos."""
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from PySide6.QtCore import QAbstractTableModel, QModelIndex, QSortFilterProxyModel, Qt, QTimer
+from PySide6.QtCore import QAbstractTableModel, QModelIndex, QPoint, QSortFilterProxyModel, Qt, QTimer, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QAbstractItemView, QHeaderView, QTableView
 
@@ -32,19 +35,37 @@ class RowsModel(QAbstractTableModel):
     def __init__(self, columns: Sequence[Column], rows: Sequence[Any] = ()) -> None:
         super().__init__()
         self.columns = list(columns)
-        self._rows = list(rows)
+        self._original = list(rows)                     # en el orden recibido
+        self._rows = list(rows)                         # en el orden que se ve
+        self._order: tuple[int, Qt.SortOrder] | None = None
 
     def set_rows(self, rows: Sequence[Any]) -> None:
         self.beginResetModel()
-        self._rows = list(rows)
+        self._original = list(rows)
+        self._rows = self._sorted(self._original)
         self.endResetModel()
+
+    def sort(self, column: int, order: Qt.SortOrder = Qt.SortOrder.AscendingOrder) -> None:
+        """Ordena por la clave de una columna; `column < 0` vuelve al orden recibido."""
+        self._order = (column, order) if column >= 0 else None
+        self.beginResetModel()
+        self._rows = self._sorted(self._original)
+        self.endResetModel()
+
+    def _sorted(self, rows: list[Any]) -> list[Any]:
+        if self._order is None:
+            return list(rows)
+        column, order = self._order
+        col = self.columns[column]
+        key = col.sort or col.text
+        reverse = order == Qt.SortOrder.DescendingOrder
+        try:
+            return sorted(rows, key=key, reverse=reverse)
+        except TypeError:                               # tipos mezclados (p. ej. importes y vacios): se ordena por texto
+            return sorted(rows, key=lambda item: str(key(item)), reverse=reverse)
 
     def row_at(self, row: int) -> Any:
         return self._rows[row]
-
-    def sort_key(self, row: int, column: int) -> Any:
-        col, item = self.columns[column], self._rows[row]
-        return col.sort(item) if col.sort else col.text(item)
 
     def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
         return 0 if parent.isValid() else len(self._rows)
@@ -70,8 +91,6 @@ class RowsModel(QAbstractTableModel):
             return col.align
         if role == Qt.ItemDataRole.ToolTipRole:
             return col.text(item)          # el texto completo, por si la celda lo recorta
-        if role == SORT_ROLE:
-            return col.sort(item) if col.sort else col.text(item)
         if role == Qt.ItemDataRole.ForegroundRole and col.tone:
             p = theme.current()
             color = {"negative": p.red, "positive": p.green, "muted": p.muted, "accent": p.accent}.get(col.tone(item) or "")
@@ -80,26 +99,20 @@ class RowsModel(QAbstractTableModel):
 
 
 class FilterProxy(QSortFilterProxyModel):
-    """Orden por la clave de cada columna y filtro por una funcion sobre la fila."""
+    """Filtro por una funcion sobre la fila. Ordenar se delega en el modelo de origen."""
 
     def __init__(self) -> None:
         super().__init__()
-        self.setSortRole(SORT_ROLE)
+        self.setDynamicSortFilter(False)
         self._predicate: Callable[[Any], bool] | None = None
+
+    def sort(self, column: int, order: Qt.SortOrder = Qt.SortOrder.AscendingOrder) -> None:
+        self.sourceModel().sort(column, order)
 
     def set_predicate(self, predicate: Callable[[Any], bool] | None) -> None:
         self.beginFilterChange()
         self._predicate = predicate
         self.endFilterChange()
-
-    def lessThan(self, left: QModelIndex, right: QModelIndex) -> bool:
-        """Compara los valores de Python (Decimal, date...): Qt no sabe ordenarlos como variantes."""
-        model: RowsModel = self.sourceModel()
-        a, b = model.sort_key(left.row(), left.column()), model.sort_key(right.row(), right.column())
-        try:
-            return a < b
-        except TypeError:
-            return str(a) < str(b)
 
     def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex) -> bool:
         if self._predicate is None:
@@ -108,8 +121,12 @@ class FilterProxy(QSortFilterProxyModel):
 
 
 class DataTable(QTableView):
+    context_requested = Signal(object, QPoint)      # (fila de datos, posicion global): menu contextual
+
     def __init__(self, columns: Sequence[Column], min_height: int = 320) -> None:
         super().__init__()
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._on_context_menu)
         self.model_ = RowsModel(columns)
         self.proxy = FilterProxy()
         self.proxy.setSourceModel(self.model_)
@@ -132,6 +149,15 @@ class DataTable(QTableView):
         self.setSortingEnabled(True)
         self.proxy.sort(-1)  # arranca en el orden recibido (mas reciente primero)
         self._apply_widths()
+
+    def row_data(self, proxy_row: int) -> Any:
+        return self.model_.row_at(self.proxy.mapToSource(self.proxy.index(proxy_row, 0)).row())
+
+    def _on_context_menu(self, pos: QPoint) -> None:
+        index = self.indexAt(pos)
+        if index.isValid():
+            self.selectRow(index.row())
+            self.context_requested.emit(self.row_data(index.row()), self.viewport().mapToGlobal(pos))
 
     def _apply_widths(self) -> None:
         header = self.horizontalHeader()
