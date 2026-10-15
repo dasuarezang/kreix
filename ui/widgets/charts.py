@@ -19,8 +19,9 @@ from PySide6.QtWidgets import QSizePolicy, QWidget
 from core.account_metrics import CategoryAmount
 from core.metrics import AllocationSlice, MonthlyFlow, WealthPoint
 from ui import fonts, theme
-from ui.format import MONTHS_SHORT, category_label, fmt_date, fmt_eur, fmt_pct, month_long, month_short
+from ui.format import category_label, fmt_date, fmt_eur, fmt_pct, month_long, month_short
 from ui.theme import Palette
+from core.i18n import months_short, tr, N_
 
 ANIMATIONS = True    # las pruebas lo desactivan: la animacion no aporta y las ralentiza
 MAX_CATEGORIES = 8
@@ -103,7 +104,7 @@ def rounded_top(rect: QRectF, radius: float) -> QPainterPath:
 
 # ============================================================================ base
 class BaseChart(QWidget):
-    EMPTY_TEXT = "Sin datos todavía"
+    EMPTY_TEXT = N_("Sin datos todavía")
 
     def __init__(self, min_height: int = 260) -> None:
         super().__init__()
@@ -180,7 +181,7 @@ class BaseChart(QWidget):
         p.setFont(fonts.qfont(fonts.BODY_MEDIUM, 13))
         p.setPen(color(pal, "muted"))
         p.drawText(QRectF(10, cy + 24, self.width() - 20, 30), Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop,
-                   self.EMPTY_TEXT)
+                   tr(self.EMPTY_TEXT))
 
     # -- piezas comunes ----------------------------------------------------
     def draw_legend(self, p: QPainter, pal: Palette, items: Sequence[tuple[str, QColor]], x: float, y: float) -> float:
@@ -202,8 +203,8 @@ class BaseChart(QWidget):
         """Tarjeta de detalle junto al cursor: titulo y filas (punto, etiqueta, valor)."""
         if self._mouse is None:
             return
-        title_font, label_font, value_font = (fonts.qfont(fonts.BODY_BOLD, 12), fonts.qfont(fonts.BODY, 12),
-                                              fonts.qfont(fonts.BODY_BOLD, 12))
+        title_font, label_font, value_font = (fonts.qfont(fonts.BODY_MEDIUM, 12), fonts.qfont(fonts.BODY, 12),
+                                              fonts.qfont(fonts.BODY_MEDIUM, 12))
         tfm, lfm, vfm = QFontMetricsF(title_font), QFontMetricsF(label_font), QFontMetricsF(value_font)
         row_h, pad = 20.0, 12.0
         label_w = max((lfm.horizontalAdvance(r[1]) for r in rows), default=0)
@@ -293,7 +294,7 @@ class BarsChart(BaseChart):
         slot = plot.width() / n
         hover = self._hover_index(plot, slot)
         n_groups = 1 if self._stacked else len(self._series)
-        group_w = min(slot * (0.58 if self._stacked else 0.72), 58 if self._stacked else 84)
+        group_w = min(slot * (0.40 if self._stacked else 0.56), 40 if self._stacked else 64)
         bar_w = group_w if self._stacked else (group_w - 4 * (n_groups - 1)) / n_groups
 
         for i in range(n):
@@ -318,20 +319,20 @@ class BarsChart(BaseChart):
                     rect = QRectF(x0, plot.bottom() - height, bar_w, height)
                 base = color(pal, s.color_key)
                 gradient = QLinearGradient(rect.topLeft(), rect.bottomLeft())
-                gradient.setColorAt(0, lighter(base, 115))
+                gradient.setColorAt(0, lighter(base, 106))
                 gradient.setColorAt(1, base)
                 p.setPen(Qt.PenStyle.NoPen)
                 p.setBrush(gradient)
                 top_segment = (not self._stacked) or all(t.values[i] <= 0 for t in self._series[j + 1:])
-                p.drawPath(rounded_top(rect, 7 if top_segment else 2))
-            p.setFont(fonts.qfont(fonts.BODY_BOLD if i == hover else fonts.BODY, 11))
+                p.drawPath(rounded_top(rect, 5 if top_segment else 1.5))
+            p.setFont(fonts.qfont(fonts.BODY_MEDIUM if i == hover else fonts.BODY, 11))
             p.setPen(color(pal, "text" if i == hover else "muted"))
             p.drawText(QRectF(cx - slot / 2, plot.bottom() + 6, slot, 18), Qt.AlignmentFlag.AlignCenter, self._labels[i])
 
         if hover is not None:
             rows = [(color(pal, s.color_key), s.name, fmt_eur(s.values[hover])) for s in self._series]
             if self._stacked and len(self._series) > 1:
-                rows.append((None, "Total", fmt_eur(sum(s.values[hover] for s in self._series))))
+                rows.append((None, tr("Total"), fmt_eur(sum(s.values[hover] for s in self._series))))
             self.draw_tooltip(p, pal, self._titles[hover], rows)
 
     def _hover_index(self, plot: QRectF, slot: float) -> int | None:
@@ -342,9 +343,9 @@ class BarsChart(BaseChart):
 
 
 class FlowChart(BarsChart):
-    """Resumen: ingresos, gastos y aportaciones a inversion, apilados por mes."""
+    """Inicio: ingresos, gastos y aportaciones a inversion, apilados por mes."""
 
-    EMPTY_TEXT = "Importa un extracto para ver el flujo de caja"
+    EMPTY_TEXT = N_("Importa un extracto para ver el flujo de caja")
 
     def __init__(self) -> None:
         super().__init__(stacked=True, min_height=300)
@@ -353,16 +354,16 @@ class FlowChart(BarsChart):
         self.set_bars(
             [month_short(f.month)[:3] for f in flows],
             [month_long(f.month).capitalize() for f in flows],
-            [BarSeries("Ingresos", "accent", [float(f.income) for f in flows]),
-             BarSeries("Gastos", "red", [float(f.expenses) for f in flows]),
-             BarSeries("Aportaciones", "neutral", [float(f.contributions) for f in flows])] if flows else [],
+            [BarSeries(tr("Ingresos"), "accent", [float(f.income) for f in flows]),
+             BarSeries(tr("Gastos"), "red", [float(f.expenses) for f in flows]),
+             BarSeries(tr("Aportaciones"), "neutral", [float(f.contributions) for f in flows])] if flows else [],
         )
 
 
 class IncomeExpenseChart(BarsChart):
     """Cuentas: ingresos frente a gastos de cada mes (agrupadas)."""
 
-    EMPTY_TEXT = "Importa un extracto para ver los meses"
+    EMPTY_TEXT = N_("Importa un extracto para ver los meses")
 
     def __init__(self) -> None:
         super().__init__(stacked=False, min_height=280)
@@ -372,8 +373,8 @@ class IncomeExpenseChart(BarsChart):
         self.set_bars(
             [month_short(f.month)[:3] for f in flows],
             [month_long(f.month).capitalize() for f in flows],
-            [BarSeries("Ingresos", "accent", [float(f.income) for f in flows]),
-             BarSeries("Gastos", "red", [float(f.expenses) for f in flows])] if flows else [],
+            [BarSeries(tr("Ingresos"), "accent", [float(f.income) for f in flows]),
+             BarSeries(tr("Gastos"), "red", [float(f.expenses) for f in flows])] if flows else [],
         )
 
 
@@ -383,7 +384,7 @@ class LineSeries:
     name: str
     color_key: str
     values: list[float]
-    width: float = 2.6
+    width: float = 1.8
     dashed: bool = False
     fill: bool = False
 
@@ -411,7 +412,7 @@ class LineChart(BaseChart):
         return len(self._xs) > 1 and (self._xs[-1] - self._xs[0]).days <= 75
 
     def _x_label(self, d: date) -> str:
-        return f"{d.day} {MONTHS_SHORT[d.month - 1]}" if self._use_days() else month_short(d)
+        return f"{d.day} {months_short()[d.month - 1]}" if self._use_days() else month_short(d)
 
     def paint_chart(self, p: QPainter, pal: Palette) -> None:
         values = [v for s in self._series for v in s.values]
@@ -473,7 +474,7 @@ class LineChart(BaseChart):
                 area.closeSubpath()
                 gradient = QLinearGradient(0, plot.top(), 0, plot.bottom())
                 top_c, bottom_c = QColor(base), QColor(base)
-                top_c.setAlpha(58)
+                top_c.setAlpha(30)
                 bottom_c.setAlpha(0)
                 gradient.setColorAt(0, top_c)
                 gradient.setColorAt(1, bottom_c)
@@ -493,7 +494,7 @@ class LineChart(BaseChart):
                 p.setPen(QPen(color(pal, "surface"), 2))
                 p.setBrush(base)
                 for pt in pts:
-                    p.drawEllipse(pt, 4.5, 4.5)
+                    p.drawEllipse(pt, 3.4, 3.4)
         p.restore()
 
         # punto final destacado (halo) en la serie principal
@@ -503,10 +504,10 @@ class LineChart(BaseChart):
             halo = color(pal, main.color_key, 60)
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(halo)
-            p.drawEllipse(end, 9, 9)
+            p.drawEllipse(end, 7, 7)
             p.setBrush(color(pal, main.color_key))
             p.setPen(QPen(color(pal, "surface"), 2))
-            p.drawEllipse(end, 5, 5)
+            p.drawEllipse(end, 3.8, 3.8)
 
         if hover is not None:
             x = x_of(hover)
@@ -515,7 +516,7 @@ class LineChart(BaseChart):
             for s in self._series:
                 p.setPen(QPen(color(pal, "surface"), 2))
                 p.setBrush(color(pal, s.color_key))
-                p.drawEllipse(QPointF(x, y_of(s.values[hover])), 5, 5)
+                p.drawEllipse(QPointF(x, y_of(s.values[hover])), 4, 4)
             title = fmt_date(self._xs[hover]) if self._use_days() else month_long(self._xs[hover]).capitalize()
             self.draw_tooltip(p, pal, title, [(color(pal, s.color_key), s.name, fmt_eur(s.values[hover]))
                                               for s in self._series])
@@ -529,40 +530,77 @@ class LineChart(BaseChart):
 
 
 class WealthChart(LineChart):
-    """Resumen: patrimonio neto (relleno), valor de la cartera y lo aportado."""
+    """Inicio: patrimonio neto (relleno), valor de la cartera y lo aportado."""
 
-    EMPTY_TEXT = "Importa tus extractos para ver la evolución"
+    EMPTY_TEXT = N_("Importa tus extractos para ver la evolución")
 
     def set_data(self, points: list[WealthPoint]) -> None:
         if not points:
             self.set_lines([], [])
             return
         self.set_lines([w.date for w in points], [
-            LineSeries("Patrimonio neto", "accent", [float(w.net_worth) for w in points], 3.0, fill=True),
-            LineSeries("Valor de la cartera", "text", [float(w.invested_value) for w in points], 1.8),
-            LineSeries("Aportado", "neutral", [float(w.contributions) for w in points], 2.0, dashed=True),
+            LineSeries(tr("Patrimonio neto"), "accent", [float(w.net_worth) for w in points], 1.9, fill=True),
+            LineSeries(tr("Valor de la cartera"), "text", [float(w.invested_value) for w in points], 1.3),
+            LineSeries(tr("Aportado"), "neutral", [float(w.contributions) for w in points], 1.2, dashed=True),
         ])
 
 
 class PortfolioChart(LineChart):
     """Inversiones: valor de la cartera (relleno) frente a lo aportado."""
 
-    EMPTY_TEXT = "Importa tus operaciones para ver la evolución"
+    EMPTY_TEXT = N_("Importa tus operaciones para ver la evolución")
 
     def set_data(self, points: list[WealthPoint]) -> None:
         if not points:
             self.set_lines([], [])
             return
         self.set_lines([w.date for w in points], [
-            LineSeries("Valor de la cartera", "accent", [float(w.invested_value) for w in points], 3.0, fill=True),
-            LineSeries("Aportado", "neutral", [float(w.contributions) for w in points], 2.0, dashed=True),
+            LineSeries(tr("Valor de la cartera"), "accent", [float(w.invested_value) for w in points], 1.9, fill=True),
+            LineSeries(tr("Aportado"), "neutral", [float(w.contributions) for w in points], 1.2, dashed=True),
         ])
+
+
+class FundsChart(LineChart):
+    """Inversiones: el valor de cada fondo de la cartera mes a mes. Con un fondo elegido, su valor frente a lo aportado."""
+
+    EMPTY_TEXT = N_("Importa tus operaciones y tu cartera para ver cada fondo")
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._funds: list = []
+        self._only: str | None = None
+
+    def set_data(self, funds: list, only: str | None = None) -> None:
+        """`funds`: lista de FundHistory; `only`: ISIN del fondo a mostrar solo (None = todos a la vez)."""
+        self._funds, self._only = funds, only
+        self._apply()
+
+    def refresh_theme(self) -> None:
+        self._apply()                       # los colores de cada fondo salen de la paleta del tema
+        super().refresh_theme()
+
+    def _apply(self) -> None:
+        shown = [f for f in self._funds if self._only in (None, f.isin)]
+        if not shown or not shown[0].points:
+            self.set_lines([], [])
+            return
+        xs = [w.date for w in shown[0].points]
+        if len(shown) == 1:
+            f = shown[0]
+            self.set_lines(xs, [
+                LineSeries(f.name, "accent", [float(w.invested_value) for w in f.points], 1.9, fill=True),
+                LineSeries(tr("Aportado"), "neutral", [float(w.contributions) for w in f.points], 1.2, dashed=True),
+            ])
+            return
+        palette = theme.current().series
+        self.set_lines(xs, [LineSeries(f.name, palette[i % len(palette)], [float(w.invested_value) for w in f.points], 1.7)
+                            for i, f in enumerate(shown)])
 
 
 class BalanceChart(LineChart):
     """Cuentas: saldo al cierre de cada dia con movimientos."""
 
-    EMPTY_TEXT = "Sin movimientos en este periodo"
+    EMPTY_TEXT = N_("Sin movimientos en este periodo")
 
     def __init__(self) -> None:
         super().__init__(min_height=300)
@@ -571,7 +609,7 @@ class BalanceChart(LineChart):
         if not points:
             self.set_lines([], [])
             return
-        self.set_lines([d for d, _ in points], [LineSeries("Saldo", "accent", [float(v) for _, v in points], 3.0, fill=True)],
+        self.set_lines([d for d, _ in points], [LineSeries(tr("Saldo"), "accent", [float(v) for _, v in points], 1.9, fill=True)],
                        daily=daily)
 
 
@@ -610,26 +648,26 @@ class Sparkline(BaseChart):
         area.closeSubpath()
         gradient = QLinearGradient(0, 0, 0, self.height())
         a, b = QColor(base), QColor(base)
-        a.setAlpha(90)
+        a.setAlpha(42)
         b.setAlpha(0)
         gradient.setColorAt(0, a)
         gradient.setColorAt(1, b)
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(gradient)
         p.drawPath(area)
-        p.setPen(QPen(base, 2.4, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+        p.setPen(QPen(base, 1.7, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
         p.setBrush(Qt.BrushStyle.NoBrush)
         p.drawPath(monotone_path(pts))
         p.restore()
         if self._progress > 0.98:
             p.setPen(QPen(color(pal, "surface"), 2))
             p.setBrush(base)
-            p.drawEllipse(pts[-1], 4.5, 4.5)
+            p.drawEllipse(pts[-1], 3.4, 3.4)
 
 
 # ============================================================================ donut
 class DonutChart(BaseChart):
-    EMPTY_TEXT = "Importa tus extractos para ver la distribución"
+    EMPTY_TEXT = N_("Importa tus extractos para ver la distribución")
     LEGEND_MIN_WIDTH = 420
 
     def __init__(self) -> None:
@@ -657,7 +695,7 @@ class DonutChart(BaseChart):
         area = QRectF(8, 8, (self.width() * 0.5 if side_legend else self.width()) - 16, self.height() - 16 - legend_h)
         diameter = max(60.0, min(area.width(), area.height()))
         center = QPointF(area.center().x(), area.top() + diameter / 2 + max(0, (area.height() - diameter) / 2))
-        thickness = diameter * 0.17
+        thickness = diameter * 0.105
         radius = diameter / 2 - thickness / 2 - 4
         self._geometry = (center, radius, thickness)
 
@@ -677,7 +715,7 @@ class DonutChart(BaseChart):
             base = self._color(pal, i, s.label)
             if hover is not None and hover != i:
                 base.setAlpha(110)
-            width = thickness + (6 if hover == i else 0)
+            width = thickness + (4 if hover == i else 0)
             p.setPen(QPen(base, width, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap if rounded else Qt.PenCapStyle.FlatCap))
             p.setBrush(Qt.BrushStyle.NoBrush)
             path = QPainterPath()
@@ -716,26 +754,26 @@ class DonutChart(BaseChart):
             if side_legend:
                 avail = self.width() - x0 - 44
             else:
-                value_font = fonts.qfont(fonts.BODY_BOLD, 13)
+                value_font = fonts.qfont(fonts.BODY_MEDIUM, 13)
                 avail = self.width() - x0 - 20 - 16 - QFontMetricsF(value_font).horizontalAdvance(
                     f"{fmt_eur(s.value)}  ·  {fmt_pct(s.weight)}") - 16
             p.drawText(QPointF(x0 + 20, row_y + 14), QFontMetricsF(label_font).elidedText(s.label, Qt.TextElideMode.ElideRight, max(avail, 40)))
             if side_legend:
-                p.setFont(fonts.qfont(fonts.DISPLAY_BOLD, 14))
+                p.setFont(fonts.qfont(fonts.LABEL, 14))
                 p.drawText(QPointF(x0 + 20, row_y + 34), fmt_eur(s.value))
                 p.setFont(fonts.qfont(fonts.BODY_MEDIUM, 12))
                 p.setPen(color(pal, "muted"))
-                amount_w = QFontMetricsF(fonts.qfont(fonts.DISPLAY_BOLD, 14)).horizontalAdvance(fmt_eur(s.value))
+                amount_w = QFontMetricsF(fonts.qfont(fonts.LABEL, 14)).horizontalAdvance(fmt_eur(s.value))
                 p.drawText(QPointF(x0 + 20 + amount_w + 10, row_y + 34), fmt_pct(s.weight))
             else:
-                p.setFont(fonts.qfont(fonts.BODY_BOLD, 13))
+                p.setFont(fonts.qfont(fonts.BODY_MEDIUM, 13))
                 text = f"{fmt_eur(s.value)}  ·  {fmt_pct(s.weight)}"
                 p.drawText(QPointF(self.width() - 16 - QFontMetricsF(p.font()).horizontalAdvance(text), row_y + 14), text)
 
         if hover is not None:
             s = self._slices[hover]
-            self.draw_tooltip(p, pal, s.label, [(self._color(pal, hover, s.label), "Importe", fmt_eur(s.value)),
-                                                (None, "Peso", fmt_pct(s.weight))])
+            self.draw_tooltip(p, pal, s.label, [(self._color(pal, hover, s.label), tr("Importe"), fmt_eur(s.value)),
+                                                (None, tr("Peso"), fmt_pct(s.weight))])
 
     def _hover_slice(self) -> int | None:
         if self._mouse is None or self._geometry is None or not self._angles:
@@ -756,7 +794,7 @@ class DonutChart(BaseChart):
 class CategoryBarsChart(BaseChart):
     """Gasto por categoria: filas con barra en forma de pildora, importe y porcentaje."""
 
-    EMPTY_TEXT = "Sin gastos en este periodo"
+    EMPTY_TEXT = N_("Sin gastos en este periodo")
     ROW_H = 40
     category_clicked = Signal(object)      # TxCategory: el usuario quiere ver los movimientos de esa categoria
 
@@ -773,7 +811,7 @@ class CategoryBarsChart(BaseChart):
         row = self._row_at(event.position())
         clickable = row is not None and self._categories[row] is not None
         self.setCursor(Qt.CursorShape.PointingHandCursor if clickable else Qt.CursorShape.ArrowCursor)
-        self.setToolTip("Clic para ver estos movimientos" if clickable else "")
+        self.setToolTip(tr("Clic para ver estos movimientos") if clickable else "")
         super().mouseMoveEvent(event)
 
     def mousePressEvent(self, event) -> None:
@@ -790,7 +828,7 @@ class CategoryBarsChart(BaseChart):
         rows = [(category_label(i.category), float(i.amount), float(i.share)) for i in shown]
         rest = items[MAX_CATEGORIES:]
         if rest:
-            rows.append(("Otras categorías", float(sum(i.amount for i in rest)), float(sum(i.share for i in rest))))
+            rows.append((tr("Otras categorías"), float(sum(i.amount for i in rest)), float(sum(i.share for i in rest))))
         self._items = rows
         self._categories = [i.category for i in shown] + ([None] if rest else [])
         self.setMinimumHeight(max(300, 16 + self.ROW_H * len(rows)))
@@ -798,7 +836,7 @@ class CategoryBarsChart(BaseChart):
 
     def paint_chart(self, p: QPainter, pal: Palette) -> None:
         label_font = fonts.qfont(fonts.BODY_MEDIUM, 13)
-        amount_font = fonts.qfont(fonts.DISPLAY_BOLD, 13)
+        amount_font = fonts.qfont(fonts.LABEL, 13)
         lfm, afm = QFontMetricsF(label_font), QFontMetricsF(amount_font)
         label_w = min(max(lfm.horizontalAdvance(n) for n, _, _ in self._items) + 14, max(self.width() - 230, 90))
         amount_w = max(afm.horizontalAdvance(fmt_eur(a)) for _, a, _ in self._items) + 8
@@ -822,12 +860,12 @@ class CategoryBarsChart(BaseChart):
             p.setPen(color(pal, "text"))
             p.drawText(QRectF(10, y, label_w - 10, self.ROW_H), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
                        lfm.elidedText(name, Qt.TextElideMode.ElideRight, label_w - 10))
-            track = QRectF(bar_left, mid - 6, max(bar_right - bar_left, 10), 12)
+            track = QRectF(bar_left, mid - 3, max(bar_right - bar_left, 10), 6)
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(color(pal, "surface_alt"))
-            p.drawRoundedRect(track, 6, 6)
+            p.drawRoundedRect(track, 3, 3)
             local = max(0.0, min(1.0, self._progress * 1.4 - i * 0.07))
-            fill_w = max(12.0, track.width() * (amount / top)) * (1 - (1 - local) ** 3)
+            fill_w = max(8.0, track.width() * (amount / top)) * (1 - (1 - local) ** 3)
             fill = QRectF(track.left(), track.top(), fill_w, track.height())
             gradient = QLinearGradient(fill.topLeft(), fill.topRight())
             base = color(pal, "red")
@@ -836,7 +874,7 @@ class CategoryBarsChart(BaseChart):
             alpha = max(150, 255 - i * 14)
             base.setAlpha(alpha)
             p.setBrush(gradient)
-            p.drawRoundedRect(fill, 6, 6)
+            p.drawRoundedRect(fill, 3, 3)
             p.setFont(amount_font)
             p.setPen(color(pal, "text"))
             p.drawText(QRectF(bar_right + 8, y, amount_w + 4, self.ROW_H), Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,

@@ -9,6 +9,7 @@ from PySide6.QtCore import QEvent, QPoint, QSize, Qt, QTimer
 from PySide6.QtWidgets import QDialog, QFrame, QLabel, QLineEdit, QListWidget, QListWidgetItem, QVBoxLayout, QWidget
 
 from core.categorizer import normalize
+from core.i18n import tr, N_
 
 MAX_SHOWN = 9
 ROW_HEIGHT = 40
@@ -21,7 +22,7 @@ class Command:
     subtitle: str
     run: Callable[[], None]
     keywords: str = ""        # sinonimos para encontrarlo ("tema" -> modo oscuro)
-    group: str = "Acciones"
+    group: str = N_("Acciones")
 
 
 def _tokens(text: str) -> list[str]:
@@ -59,14 +60,14 @@ class CommandPalette(QDialog):
         card = QFrame(self)
         card.setObjectName("PaletteCard")
         self.input = QLineEdit()
-        self.input.setPlaceholderText("Busca una página, una acción, un movimiento o una palabra de la ayuda…")
-        self.input.setAccessibleName("Buscar o ir a")
+        self.input.setPlaceholderText(tr("Busca una página, una acción, un movimiento o una palabra de la ayuda…"))
+        self.input.setAccessibleName(tr("Buscar o ir a"))
         self.input.setClearButtonEnabled(True)
         self.list = QListWidget()
         self.list.setObjectName("PaletteList")
         self.list.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.list.setVerticalScrollMode(QListWidget.ScrollMode.ScrollPerPixel)
-        self.hint = QLabel("↑ ↓ para moverte  ·  Intro para elegir  ·  Esc para cerrar")
+        self.hint = QLabel(tr("↑ ↓ para moverte  ·  Intro para elegir  ·  Esc para cerrar"))
         self.hint.setObjectName("Small")
         inner = QVBoxLayout(card)
         inner.setContentsMargins(16, 16, 16, 12)
@@ -104,7 +105,7 @@ class CommandPalette(QDialog):
         self.list.clear()
         for cmd in found:
             item = QListWidgetItem()
-            label = QLabel(f"<b>{_escape(cmd.title)}</b>  <span style='opacity:0.65'>{_escape(cmd.subtitle)}</span>")
+            label = QLabel(tr("<b>{title}</b>  <span style='opacity:0.65'>{subtitle}</span>").format(title=_escape(cmd.title), subtitle=_escape(cmd.subtitle)))
             label.setTextFormat(Qt.TextFormat.RichText)
             label.setObjectName("PaletteRow")
             label.setContentsMargins(12, 0, 12, 0)
@@ -114,7 +115,7 @@ class CommandPalette(QDialog):
         if found:
             self.list.setCurrentRow(0)
         elif query:
-            empty = QListWidgetItem("No encuentro nada con esas palabras.")
+            empty = QListWidgetItem(tr("No encuentro nada con esas palabras."))
             empty.setFlags(Qt.ItemFlag.NoItemFlags)
             self.list.addItem(empty)
 

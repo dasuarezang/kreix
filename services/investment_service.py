@@ -17,6 +17,13 @@ from etl.reconcile import reconcile_portfolio
 from services.mappers import load_operations, load_snapshots
 
 
+@dataclass(frozen=True, slots=True)
+class FundHistory:
+    isin: str
+    name: str
+    points: list[WealthPoint]            # valor (invested_value) y aportado (contributions) al cierre de cada mes
+
+
 @dataclass(slots=True)
 class InvestmentViewData:
     months: list[date] = field(default_factory=list)             # el mas reciente primero
@@ -26,6 +33,7 @@ class InvestmentViewData:
     allocation: list[AllocationSlice] = field(default_factory=list)
     operations: list[OperationDraft] = field(default_factory=list)    # del periodo, la mas reciente primero
     evolution: list[WealthPoint] = field(default_factory=list)        # aportado frente a valor, por mes
+    funds: list[FundHistory] = field(default_factory=list)            # valor de cada fondo mes a mes (solo con tus extractos)
     warnings: list[str] = field(default_factory=list)
 
     @property
@@ -60,5 +68,22 @@ class InvestmentService:
             allocation=metrics.allocation_by_fund(latest),
             operations=operations,
             evolution=evolution,
+            funds=_fund_histories(ops, snaps, metrics.month_ends(min(dates), max(dates))),
             warnings=reconcile_portfolio(latest, ops) if latest else [],
         )
+
+
+def _fund_histories(ops: list[OperationDraft], snaps: list[PositionSnapshot], dates: list[date]) -> list[FundHistory]:
+    """Valor de cada fondo en cada cierre de mes, a partir de los extractos ya importados (nada sale del equipo).
+    Entre dos extractos el valor es una estimacion, igual que en el grafico de la cartera."""
+    names: dict[str, str] = {}
+    for item in [*ops, *snaps]:
+        names[item.isin] = item.product_name
+    latest = {p.isin: p.market_value for p in metrics.latest_positions(snaps)}
+    out = []
+    for isin, name in names.items():
+        fund_ops = [o for o in ops if o.isin == isin]
+        fund_snaps = [p for p in snaps if p.isin == isin]
+        out.append(FundHistory(isin, name, metrics.wealth_evolution([], fund_ops, fund_snaps, dates)))
+    out.sort(key=lambda f: latest.get(f.isin, 0), reverse=True)        # primero los fondos que mas pesan hoy
+    return out

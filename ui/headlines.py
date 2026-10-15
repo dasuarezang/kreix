@@ -11,6 +11,7 @@ from decimal import Decimal
 from core.account_metrics import CategoryAmount
 from core.metrics import AllocationSlice, MonthlyFlow, WealthPoint
 from ui.format import category_label, fmt_eur, fmt_pct, month_long
+from core.i18n import N_, tr
 
 ZERO = Decimal(0)
 
@@ -19,17 +20,18 @@ def category_headline(items: Sequence[CategoryAmount]) -> str:
     if not items:
         return ""
     top = items[0]
-    return f"Gastas más en {category_label(top.category)}: {fmt_eur(top.amount)}, el {fmt_pct(top.share, 0)} del total."
+    return tr("Gastas más en {category}: {amount}, el {share} del total.").format(category=category_label(top.category), amount=fmt_eur(top.amount), share=fmt_pct(top.share, 0))
 
 
 def balance_headline(series: Sequence[tuple[date, Decimal]], is_month: bool) -> str:
     if len(series) < 2:
         return ""
     change = series[-1][1] - series[0][1]
-    span = "este mes" if is_month else "en este periodo"
+    span = tr("este mes") if is_month else tr("en este periodo")
     if abs(change) < Decimal("0.5"):
-        return f"Tu saldo se ha mantenido casi igual {span}."
-    return f"Tu saldo ha {'subido' if change > 0 else 'bajado'} {fmt_eur(abs(change))} {span}."
+        return tr("Tu saldo se ha mantenido casi igual {span}.").format(span=span)
+    key = N_("Tu saldo ha subido {amount} {span}.") if change > 0 else N_("Tu saldo ha bajado {amount} {span}.")
+    return tr(key).format(amount=fmt_eur(abs(change)), span=span)
 
 
 def monthly_headline(flows: Sequence[MonthlyFlow]) -> str:
@@ -38,23 +40,23 @@ def monthly_headline(flows: Sequence[MonthlyFlow]) -> str:
         return ""
     good = sum(1 for f in months if f.income >= f.expenses)
     if good == len(months):
-        return f"Has gastado menos de lo que ingresas en los {len(months)} meses."
-    return f"Has gastado menos de lo que ingresas en {good} de {len(months)} meses."
+        return tr("Has gastado menos de lo que ingresas en los {months} meses.").format(months=len(months))
+    return tr("Has gastado menos de lo que ingresas en {good} de {months} meses.").format(good=good, months=len(months))
 
 
 def allocation_headline(cash: Decimal | None, portfolio: Decimal, net_worth: Decimal) -> str:
     if net_worth <= 0 or portfolio <= 0:
         return ""
-    return f"El {fmt_pct(portfolio / net_worth, 0)} de tu patrimonio está invertido y el resto es liquidez."
+    return tr("El {net_worth} de tu patrimonio está invertido y el resto es liquidez.").format(net_worth=fmt_pct(portfolio / net_worth, 0))
 
 
 def flow_headline(flows: Sequence[MonthlyFlow]) -> str:
     if not flows:
         return ""
     last = flows[-1]
-    text = f"En {month_long(last.month)}: ingresaste {fmt_eur(last.income)} y gastaste {fmt_eur(last.expenses)}"
+    text = tr("En {month}: ingresaste {income} y gastaste {expenses}").format(month=month_long(last.month), income=fmt_eur(last.income), expenses=fmt_eur(last.expenses))
     if last.contributions > 0:
-        text += f", y aportaste {fmt_eur(last.contributions)} a inversión"
+        text += tr(", y aportaste {contributions} a inversión").format(contributions=fmt_eur(last.contributions))
     return text + "."
 
 
@@ -64,8 +66,9 @@ def wealth_headline(points: Sequence[WealthPoint]) -> str:
     change = points[-1].net_worth - points[0].net_worth
     if abs(change) < Decimal("0.5"):
         return ""
-    verb = "ha crecido" if change > 0 else "ha bajado"
-    return f"Tu patrimonio {verb} {fmt_eur(abs(change))} desde {month_long(points[0].date)}."
+    key = (N_("Tu patrimonio ha crecido {change} desde {date}.") if change > 0
+           else N_("Tu patrimonio ha bajado {change} desde {date}."))
+    return tr(key).format(change=fmt_eur(abs(change)), date=month_long(points[0].date))
 
 
 def fund_headline(allocation: Sequence[AllocationSlice]) -> str:
@@ -73,8 +76,8 @@ def fund_headline(allocation: Sequence[AllocationSlice]) -> str:
         return ""
     top = max(allocation, key=lambda s: s.weight)
     if len(allocation) == 1:
-        return f"Toda tu cartera está en {top.label}."
-    return f"Tu mayor posición es {top.label}: el {fmt_pct(top.weight, 0)} de la cartera."
+        return tr("Toda tu cartera está en {label}.").format(label=top.label)
+    return tr("Tu mayor posición es {label}: el {weight} de la cartera.").format(label=top.label, weight=fmt_pct(top.weight, 0))
 
 
 def evolution_headline(points: Sequence[WealthPoint]) -> str:
@@ -85,7 +88,8 @@ def evolution_headline(points: Sequence[WealthPoint]) -> str:
         return ""
     gain = last.invested_value - last.contributions
     if abs(gain) < Decimal("0.5"):
-        return f"Has aportado {fmt_eur(last.contributions)} y tu cartera vale lo mismo."
-    word = "sumado" if gain > 0 else "restado"
-    return (f"Has aportado {fmt_eur(last.contributions)} y tu cartera vale {fmt_eur(last.invested_value)}: "
-            f"la rentabilidad ha {word} {fmt_eur(abs(gain))}.")
+        return tr("Has aportado {contributions} y tu cartera vale lo mismo.").format(contributions=fmt_eur(last.contributions))
+    key = (N_("Has aportado {contributions} y tu cartera vale {invested_value}: la rentabilidad ha sumado {gain}.") if gain > 0
+           else N_("Has aportado {contributions} y tu cartera vale {invested_value}: la rentabilidad ha restado {gain}."))
+    return tr(key).format(contributions=fmt_eur(last.contributions), invested_value=fmt_eur(last.invested_value),
+                          gain=fmt_eur(abs(gain)))

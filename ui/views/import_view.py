@@ -17,6 +17,7 @@ from ui.feedback import Feedback, snapshot_of, tell
 from ui.format import fmt_date
 from ui.widgets.cards import PageHeader, repolish
 from ui.widgets.dropzone import DropZone
+from core.i18n import tr, N_
 
 
 def _clear(layout: QVBoxLayout) -> None:
@@ -31,11 +32,11 @@ class ResultRow(QFrame):
         super().__init__()
         self.setObjectName("Card")
         if not report.ok:
-            state, label = "error", "Error"
+            state, label = "error", tr("Error")
         elif report.warnings:
-            state, label = "warn", "Con avisos"
+            state, label = "warn", tr("Con avisos")
         else:
-            state, label = "ok", "Importado"
+            state, label = "ok", tr("Importado")
         pill = QLabel(label)
         pill.setObjectName("Pill")
         pill.setProperty("state", state)
@@ -44,11 +45,11 @@ class ResultRow(QFrame):
         name = QLabel(report.file_name)
         name.setObjectName("H2")
         if report.ok:
-            detail = f"{report.kind_label}  ·  {report.inserted} nuevos"
+            detail = tr("{kind_label}  ·  {inserted} nuevos").format(kind_label=report.kind_label, inserted=report.inserted)
             if report.updated:
-                detail += f"  ·  {report.updated} actualizados"
+                detail += tr("  ·  {updated} actualizados").format(updated=report.updated)
             if report.skipped:
-                detail += f"  ·  {report.skipped} ya existían"
+                detail += tr("  ·  {skipped} ya existían").format(skipped=report.skipped)
         else:
             detail = report.explanation
         sub = QLabel(detail)
@@ -60,8 +61,8 @@ class ResultRow(QFrame):
         top.addStretch(1)
         top.addWidget(pill)
         col = QVBoxLayout(self)
-        col.setContentsMargins(18, 14, 18, 14)
-        col.setSpacing(4)
+        col.setContentsMargins(26, 20, 26, 20)
+        col.setSpacing(6)
         col.addLayout(top)
         col.addWidget(sub)
         for warning in report.warnings:
@@ -72,15 +73,15 @@ class ResultRow(QFrame):
 
 
 ROW_NAMES = {
-    FileKind.IMAGIN_STATEMENT: ("movimiento", "movimientos"),
-    FileKind.MYINVESTOR_OPERATIONS: ("operación", "operaciones"),
-    FileKind.MYINVESTOR_PORTFOLIO: ("posición", "posiciones"),
+    FileKind.IMAGIN_STATEMENT: (N_("movimiento"), N_("movimientos")),
+    FileKind.MYINVESTOR_OPERATIONS: (N_("operación"), N_("operaciones")),
+    FileKind.MYINVESTOR_PORTFOLIO: (N_("posición"), N_("posiciones")),
 }
 
 
 def plural(n: int, kind: FileKind | None) -> str:
-    one, many = ROW_NAMES.get(kind, ("fila", "filas"))
-    return f"{n} {one if n == 1 else many}"
+    one, many = ROW_NAMES.get(kind, (N_("fila"), N_("filas")))
+    return f"{n} {tr(one) if n == 1 else tr(many)}"
 
 
 class PreviewRow(QFrame):
@@ -90,11 +91,11 @@ class PreviewRow(QFrame):
         super().__init__()
         self.setObjectName("Card")
         if not preview.ok:
-            state, label = "error", "No se puede importar"
+            state, label = "error", tr("No se puede importar")
         elif not preview.changes_data:
-            state, label = "warn", "Nada nuevo"
+            state, label = "warn", tr("Nada nuevo")
         else:
-            state, label = "ok", "Listo para importar"
+            state, label = "ok", tr("Listo para importar")
         pill = QLabel(label)
         pill.setObjectName("Pill")
         pill.setProperty("state", state)
@@ -105,14 +106,14 @@ class PreviewRow(QFrame):
         if preview.ok:
             read = f"{preview.kind_label}  ·  {plural(preview.rows, preview.kind)}"
             if preview.first and preview.last:
-                read += (f"  ·  del {fmt_date(preview.first)} al {fmt_date(preview.last)}"
+                read += (tr("  ·  del {first} al {last}").format(first=fmt_date(preview.first), last=fmt_date(preview.last))
                          if preview.first != preview.last else f"  ·  {fmt_date(preview.first)}")
             lines.append(read)
-            parts = [f"{preview.new} nuevos"]
+            parts = [tr("{new} nuevos").format(new=preview.new)]
             if preview.updated:
-                parts.append(f"{preview.updated} se actualizarán")
+                parts.append(tr("{updated} se actualizarán").format(updated=preview.updated))
             if preview.existing:
-                parts.append(f"{preview.existing} ya estaban importados y se ignoran")
+                parts.append(tr("{existing} ya estaban importados y se ignoran").format(existing=preview.existing))
             lines.append("  ·  ".join(parts))
         else:
             lines.append(preview.explanation)
@@ -121,8 +122,8 @@ class PreviewRow(QFrame):
         top.addStretch(1)
         top.addWidget(pill)
         col = QVBoxLayout(self)
-        col.setContentsMargins(18, 14, 18, 14)
-        col.setSpacing(4)
+        col.setContentsMargins(26, 20, 26, 20)
+        col.setSpacing(6)
         col.addLayout(top)
         for i, text in enumerate(lines):
             label_ = QLabel(text)
@@ -148,8 +149,8 @@ class ImportView(QWidget):
         self.before_import: Callable[[], None] | None = None   # la ventana lo usa para quitar los datos de ejemplo
         self._pending: list[str] = []
 
-        header = PageHeader("Importar extractos", eyebrow="Entrada de datos",
-                            subtitle="Los archivos se procesan en tu equipo. Reimportar un extracto no duplica movimientos.")
+        header = PageHeader(tr("Importar extractos"), eyebrow=tr("Entrada de datos"),
+                            subtitle=tr("Los archivos se procesan en tu equipo. Reimportar un extracto no duplica movimientos."))
 
         self.dropzone = DropZone()
         self.dropzone.files_dropped.connect(self.preview_paths)
@@ -157,10 +158,10 @@ class ImportView(QWidget):
         self.as_of = QDateEdit(QDate.currentDate())
         self.as_of.setCalendarPopup(True)
         self.as_of.setDisplayFormat("dd/MM/yyyy")
-        self.as_of.setAccessibleName("Fecha de la cartera")
-        as_of_label = QLabel("Fecha de la cartera")
+        self.as_of.setAccessibleName(tr("Fecha de la cartera"))
+        as_of_label = QLabel(tr("Fecha de la cartera"))
         as_of_label.setObjectName("H2")
-        as_of_hint = QLabel("El extracto de cartera de MyInvestor no incluye fecha: indica a qué día corresponde.")
+        as_of_hint = QLabel(tr("El extracto de cartera de MyInvestor no incluye fecha: indica a qué día corresponde."))
         as_of_hint.setObjectName("Small")
         as_of_row = QHBoxLayout()
         as_of_col = QVBoxLayout()
@@ -172,11 +173,11 @@ class ImportView(QWidget):
 
         self.account_combo = QComboBox()
         self.account_combo.setMinimumWidth(230)
-        self.account_combo.setAccessibleName("Cuenta de destino")
-        self.account_combo.addItem("Imagin (se creará al importar)", None)
-        account_label = QLabel("Cuenta de destino")
+        self.account_combo.setAccessibleName(tr("Cuenta de destino"))
+        self.account_combo.addItem(tr("Imagin (se creará al importar)"), None)
+        account_label = QLabel(tr("Cuenta de destino"))
         account_label.setObjectName("H2")
-        account_hint = QLabel("A qué cuenta bancaria pertenecen los extractos de Imagin que importes.")
+        account_hint = QLabel(tr("A qué cuenta bancaria pertenecen los extractos de Imagin que importes."))
         account_hint.setObjectName("Small")
         account_row = QHBoxLayout()
         account_col = QVBoxLayout()
@@ -190,14 +191,14 @@ class ImportView(QWidget):
         self._results.setSpacing(10)
         self._preview = QVBoxLayout()
         self._preview.setSpacing(10)
-        self._preview_title = QLabel("Revisa antes de importar")
+        self._preview_title = QLabel(tr("Revisa antes de importar"))
         self._preview_title.setObjectName("H2")
-        self._preview_hint = QLabel("Esto es lo que Kreix ha leído. Todavía no se ha guardado nada.")
+        self._preview_hint = QLabel(tr("Esto es lo que Kreix ha leído. Todavía no se ha guardado nada."))
         self._preview_hint.setObjectName("Small")
-        self.cancel_button = QPushButton("Cancelar")
+        self.cancel_button = QPushButton(tr("Cancelar"))
         self.cancel_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.cancel_button.clicked.connect(self.cancel_preview)
-        self.confirm_button = QPushButton("Importar")
+        self.confirm_button = QPushButton(tr("Importar"))
         self.confirm_button.setObjectName("Primary")
         self.confirm_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.confirm_button.clicked.connect(self.confirm_import)
@@ -214,7 +215,7 @@ class ImportView(QWidget):
         box.addLayout(self._preview)
         box.addLayout(actions)
         self._preview_box.hide()
-        results_title = QLabel("Resultado")
+        results_title = QLabel(tr("Resultado"))
         results_title.setObjectName("H2")
         self._results_title = results_title
         results_title.hide()
@@ -222,8 +223,8 @@ class ImportView(QWidget):
         body = QWidget()
         body.setObjectName("Page")
         col = QVBoxLayout(body)
-        col.setContentsMargins(32, 28, 32, 32)
-        col.setSpacing(16)
+        col.setContentsMargins(48, 40, 48, 48)
+        col.setSpacing(26)
         col.addWidget(header)
         col.addWidget(self.dropzone)
         col.addLayout(account_row)
@@ -252,7 +253,7 @@ class ImportView(QWidget):
             index = self.account_combo.findData(keep)
             self.account_combo.setCurrentIndex(max(index, 0))
         else:
-            self.account_combo.addItem("Imagin (se creará al importar)", None)
+            self.account_combo.addItem(tr("Imagin (se creará al importar)"), None)
         self.account_combo.blockSignals(False)
 
     def portfolio_date(self) -> date:
@@ -276,9 +277,9 @@ class ImportView(QWidget):
         self.confirm_button.setEnabled(bool(ready))
         if ready:
             total = sum(pr.new + pr.updated for pr in ready)
-            self.confirm_button.setText(f"Importar {total} filas nuevas" if total != 1 else "Importar 1 fila nueva")
+            self.confirm_button.setText(tr("Importar {total} filas nuevas").format(total=total) if total != 1 else tr("Importar 1 fila nueva"))
         else:
-            self.confirm_button.setText("No hay nada nuevo que importar")
+            self.confirm_button.setText(tr("No hay nada nuevo que importar"))
         self._preview_box.show()
         self._results_title.hide()
         _clear(self._results)
@@ -310,11 +311,11 @@ class ImportView(QWidget):
             self.imported.emit()
             added = sum(f.inserted for f in report.files)
             changed = sum(f.updated for f in report.files)
-            text = f"Importado: {added} nuevos" + (f" y {changed} actualizados" if changed else "") + "."
+            text = tr("Importado: {added} nuevos").format(added=added) + (tr(" y {changed} actualizados").format(changed=changed) if changed else "") + "."
             tell(self.feedback, text, snapshot)
         else:
-            tell(self.feedback, "No había nada nuevo que importar." if any(f.ok for f in report.files)
-                 else "No se ha podido importar ningún archivo.")
+            tell(self.feedback, tr("No había nada nuevo que importar.") if any(f.ok for f in report.files)
+                 else tr("No se ha podido importar ningún archivo."))
             if snapshot is not None:
                 self.feedback.remove(snapshot)       # no cambio nada: no hay nada que deshacer
         return report
@@ -329,14 +330,14 @@ class ImportView(QWidget):
             box.setObjectName("Banner")
             lay = QVBoxLayout(box)
             lay.setContentsMargins(16, 12, 16, 12)
-            head = QLabel("<b>La cartera no cuadra con las operaciones importadas</b>")
+            head = QLabel(tr("<b>La cartera no cuadra con las operaciones importadas</b>"))
             head.setTextFormat(Qt.TextFormat.RichText)
             lay.addWidget(head)
             for warning in report.reconciliation_warnings:
                 w = QLabel(f"• {warning}")
                 w.setWordWrap(True)
                 lay.addWidget(w)
-            tip = QLabel("Exporta desde MyInvestor el historial completo de operaciones y vuelve a importarlo.")
+            tip = QLabel(tr("Exporta desde MyInvestor el historial completo de operaciones y vuelve a importarlo."))
             tip.setObjectName("Small")
             tip.setWordWrap(True)
             lay.addWidget(tip)

@@ -26,8 +26,10 @@ from pathlib import Path
 from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from data.vault import SessionSeal
 from data.database import SCHEMA_VERSION, init_db, session_scope
 from data.models import Account, Investment, InvestmentOperation, Transaction, Valuation
+from core.i18n import tr
 
 FORMAT = "kreix-export"
 FORMAT_VERSION = 1
@@ -63,6 +65,15 @@ class BackupInfo:
     summary: DataSummary
 
 
+def _image(engine: Engine) -> bytes:
+    """Imagen consistente de la base de datos en memoria (sin archivos), en modo diario normal: un solo bloque."""
+    with closing(engine.raw_connection()) as raw:
+        data = bytearray(raw.driver_connection.serialize())
+    if len(data) > 19 and data[18] == 2 and data[19] == 2:            # base en modo WAL: se guarda sin WAL
+        data[18] = data[19] = 1
+    return bytes(data)
+
+
 def _sqlite_summary(conn: sqlite3.Connection) -> DataSummary:
     def count(table: str) -> int:
         return conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
@@ -75,21 +86,21 @@ def _validate_database(path: Path) -> DataSummary:
     try:
         conn = sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True)
     except sqlite3.Error as exc:                                   # pragma: no cover - ruta invalida
-        raise TransferError("No se pudo abrir la base de datos del archivo.") from exc
+        raise TransferError(tr("No se pudo abrir la base de datos del archivo.")) from exc
     try:
         try:
             if conn.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
-                raise TransferError("La base de datos del archivo está dañada.")
+                raise TransferError(tr("La base de datos del archivo está dañada."))
             objects = conn.execute("SELECT type, name FROM sqlite_master").fetchall()
         except sqlite3.DatabaseError as exc:
-            raise TransferError("El archivo no contiene una base de datos válida.") from exc
+            raise TransferError(tr("El archivo no contiene una base de datos válida.")) from exc
         if any(kind in ("trigger", "view") for kind, _ in objects):
-            raise TransferError("El archivo contiene elementos no permitidos y no se importará.")
+            raise TransferError(tr("El archivo contiene elementos no permitidos y no se importará."))
         if not REQUIRED_TABLES <= {name for kind, name in objects if kind == "table"}:
-            raise TransferError("El archivo no tiene la estructura de datos de Kreix.")
+            raise TransferError(tr("El archivo no tiene la estructura de datos de Kreix."))
         version = conn.execute("PRAGMA user_version").fetchone()[0]
         if version > SCHEMA_VERSION:
-            raise TransferError("El archivo se creó con una versión más reciente de Kreix. Actualiza la aplicación.")
+            raise TransferError(tr("El archivo se creó con una versión más reciente de Kreix. Actualiza la aplicación."))
         return _sqlite_summary(conn)
     finally:
         conn.close()
@@ -99,6 +110,7 @@ class TransferService:
     def __init__(self, engine: Engine, factory: sessionmaker[Session]) -> None:
         self._engine = engine
         self._factory = factory
+        self._seal = SessionSeal()          # clave solo en memoria: las copias de "Deshacer" nunca quedan en claro en disco
 
     # ------------------------------------------------------------------ resumen
     def summary(self) -> DataSummary:
@@ -114,54 +126,43 @@ class TransferService:
         target = Path(path)
         if target.suffix.lower() != EXTENSION:
             target = target.with_name(target.name + EXTENSION)
-        workdir = Path(tempfile.mkdtemp(prefix="kreix-export-"))
+        image = _image(self._engine)                            # copia consistente, sin archivo temporal
+        probe = sqlite3.connect(":memory:")
         try:
-            snapshot = workdir / DB_ENTRY
-            dest = sqlite3.connect(snapshot)
-            try:
-                with closing(self._engine.raw_connection()) as raw:
-                    raw.driver_connection.backup(dest)            # copia consistente aunque la app este abierta
-                dest.execute("PRAGMA journal_mode=DELETE")          # un solo archivo, sin -wal
-                dest.commit()
-                summary = _sqlite_summary(dest)
-            finally:
-                dest.close()
-            manifest = {
-                "format": FORMAT,
-                "format_version": FORMAT_VERSION,
-                "schema_version": SCHEMA_VERSION,
-                "app_version": APP_VERSION,
-                "exported_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-                "counts": asdict(summary),
-            }
-            partial = target.with_name(target.name + ".part")
-            with zipfile.ZipFile(partial, "w", zipfile.ZIP_DEFLATED) as zf:
-                zf.writestr(MANIFEST_ENTRY, json.dumps(manifest, indent=2))
-                zf.write(snapshot, DB_ENTRY)
-            os.replace(partial, target)                              # el archivo final aparece completo o no aparece
-            return summary
+            probe.deserialize(image)
+            summary = _sqlite_summary(probe)
         finally:
-            shutil.rmtree(workdir, ignore_errors=True)
+            probe.close()
+        manifest = {
+            "format": FORMAT,
+            "format_version": FORMAT_VERSION,
+            "schema_version": SCHEMA_VERSION,
+            "app_version": APP_VERSION,
+            "exported_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "counts": asdict(summary),
+        }
+        partial = target.with_name(target.name + ".part")
+        with zipfile.ZipFile(partial, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr(MANIFEST_ENTRY, json.dumps(manifest, indent=2))
+            zf.writestr(DB_ENTRY, image)
+        os.replace(partial, target)                              # el archivo final aparece completo o no aparece
+        return summary
 
     # ------------------------------------------------------------------ instantaneas (para "Deshacer")
     def snapshot(self) -> Path:
-        """Copia consistente de la base de datos en un archivo temporal; quien la pide debe borrarla."""
-        fd, name = tempfile.mkstemp(prefix="kreix-undo-", suffix=".db")
-        os.close(fd)
-        dest = sqlite3.connect(name)
-        try:
-            with closing(self._engine.raw_connection()) as raw:
-                raw.driver_connection.backup(dest)
-            dest.execute("PRAGMA journal_mode=DELETE")
-            dest.commit()
-        finally:
-            dest.close()
+        """Copia consistente de la base de datos en un archivo temporal CIFRADO; quien la pide debe borrarla."""
+        image = _image(self._engine)
+        fd, name = tempfile.mkstemp(prefix="kreix-undo-", suffix=".bin")
+        with os.fdopen(fd, "wb") as f:
+            f.write(self._seal.seal(image))
         return Path(name)
 
     def restore_snapshot(self, path: str | Path) -> None:
         """Vuelve a los datos de una instantanea propia (no pasa por la validacion de archivos recibidos)."""
-        src = sqlite3.connect(str(path))
+        image = self._seal.unseal(Path(path).read_bytes())
+        src = sqlite3.connect(":memory:")
         try:
+            src.deserialize(image)
             with closing(self._engine.raw_connection()) as raw:
                 src.backup(raw.driver_connection)
         finally:
@@ -173,34 +174,34 @@ class TransferService:
     def _opened(self, path: str | Path) -> Iterator[tuple[dict, Path, DataSummary]]:
         source = Path(path)
         if not source.is_file() or not zipfile.is_zipfile(source):
-            raise TransferError("Este archivo no es una exportación de Kreix.")
+            raise TransferError(tr("Este archivo no es una exportación de Kreix."))
         workdir = Path(tempfile.mkdtemp(prefix="kreix-import-"))
         try:
             with zipfile.ZipFile(source) as zf:
                 infos = {i.filename: i for i in zf.infolist()}
                 if set(infos) != {MANIFEST_ENTRY, DB_ENTRY}:
-                    raise TransferError("Este archivo no es una exportación de Kreix.")
+                    raise TransferError(tr("Este archivo no es una exportación de Kreix."))
                 if infos[MANIFEST_ENTRY].file_size > MAX_MANIFEST_BYTES or infos[DB_ENTRY].file_size > MAX_DB_BYTES:
-                    raise TransferError("El archivo es demasiado grande para ser una exportación de Kreix.")
+                    raise TransferError(tr("El archivo es demasiado grande para ser una exportación de Kreix."))
                 try:
                     manifest = json.loads(zf.read(MANIFEST_ENTRY))
                 except (ValueError, UnicodeDecodeError) as exc:
-                    raise TransferError("La ficha del archivo está dañada.") from exc
+                    raise TransferError(tr("La ficha del archivo está dañada.")) from exc
                 if not isinstance(manifest, dict) or manifest.get("format") != FORMAT:
-                    raise TransferError("Este archivo no es una exportación de Kreix.")
+                    raise TransferError(tr("Este archivo no es una exportación de Kreix."))
                 if int(manifest.get("format_version", 0)) > FORMAT_VERSION:
-                    raise TransferError("El archivo se creó con una versión más reciente de Kreix. Actualiza la aplicación.")
+                    raise TransferError(tr("El archivo se creó con una versión más reciente de Kreix. Actualiza la aplicación."))
                 db_path = workdir / DB_ENTRY
                 written = 0
                 with zf.open(DB_ENTRY) as src, open(db_path, "wb") as out:
                     while chunk := src.read(1 << 20):
                         written += len(chunk)
                         if written > MAX_DB_BYTES:
-                            raise TransferError("El archivo es demasiado grande para ser una exportación de Kreix.")
+                            raise TransferError(tr("El archivo es demasiado grande para ser una exportación de Kreix."))
                         out.write(chunk)
             yield manifest, db_path, _validate_database(db_path)
         except zipfile.BadZipFile as exc:
-            raise TransferError("El archivo está dañado.") from exc
+            raise TransferError(tr("El archivo está dañado.")) from exc
         finally:
             shutil.rmtree(workdir, ignore_errors=True)
 

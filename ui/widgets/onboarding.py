@@ -1,4 +1,4 @@
-"""Primera vez: la bienvenida en tres pasos y la lista de "primeros pasos" del Resumen."""
+"""Primera vez: la bienvenida en tres pasos y la lista de "primeros pasos" de Inicio."""
 from __future__ import annotations
 
 from PySide6.QtCore import QPointF, QRectF, QSize, Qt, Signal
@@ -8,14 +8,16 @@ from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLay
 from ui import theme
 from ui.widgets.cards import StripeMark
 from ui.widgets.panels import Panel
+from ui.widgets.sky import SkyWidget
+from core.i18n import tr, N_
 
 WELCOME_STEPS = (
-    ("Descarga tus extractos",
-     "En Imagin: tus movimientos, en CSV o Excel. En MyInvestor: tus operaciones y tu cartera, también en CSV o Excel."),
-    ("Arrástralos a Kreix",
-     "Ve a Importar y suelta los archivos. Kreix reconoce de qué banco son y te enseña lo que ha leído antes de guardar nada."),
-    ("Explora tus finanzas",
-     "El Resumen, Cuentas e Inversiones se rellenan solos. Si reimportas un extracto, no se duplica nada."),
+    (N_("Descarga tus extractos"),
+     N_("En Imagin: tus movimientos, en CSV o Excel. En MyInvestor: tus operaciones y tu cartera, también en CSV o Excel.")),
+    (N_("Arrástralos a Kreix"),
+     N_("Ve a Importar y suelta los archivos. Kreix reconoce de qué banco son y te enseña lo que ha leído antes de guardar nada.")),
+    (N_("Explora tus finanzas"),
+     N_("Inicio, Cuentas e Inversiones se rellenan solos. Si reimportas un extracto, no se duplica nada.")),
 )
 
 
@@ -29,25 +31,41 @@ class Onboarding(QWidget):
         super().__init__()
         self.setObjectName("Page")
         stripes = StripeMark(112, 58, centered=True)
-        title = QLabel("Bienvenido a Kreix")
+        self.title = QLabel(tr("Bienvenido a Kreix"))
+        title = self.title
         title.setObjectName("H1")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        text = QLabel("Tus finanzas, en tu equipo y sin conexión. Así se empieza:")
+        self.sky = SkyWidget()
+        self.date_line = QLabel("")
+        self.date_line.setObjectName("DateLine")
+        self.date_line.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title_row = QHBoxLayout()
+        title_row.setSpacing(14)
+        title_row.addStretch(1)
+        title_row.addWidget(title)
+        title_row.addWidget(self.sky, 0, Qt.AlignmentFlag.AlignVCenter)
+        title_row.addStretch(1)
+        text = QLabel(tr("Bienvenido a Kreix: tus finanzas, en tu equipo y sin conexión. Así se empieza:"))
         text.setObjectName("Muted")
         text.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         steps = QHBoxLayout()
         steps.setSpacing(16)
+        steps_labels: list[QLabel] = []
         for number, (heading, body) in enumerate(WELCOME_STEPS, start=1):
-            steps.addWidget(self._step(number, heading, body), 1)
+            card = self._step(number, tr(heading), tr(body))
+            steps_labels.append(card.desc_label)                          # el texto explicativo de cada paso
+            steps.addWidget(card, 1)
 
-        self.import_button = QPushButton("Importar mis extractos")
+        self._step1 = steps_labels[0]
+        self._step3 = steps_labels[2]
+        self.import_button = QPushButton(tr("Importar mis extractos"))
         self.import_button.setObjectName("Primary")
         self.import_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.import_button.clicked.connect(self.go_import)
-        self.demo_button = QPushButton("Probar con datos de ejemplo")
+        self.demo_button = QPushButton(tr("Probar con datos de ejemplo"))
         self.demo_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.demo_button.setToolTip("Carga datos inventados para explorar la app. Se quitan con un clic.")
+        self.demo_button.setToolTip(tr("Carga datos inventados para explorar la app. Se quitan con un clic."))
         self.demo_button.clicked.connect(self.demo_requested)
         buttons = QHBoxLayout()
         buttons.setSpacing(12)
@@ -55,7 +73,7 @@ class Onboarding(QWidget):
         buttons.addWidget(self.import_button)
         buttons.addWidget(self.demo_button)
         buttons.addStretch(1)
-        privacy = QLabel("Todo se queda en tu ordenador: Kreix no envía datos a ningún sitio.")
+        privacy = QLabel(tr("Todo se queda en tu ordenador: Kreix no envía datos a ningún sitio."))
         privacy.setObjectName("Small")
         privacy.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
@@ -64,7 +82,8 @@ class Onboarding(QWidget):
         column.setSpacing(14)
         column.addStretch(1)
         column.addWidget(stripes, 0, Qt.AlignmentFlag.AlignCenter)
-        column.addWidget(title)
+        column.addLayout(title_row)
+        column.addWidget(self.date_line)
         column.addWidget(text)
         column.addSpacing(10)
         column.addLayout(steps)
@@ -72,6 +91,25 @@ class Onboarding(QWidget):
         column.addLayout(buttons)
         column.addWidget(privacy)
         column.addStretch(1)
+
+    def set_interests(self, accounts: bool, investments: bool) -> None:
+        """Adapta los pasos a lo que el usuario quiere gestionar."""
+        if accounts and investments:
+            first, third = tr(WELCOME_STEPS[0][1]), tr(WELCOME_STEPS[2][1])
+        elif accounts:
+            first = tr("En Imagin: tus movimientos, en CSV o Excel.")
+            third = tr("Inicio y Cuentas se rellenan solos. Si reimportas un extracto, no se duplica nada.")
+        else:
+            first = tr("En MyInvestor: tus operaciones y tu cartera, también en CSV o Excel.")
+            third = tr("Inicio e Inversiones se rellenan solos. Si reimportas un extracto, no se duplica nada.")
+        self._step1.setText(first)
+        self._step3.setText(third)
+
+    def set_date(self, text: str) -> None:
+        self.date_line.setText(text)
+
+    def set_greeting(self, text: str) -> None:
+        self.title.setText(text)
 
     @staticmethod
     def _step(number: int, heading: str, body: str) -> QFrame:
@@ -98,6 +136,7 @@ class Onboarding(QWidget):
         lay.addWidget(desc)
         lay.addStretch(1)
         card.setMinimumHeight(150)
+        card.desc_label = desc
         return card
 
 
@@ -133,20 +172,20 @@ class StepDot(QWidget):
 
 
 class SetupPanel(Panel):
-    """'Primeros pasos' del Resumen: que falta por importar o configurar, con un acceso directo a cada cosa."""
+    """'Primeros pasos' de Inicio: que falta por importar o configurar, con un acceso directo a cada cosa."""
 
     navigate_requested = Signal(str)      # "import" | "accounts"
     dismissed = Signal()
 
     def __init__(self) -> None:
-        self.hide_button = QPushButton("Ocultar")
+        self.hide_button = QPushButton(tr("Ocultar"))
         self.hide_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.hide_button.setToolTip("No volver a mostrar esta lista")
+        self.hide_button.setToolTip(tr("No volver a mostrar esta lista"))
         body = QWidget()
         self._rows = QVBoxLayout(body)
         self._rows.setContentsMargins(0, 4, 0, 0)
         self._rows.setSpacing(8)
-        super().__init__("Primeros pasos", "Lo que te falta para tener Kreix al completo", body, self.hide_button)
+        super().__init__(tr("Primeros pasos"), tr("Lo que te falta para tener Kreix al completo"), body, self.hide_button)
         self.hide_button.clicked.connect(self.dismissed)
 
     def set_steps(self, steps: list[tuple[str, bool, str]]) -> None:
@@ -166,14 +205,54 @@ class SetupPanel(Panel):
             label.setWordWrap(True)
             lay.addWidget(label, 1)
             if not done:
-                go = QPushButton("Hacerlo")
+                go = QPushButton(tr("Hacerlo"))
                 go.setCursor(Qt.CursorShape.PointingHandCursor)
                 go.setAccessibleName(f"{text}: ir")
                 go.clicked.connect(lambda _=False, t=target: self.navigate_requested.emit(t))
                 lay.addWidget(go)
             self._rows.addWidget(row)
         done_count = sum(1 for _, done, _ in steps if done)
-        self.subtitle.setText(f"{done_count} de {len(steps)} hechos")
+        self.subtitle.setText(tr("{done_count} de {steps} hechos").format(done_count=done_count, steps=len(steps)))
+
+
+class InterestOffState(QWidget):
+    """Lo que se ve en Cuentas o Inversiones si el usuario dijo que ese tema no le interesa: un boton para activarlo."""
+
+    activate_requested = Signal()
+
+    def __init__(self, title: str, text: str, button: str) -> None:
+        super().__init__()
+        self.setObjectName("Page")
+        from ui import assets
+
+        logo = QLabel()
+        logo.setPixmap(assets.mark(72))
+        logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.title_label = QLabel(title)
+        self.title_label.setObjectName("H1")
+        self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.title_label.setWordWrap(True)
+        body = QLabel(text)
+        body.setObjectName("Muted")
+        body.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        body.setWordWrap(True)
+        body.setFixedWidth(520)
+        self.button = QPushButton(button or tr("Importar extractos"))
+        self.button.setObjectName("Primary")
+        self.button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.button.clicked.connect(self.activate_requested)
+        note = QLabel(tr("También puedes cambiarlo en Ajustes, en «Lo que te interesa»."))
+        note.setObjectName("Small")
+        note.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        col = QVBoxLayout(self)
+        col.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        col.setSpacing(12)
+        col.addWidget(logo)
+        col.addWidget(self.title_label)
+        col.addWidget(body, 0, Qt.AlignmentFlag.AlignCenter)
+        col.addSpacing(6)
+        col.addWidget(self.button, 0, Qt.AlignmentFlag.AlignCenter)
+        col.addWidget(note)
 
 
 class EmptyState(QWidget):
@@ -181,7 +260,7 @@ class EmptyState(QWidget):
 
     action = Signal()
 
-    def __init__(self, title: str, will_show: str, needs: str, button: str = "Importar extractos") -> None:
+    def __init__(self, title: str, will_show: str, needs: str, button: str | None = None) -> None:
         super().__init__()
         self.setObjectName("Page")
         from ui import assets
@@ -198,7 +277,7 @@ class EmptyState(QWidget):
         show.setWordWrap(True)
         card = QFrame()
         card.setObjectName("Card")
-        heading = QLabel("QUÉ NECESITAS")
+        heading = QLabel(tr("QUÉ NECESITAS"))
         heading.setObjectName("CardTitle")
         need = QLabel(needs)
         need.setObjectName("Muted")
@@ -209,7 +288,7 @@ class EmptyState(QWidget):
         lay.addWidget(heading)
         lay.addWidget(need)
         card.setMaximumWidth(560)
-        self.button = QPushButton(button)
+        self.button = QPushButton(button or tr("Importar extractos"))
         self.button.setObjectName("Primary")
         self.button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.button.clicked.connect(self.action)

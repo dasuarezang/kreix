@@ -9,9 +9,10 @@ from PySide6.QtWidgets import QFileDialog, QFrame, QHBoxLayout, QLabel, QPushBut
 
 from services.transfer_service import EXTENSION, DataSummary, TransferError, TransferService
 from ui.widgets.cards import PageHeader, repolish
+from core.i18n import tr, N_
 
 
-NO_DATA = "Todavía no hay datos que exportar."
+NO_DATA = N_("Todavía no hay datos que exportar.")
 
 
 def _plural(n: int, one: str, many: str) -> str:
@@ -26,13 +27,13 @@ class ExportView(QWidget):
         self.setObjectName("Page")
         self._service = service
 
-        header = PageHeader("Exportar", eyebrow="Copia de seguridad",
-                            subtitle="Guarda todos tus datos en un único archivo para hacer una copia o llevarlos a otro ordenador.")
+        header = PageHeader(tr("Exportar"), eyebrow=tr("Copia de seguridad"),
+                            subtitle=tr("Guarda todos tus datos en un único archivo para hacer una copia o llevarlos a otro ordenador."))
 
         self._contents = QLabel("")
         self._contents.setWordWrap(True)
         self._contents.setTextFormat(Qt.TextFormat.RichText)
-        self.button = QPushButton("Exportar datos…")
+        self.button = QPushButton(tr("Exportar datos…"))
         self.button.setObjectName("Primary")
         self.button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.button.clicked.connect(self.choose_and_export)
@@ -45,33 +46,33 @@ class ExportView(QWidget):
         action_row.addWidget(self.button)
         action_row.addWidget(self._status, 1)
 
-        what = self._card("Qué se exporta", self._contents, self._note(
-            "Cuentas, movimientos, categorías, operaciones, cartera y ajustes. Todo tal cual está ahora."), action_row)
+        what = self._card(tr("Qué se exporta"), self._contents, self._note(
+            tr("Cuentas, movimientos, categorías, operaciones, cartera y ajustes. Todo tal cual está ahora.")), action_row)
 
         warning = QFrame()
         warning.setObjectName("Banner")
         warn_lay = QVBoxLayout(warning)
         warn_lay.setContentsMargins(18, 14, 18, 14)
-        warn_head = QLabel("<b>El archivo no está cifrado</b>")
+        warn_head = QLabel(tr("<b>El archivo no está cifrado</b>"))
         warn_head.setTextFormat(Qt.TextFormat.RichText)
-        warn_text = QLabel("Contiene tu información financiera. Guárdalo en un sitio seguro y no lo compartas.")
+        warn_text = QLabel(tr("Contiene tu información financiera. Guárdalo en un sitio seguro y no lo compartas."))
         warn_text.setWordWrap(True)
         warn_lay.addWidget(warn_head)
         warn_lay.addWidget(warn_text)
 
         steps = self._card(
-            "Cómo llevarlo a otro ordenador",
-            self._step("1", "Instala Kreix en el otro ordenador y ábrelo."),
-            self._step("2", f"Ve a Importar y arrastra el archivo {EXTENSION} a la zona de importación."),
-            self._step("3", "Confirma. Verás exactamente los mismos datos que aquí."),
-            self._note("Importar un archivo .kreix reemplaza los datos que hubiera en ese ordenador."),
+            tr("Cómo llevarlo a otro ordenador"),
+            self._step("1", tr("Instala Kreix en el otro ordenador y ábrelo.")),
+            self._step("2", tr("Ve a Importar y arrastra el archivo {EXTENSION} a la zona de importación.").format(EXTENSION=EXTENSION)),
+            self._step("3", tr("Confirma. Verás exactamente los mismos datos que aquí.")),
+            self._note(tr("Importar un archivo .kreix reemplaza los datos que hubiera en ese ordenador.")),
         )
 
         body = QWidget()
         body.setObjectName("Page")
         col = QVBoxLayout(body)
-        col.setContentsMargins(32, 28, 32, 32)
-        col.setSpacing(16)
+        col.setContentsMargins(48, 40, 48, 48)
+        col.setSpacing(26)
         for w in (header, what, warning, steps):
             col.addWidget(w)
         col.addStretch(1)
@@ -114,8 +115,8 @@ class ExportView(QWidget):
         card = QFrame()
         card.setObjectName("Card")
         lay = QVBoxLayout(card)
-        lay.setContentsMargins(22, 18, 22, 18)
-        lay.setSpacing(10)
+        lay.setContentsMargins(32, 28, 32, 28)
+        lay.setSpacing(14)
         heading = QLabel(title.upper())
         heading.setObjectName("CardTitle")
         lay.addWidget(heading)
@@ -132,19 +133,19 @@ class ExportView(QWidget):
         self._show_summary(s)
         self.button.setEnabled(not s.is_empty)
         if s.is_empty:
-            self._set_status(NO_DATA, "")
-        elif self._status.text() == NO_DATA:        # ya hay datos: se quita el aviso viejo
+            self._set_status(tr(NO_DATA), "")
+        elif self._status.text() == tr(NO_DATA):        # ya hay datos: se quita el aviso viejo
             self._set_status("", "")
 
     def _show_summary(self, s: DataSummary) -> None:
         if s.is_empty:
-            self._contents.setText("Todavía no hay nada guardado.")
+            self._contents.setText(tr("Todavía no hay nada guardado."))
             return
         lines = [
-            _plural(s.accounts, "cuenta", "cuentas"),
-            _plural(s.transactions, "movimiento bancario", "movimientos bancarios"),
-            _plural(s.operations, "operación de inversión", "operaciones de inversión"),
-            _plural(s.investments, "fondo", "fondos"),
+            _plural(s.accounts, tr("cuenta"), tr("cuentas")),
+            _plural(s.transactions, tr("movimiento bancario"), tr("movimientos bancarios")),
+            _plural(s.operations, tr("operación de inversión"), tr("operaciones de inversión")),
+            _plural(s.investments, tr("fondo"), tr("fondos")),
         ]
         self._contents.setText("<br>".join(f"• {line}" for line in lines))
 
@@ -157,8 +158,8 @@ class ExportView(QWidget):
         return f"kreix-datos-{date.today().isoformat()}{EXTENSION}"
 
     def choose_and_export(self) -> None:
-        path, _ = QFileDialog.getSaveFileName(self, "Exportar datos", self.suggested_name(),
-                                              f"Datos de Kreix (*{EXTENSION})")
+        path, _ = QFileDialog.getSaveFileName(self, tr("Exportar datos"), self.suggested_name(),
+                                              tr("Datos de Kreix (*{EXTENSION})").format(EXTENSION=EXTENSION))
         if path:
             self.export_to(path)
 
@@ -166,10 +167,10 @@ class ExportView(QWidget):
         try:
             self._service.export_to(path)
         except (TransferError, OSError) as exc:
-            self._set_status(f"No se pudo exportar: {exc}", "error")
+            self._set_status(tr("No se pudo exportar: {exc}").format(exc=exc), "error")
             return False
         final = Path(path if path.lower().endswith(EXTENSION) else path + EXTENSION)
         size_kb = max(final.stat().st_size // 1024, 1) if final.exists() else 0
-        self._set_status(f"Exportado en {final} ({size_kb} KB).", "ok")
+        self._set_status(tr("Exportado en {final} ({size_kb} KB).").format(final=final, size_kb=size_kb), "ok")
         self.exported.emit(str(final))
         return True

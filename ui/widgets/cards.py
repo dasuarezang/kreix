@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QSizePolicy, QVBoxLay
 
 from ui import fonts, theme
 from ui.widgets.charts import Sparkline
+from core.i18n import tr
 
 
 def repolish(widget: QWidget) -> None:
@@ -59,7 +60,7 @@ class ElidedLabel(QLabel):
 
 # ============================================================================ motivo de marca
 class StripeMark(QWidget):
-    """Las tres franjas inclinadas de la K del logotipo, como firma discreta de la cabecera."""
+    """Las cuatro franjas inclinadas de la K del logotipo (las de la senyera), como firma discreta de la cabecera."""
 
     def __init__(self, width: int = 64, height: int = 34, centered: bool = False) -> None:
         super().__init__()
@@ -73,10 +74,10 @@ class StripeMark(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setPen(Qt.PenStyle.NoPen)
         h = self.height()
-        slant, bar, gap = h * 0.55, h * 0.235, h * 0.205
-        block = slant + 3 * bar + 2 * gap
+        slant, bar, gap = h * 0.50, h * 0.185, h * 0.165
+        block = slant + 4 * bar + 3 * gap
         left = (self.width() - block) / 2 if self._centered else self.width() - block
-        for i, alpha in enumerate((255, 150, 70)):
+        for i, alpha in enumerate((255, 190, 120, 60)):
             c = QColor(pal.accent)
             c.setAlpha(alpha)
             painter.setBrush(c)
@@ -88,6 +89,9 @@ class StripeMark(QWidget):
             path.lineTo(x, h - 2)
             path.closeSubpath()
             painter.drawPath(path)
+
+
+ACCESSORY_GAP = 36          # espacio entre el titulo y el dibujo que lo acompana
 
 
 class PageHeader(QWidget):
@@ -105,9 +109,17 @@ class PageHeader(QWidget):
         self._subtitle.setObjectName("Muted")
         self._subtitle.setVisible(bool(subtitle))
         column = QVBoxLayout()
+        self._column = column
         column.setSpacing(2)
-        column.addWidget(self._eyebrow)
-        column.addWidget(self.title)
+        self._head_left = QVBoxLayout()                  # la etiqueta de contexto y el titulo, juntos
+        self._head_left.setSpacing(2)
+        self._head_left.addWidget(self._eyebrow)
+        self._head_left.addWidget(self.title)
+        self._title_row = QHBoxLayout()
+        self._title_row.setSpacing(14)
+        self._title_row.addLayout(self._head_left)
+        self._title_row.addStretch(1)
+        column.addLayout(self._title_row)
         column.addWidget(self._subtitle)
         self._right = QHBoxLayout()
         self._right.setSpacing(12)
@@ -116,6 +128,16 @@ class PageHeader(QWidget):
         row.addLayout(column, 1)
         row.addLayout(self._right)
         row.addWidget(StripeMark(), 0, Qt.AlignmentFlag.AlignTop)
+
+    def add_line(self, widget: QWidget) -> None:
+        """Una linea extra entre el titulo y el subtitulo (p. ej. la fecha y la hora)."""
+        self._column.insertWidget(self._column.indexOf(self._subtitle), widget)
+
+    def add_title_accessory(self, widget: QWidget) -> None:
+        """Coloca un elemento (p. ej. un dibujo animado) a la derecha del titulo, con holgura, alineado con su base. Como
+        ocupa la misma altura que la etiqueta y el titulo juntos, no separa las lineas de texto de debajo."""
+        self._title_row.setSpacing(ACCESSORY_GAP)
+        self._title_row.insertWidget(1, widget, 0, Qt.AlignmentFlag.AlignBottom)
 
     def set_subtitle(self, text: str) -> None:
         self._subtitle.setText(text)
@@ -156,9 +178,9 @@ class StatCard(QFrame):
         self._sub.setWordWrap(True)
 
         col = QVBoxLayout(self)
-        pad = (22, 14, 22, 14) if compact else (22, 18, 22, 18)
+        pad = (30, 20, 30, 20) if compact else (30, 26, 30, 26)
         col.setContentsMargins(*pad)
-        col.setSpacing(5)
+        col.setSpacing(8)
         for w in (self._title, self._value, self._sub):
             col.addWidget(w)
         col.addStretch(1)                       # el contenido se alinea arriba aunque falte la linea de contexto
@@ -227,7 +249,7 @@ class SplitBar(QWidget):
             p.drawRoundedRect(QRectF(x, 4, w, 10), 5, 5)
             x += w + 3
         cursor = 0.0
-        name_font, amount_font = fonts.qfont(fonts.BODY, 12), fonts.qfont(fonts.BODY_BOLD, 12)
+        name_font, amount_font = fonts.qfont(fonts.BODY, 12), fonts.qfont(fonts.BODY_MEDIUM, 12)
         for name, amount, _, key in self._parts:
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(QColor(getattr(pal, key)))
@@ -252,8 +274,8 @@ class HeroCard(StatCard):
         self.setObjectName("Hero")
         self._value.setObjectName("HeroValue")
         layout = self.layout()
-        layout.setContentsMargins(30, 26, 30, 22)
-        layout.setSpacing(8)
+        layout.setContentsMargins(40, 36, 40, 30)
+        layout.setSpacing(12)
         self._chips = QHBoxLayout()
         self._chips.setSpacing(8)
         self._chips.addStretch(1)
@@ -296,8 +318,8 @@ class ChartCard(QFrame):
         self._headline.setWordWrap(True)
         self._headline.hide()
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(24, 22, 24, 18)
-        layout.setSpacing(2)
+        layout.setContentsMargins(34, 30, 34, 26)
+        layout.setSpacing(4)
         layout.addWidget(heading)
         layout.addWidget(sub)
         layout.addSpacing(6)

@@ -222,7 +222,7 @@ def test_category_chart_rows_are_clickable_only_with_a_real_category(loaded):
 
 def test_a_budget_on_the_summary_leads_to_its_movements(loaded):
     loaded.accounts_view.save_budgets({TxCategory.GROCERIES: D(1)})
-    loaded.dashboard.alerts.bars.category_clicked.emit(TxCategory.GROCERIES)
+    loaded.dashboard.budgets.category_clicked.emit(TxCategory.GROCERIES)
     assert loaded.stack.currentIndex() == loaded.ACCOUNTS
     assert loaded.accounts_view.category_filter.currentData() == TxCategory.GROCERIES
 

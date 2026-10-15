@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from core.categorizer import normalize
+from core.i18n import tr
 
 CSV_ENCODINGS = ("utf-8-sig", "cp1252")
 _MINUS = str.maketrans({"−": "-", "–": "-", " ": " "})
@@ -41,7 +42,7 @@ def load_rows(path: Path) -> list[list[Any]]:
         except UnicodeDecodeError:
             continue
     else:  # pragma: no cover - cp1252 casi nunca falla
-        raise ParseError(f"No se pudo decodificar {path.name}")
+        raise ParseError(tr("No se pudo decodificar {name}").format(name=path.name))
     lines = text.splitlines()
     sample = "\n".join(lines[:20])
     try:
@@ -81,7 +82,7 @@ def to_decimal(value: Any) -> Decimal:
     if isinstance(value, Decimal):
         return value
     if isinstance(value, bool):
-        raise ParseError(f"Importe no valido: {value!r}")
+        raise ParseError(tr("Importe no valido: {value}").format(value=repr(value)))
     if isinstance(value, (int, float)):
         return Decimal(str(value))
     text = str(value).translate(_MINUS)
@@ -90,7 +91,7 @@ def to_decimal(value: Any) -> Decimal:
     try:
         return Decimal(text)
     except InvalidOperation as exc:
-        raise ParseError(f"Importe no valido: {value!r}") from exc
+        raise ParseError(tr("Importe no valido: {value}").format(value=repr(value))) from exc
 
 
 def to_date(value: Any) -> date:
@@ -104,7 +105,7 @@ def to_date(value: Any) -> date:
             return datetime.strptime(text[:size], fmt).date()
         except ValueError:
             continue
-    raise ParseError(f"Fecha no valida: {value!r}")
+    raise ParseError(tr("Fecha no valida: {value}").format(value=repr(value)))
 
 
 def clean_text(value: Any) -> str:

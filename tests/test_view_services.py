@@ -128,3 +128,12 @@ def test_investment_view_month(loaded):
     assert len(feb.positions) == 2                                 # las posiciones son siempre las actuales
     quiet = InvestmentService(loaded).view(month=date(2026, 6, 1))
     assert quiet.operations == [] and quiet.summary.contributions_period == 0
+
+
+def test_investment_view_has_a_value_history_for_each_fund(loaded):
+    v = InvestmentService(loaded).view()
+    assert [f.name for f in v.funds] == ["Fondo Test Uno", "Fondo Test Dos"]          # el que mas pesa, primero
+    dates = [w.date for w in v.evolution]
+    assert all([w.date for w in f.points] == dates for f in v.funds)
+    assert v.funds[0].points[-1].invested_value == D(110) * 13                       # su posicion al ultimo extracto
+    assert sum(f.points[-1].invested_value for f in v.funds) == v.evolution[-1].invested_value

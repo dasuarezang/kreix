@@ -37,7 +37,7 @@ def test_font_files_and_licenses_ship_with_the_app():
 
 def test_stylesheet_uses_the_brand_fonts_for_hierarchy(qapp):
     qss = theme.stylesheet(theme.DARK)
-    assert fonts.DISPLAY in qss and fonts.BODY_BOLD in qss and fonts.LABEL in qss
+    assert fonts.DISPLAY in qss and fonts.BODY_MEDIUM in qss and fonts.LABEL in qss and fonts.BODY_BOLD not in qss
     for palette in theme.PALETTES.values():
         assert palette.accent in theme.stylesheet(palette)
 

@@ -50,6 +50,9 @@ _SHAPES = {
     "book": '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2.5H20v19H6.5A2.5 2.5 0 0 1 4 19V5a2.5 2.5 0 0 1 2.5-2.5z"/>',
     "back": '<path d="M19 12H5"/><path d="M11 5l-7 7 7 7"/>',
     "chevron": '<path d="M9 5l7 7-7 7"/>',
+    # grupo "Datos": una pila de discos (almacen de tus datos)
+    "database": '<ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M4 5.5v6.5c0 1.7 3.6 3 8 3s8-1.3 8-3V5.5"/>'
+                '<path d="M4 12v6.5c0 1.7 3.6 3 8 3s8-1.3 8-3V12"/>',
 }
 
 
@@ -61,7 +64,7 @@ def _svg(name: str, color: str, stroke: float) -> bytes:
     ).encode("utf-8")
 
 
-def pixmap(name: str, color: str, size: int = 20, stroke: float = 1.9) -> QPixmap:
+def pixmap(name: str, color: str, size: int = 20, stroke: float = 1.35) -> QPixmap:
     screen = QGuiApplication.primaryScreen()
     dpr = max(screen.devicePixelRatio(), 1.0) if screen else 1.0
     pix = QPixmap(int(size * dpr), int(size * dpr))
@@ -74,7 +77,7 @@ def pixmap(name: str, color: str, size: int = 20, stroke: float = 1.9) -> QPixma
     return pix
 
 
-def button_icon(name: str, palette: Palette, size: int = 20) -> QIcon:
+def button_icon(name: str, palette: Palette, size: int = 18) -> QIcon:
     """Icono para un boton checkable: apagado (gris), encendido (sobre el acento) y al pasar el raton."""
     icon = QIcon()
     off, hover, on = palette.muted, palette.text, palette.on_accent

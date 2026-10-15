@@ -30,11 +30,12 @@ from etl.dispatcher import parse_file
 from etl.reconcile import reconcile_portfolio
 from services.import_errors import describe
 from services.mappers import load_operations, load_snapshots
+from core.i18n import tr, N_
 
 KIND_LABELS = {
-    FileKind.IMAGIN_STATEMENT: "Extracto de Imagin",
-    FileKind.MYINVESTOR_OPERATIONS: "Operaciones de MyInvestor",
-    FileKind.MYINVESTOR_PORTFOLIO: "Cartera de MyInvestor",
+    FileKind.IMAGIN_STATEMENT: N_("Extracto de Imagin"),
+    FileKind.MYINVESTOR_OPERATIONS: N_("Operaciones de MyInvestor"),
+    FileKind.MYINVESTOR_PORTFOLIO: N_("Cartera de MyInvestor"),
 }
 ACCOUNT_NAMES = {Bank.IMAGIN: "Imagin", Bank.MYINVESTOR: "MyInvestor"}
 
@@ -60,7 +61,7 @@ class FileReport:
 
     @property
     def kind_label(self) -> str:
-        return KIND_LABELS[self.kind] if self.kind else "Formato no reconocido"
+        return tr(KIND_LABELS[self.kind]) if self.kind else tr("Formato no reconocido")
 
 
 @dataclass(slots=True)
@@ -84,7 +85,7 @@ class FilePreview:
 
     @property
     def kind_label(self) -> str:
-        return KIND_LABELS[self.kind] if self.kind else "Formato no reconocido"
+        return tr(KIND_LABELS[self.kind]) if self.kind else tr("Formato no reconocido")
 
     @property
     def changes_data(self) -> bool:
@@ -141,7 +142,7 @@ class ImportService:
                 existing_accounts = list_accounts(s, AccountKind.CHECKING)
                 target = account_id if account_id is not None else (existing_accounts[0].id if existing_accounts else None)
                 if account_id is not None and not any(a.id == account_id for a in existing_accounts):
-                    return FilePreview(path.name, parsed.kind, error="La cuenta de destino ya no existe.")
+                    return FilePreview(path.name, parsed.kind, error=tr("La cuenta de destino ya no existe."))
                 hashes = {scoped_hash(target, d.tx_hash) for d in parsed.transactions} if target is not None else set()
                 known = self._known(s, Transaction.tx_hash, hashes)
                 out.rows = len(parsed.transactions)
@@ -189,7 +190,7 @@ class ImportService:
             if parsed.kind is FileKind.IMAGIN_STATEMENT:
                 target = self._checking_account_id(s, account_id)
                 if target is None:
-                    return FileReport(path.name, parsed.kind, error="La cuenta de destino ya no existe.")
+                    return FileReport(path.name, parsed.kind, error=tr("La cuenta de destino ya no existe."))
                 stats = insert_transactions(s, target, parsed.transactions)
                 if list_rules(s):                       # los movimientos nuevos tambien siguen las reglas del usuario
                     recategorize(s)

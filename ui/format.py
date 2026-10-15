@@ -1,36 +1,46 @@
-"""Formato de numeros, porcentajes y fechas en espanol (sin dependencias de Qt)."""
+"""Formato de numeros, porcentajes, fechas y etiquetas, segun el idioma activo (sin dependencias de Qt).
+
+Castellano y catalan escriben los numeros como 1.234,56 €; el ingles como €1,234.56.
+"""
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
+from core import i18n
 from core.enums import OperationType, TxCategory
+from core.i18n import N_, tr
 
 NBSP = " "
 MINUS = "−"
 EMPTY = "—"
-MONTHS_SHORT = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
-MONTHS_LONG = [
-    "enero", "febrero", "marzo", "abril", "mayo", "junio",
-    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
-]
+# Nombres en castellano, por compatibilidad: para mostrarlos usa month_short() / month_long() / i18n.months_*().
+MONTHS_SHORT = list(i18n.MONTHS_SHORT["es"])
+MONTHS_LONG = list(i18n.MONTHS_LONG["es"])
 
 
-def _es_number(value: Decimal | float, decimals: int) -> str:
+def _number(value: Decimal | float, decimals: int) -> str:
     text = f"{abs(value):,.{decimals}f}"
-    return text.replace(",", "\x00").replace(".", ",").replace("\x00", ".")
+    if i18n.decimal_comma():
+        return text.replace(",", "\x00").replace(".", ",").replace("\x00", ".")
+    return text
+
+
+_es_number = _number      # nombre antiguo
 
 
 def fmt_eur(value: Decimal | float | None, decimals: int = 2) -> str:
-    """5781.2 -> '5.781,20 €'. Los negativos usan el signo menos tipografico."""
+    """5781.2 -> '5.781,20 €' (castellano y catalan) o '€5,781.20' (ingles). Los negativos usan el signo menos."""
     if value is None:
         return EMPTY
     sign = MINUS if value < 0 and round(abs(value), decimals) != 0 else ""
-    return f"{sign}{_es_number(value, decimals)}{NBSP}€"
+    if i18n.decimal_comma():
+        return f"{sign}{_number(value, decimals)}{NBSP}€"
+    return f"{sign}€{_number(value, decimals)}"
 
 
 def fmt_pct(fraction: Decimal | float | None, decimals: int = 1, signed: bool = False) -> str:
-    """0.0441 -> '4,4 %'. Recibe una fraccion, no un porcentaje."""
+    """0.0441 -> '4,4 %' (castellano y catalan) o '4.4%' (ingles). Recibe una fraccion, no un porcentaje."""
     if fraction is None:
         return EMPTY
     pct = float(fraction) * 100
@@ -38,44 +48,62 @@ def fmt_pct(fraction: Decimal | float | None, decimals: int = 1, signed: bool = 
         sign = ""
     else:
         sign = MINUS if pct < 0 else ("+" if signed else "")
-    return f"{sign}{_es_number(pct, decimals)}{NBSP}%"
+    unit = f"{NBSP}%" if i18n.decimal_comma() else "%"
+    return f"{sign}{_number(pct, decimals)}{unit}"
 
 
 def month_short(d: date) -> str:
-    return f"{MONTHS_SHORT[d.month - 1]} {d.year % 100:02d}"
+    return f"{i18n.months_short()[d.month - 1]} {d.year % 100:02d}"
 
 
 def month_long(d: date) -> str:
-    return f"{MONTHS_LONG[d.month - 1]} {d.year}"
+    return f"{i18n.months_long()[d.month - 1]} {d.year}"
+
+
+def fmt_datetime_long(moment: datetime) -> str:
+    """'Lunes 7 de Enero del 2027 - 20:20h' (castellano), 'Dilluns 7 de Gener del 2027 - 20:20h' (catalan),
+    'Monday 7 January 2027 - 20:20' (ingles)."""
+    lang = i18n.language()
+    weekday = i18n.weekdays()[moment.weekday()].capitalize()
+    month = i18n.months_long()[moment.month - 1].capitalize()
+    clock = f"{moment.hour:02d}:{moment.minute:02d}"
+    if lang == "en":
+        return f"{weekday} {moment.day} {month} {moment.year} - {clock}"
+    particle = "d'" if lang == "ca" and month[0] in "AEIOU" else "de "
+    return f"{weekday} {moment.day} {particle}{month} del {moment.year} - {clock}h"
 
 
 CATEGORY_LABELS = {
-    TxCategory.INCOME: "Ingresos",
-    TxCategory.GROCERIES: "Supermercado",
-    TxCategory.DINING: "Restaurantes",
-    TxCategory.SUBSCRIPTIONS: "Suscripciones",
-    TxCategory.LEISURE: "Ocio",
-    TxCategory.TRANSPORT: "Transporte",
-    TxCategory.HOUSING: "Vivienda",
-    TxCategory.HEALTH: "Salud",
-    TxCategory.P2P: "Bizum",
-    TxCategory.TRANSFER: "Traspaso",
-    TxCategory.INVESTMENT_TRANSFER: "Aportación a inversión",
-    TxCategory.OTHER: "Otros",
-    TxCategory.UNCATEGORIZED: "Sin categoría",
+    TxCategory.INCOME: N_("Ingresos"),
+    TxCategory.GROCERIES: N_("Supermercado"),
+    TxCategory.DINING: N_("Restaurantes"),
+    TxCategory.SUBSCRIPTIONS: N_("Suscripciones"),
+    TxCategory.LEISURE: N_("Ocio"),
+    TxCategory.TRANSPORT: N_("Transporte"),
+    TxCategory.HOUSING: N_("Vivienda"),
+    TxCategory.HEALTH: N_("Salud"),
+    TxCategory.P2P: N_("Bizum"),
+    TxCategory.TRANSFER: N_("Traspaso"),
+    TxCategory.INVESTMENT_TRANSFER: N_("Aportación a inversión"),
+    TxCategory.OTHER: N_("Otros"),
+    TxCategory.UNCATEGORIZED: N_("Sin categoría"),
 }
 OPERATION_LABELS = {
-    OperationType.BUY: "Compra",
-    OperationType.SELL: "Venta",
-    OperationType.DIVIDEND: "Dividendo",
-    OperationType.FEE: "Comisión",
-    OperationType.DEPOSIT: "Ingreso",
-    OperationType.WITHDRAWAL: "Retirada",
+    OperationType.BUY: N_("Compra"),
+    OperationType.SELL: N_("Venta"),
+    OperationType.DIVIDEND: N_("Dividendo"),
+    OperationType.FEE: N_("Comisión"),
+    OperationType.DEPOSIT: N_("Ingreso"),
+    OperationType.WITHDRAWAL: N_("Retirada"),
 }
 
 
 def category_label(category: TxCategory) -> str:
-    return CATEGORY_LABELS.get(category, category.value)
+    return tr(CATEGORY_LABELS.get(category, category.value))
+
+
+def operation_label(op_type: OperationType) -> str:
+    return tr(OPERATION_LABELS.get(op_type, op_type.value))
 
 
 def fmt_date(d: date) -> str:
@@ -85,4 +113,4 @@ def fmt_date(d: date) -> str:
 def fmt_units(value: Decimal | float | None, decimals: int = 4) -> str:
     if value is None:
         return EMPTY
-    return _es_number(value, decimals)
+    return _number(value, decimals)

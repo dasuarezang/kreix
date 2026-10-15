@@ -6,6 +6,7 @@ from PySide6.QtGui import QColor, QPainter, QPen
 from PySide6.QtWidgets import QAbstractButton, QSizePolicy
 
 from ui import theme
+from core.i18n import tr
 
 
 class SwitchToggle(QAbstractButton):
@@ -75,7 +76,7 @@ class ThemeToggle(QAbstractButton):
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        self.setAccessibleName("Modo oscuro")
+        self.setAccessibleName(tr("Modo oscuro"))
         self._pos = 1.0 if dark else 0.0
         self._anim = QPropertyAnimation(self, b"knobPosition", self)
         self._anim.setDuration(180)

@@ -13,7 +13,7 @@ from core.budget import BudgetLine, budget_lines
 from core.metrics import AllocationSlice, FlowOptions, MonthlyFlow, WealthPoint
 from core.recurring import Recurring, detect_recurring
 from data.database import session_scope
-from data.repositories import get_budgets
+from data.repositories import get_budgets, last_import_date
 from etl.reconcile import reconcile_portfolio
 from services.mappers import load_operations, load_snapshots, load_transactions
 
@@ -39,8 +39,9 @@ class DashboardData:
     wealth: list[WealthPoint] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     upcoming: list[Recurring] = field(default_factory=list)       # proximos pagos recurrentes, el mas cercano primero
-    budget_alerts: list[BudgetLine] = field(default_factory=list)  # presupuestos cerca del tope o superados este mes
+    budgets: list[BudgetLine] = field(default_factory=list)       # todos los presupuestos frente al gasto del ultimo mes, del mas gastado al menos
     has_budgets: bool = False
+    last_update: date | None = None      # cuando se actualizaron los datos por ultima vez
     has_transactions: bool = False
     has_operations: bool = False
     has_portfolio: bool = False
@@ -54,6 +55,7 @@ class DashboardService:
         with session_scope(self._factory) as s:
             txs, ops, snaps = load_transactions(s), load_operations(s), load_snapshots(s)
             budgets = get_budgets(s)
+            imported = last_import_date(s)
         if not (txs or ops or snaps):
             return DashboardData()
 
@@ -75,6 +77,10 @@ class DashboardService:
             warnings=reconcile_portfolio(latest, ops) if latest else [],
         )
 
+        # Fecha de la ultima importacion; si no hay marcas (p. ej. solo cartera), el dia mas reciente que traen los datos.
+        newest = [d for d in ([t.booking_date for t in txs] + [o.trade_date for o in ops] + [p.as_of for p in snaps])]
+        data.last_update = imported or (max(newest) if newest else None)
+
         flows = metrics.monthly_cashflow(txs, ops, options)
         data.flows = flows[-FLOW_MONTHS:]
         if txs:
@@ -89,8 +95,7 @@ class DashboardService:
                 key=lambda r: r.next_date)
             data.has_budgets = bool(budgets)
             this_month = [t for t in txs if metrics.month_start(t.booking_date) == data.report_month]
-            data.budget_alerts = [
-                line for line in budget_lines(budgets, expense_breakdown(this_month, options)) if line.state != "ok"]
+            data.budgets = budget_lines(budgets, expense_breakdown(this_month, options))
 
         points = [t.booking_date for t in txs] + [o.trade_date for o in ops] + [p.as_of for p in snaps]
         data.wealth = metrics.wealth_evolution(txs, ops, snaps, metrics.month_ends(min(points), max(points)))

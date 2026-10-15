@@ -8,6 +8,7 @@ from core.categorizer import normalize
 from core.entities import FileKind, OperationDraft, ParseResult, PositionSnapshot
 from core.enums import Bank, OperationType
 from etl.common import HashFactory, ParseError, Table, clean_text, to_date, to_decimal
+from core.i18n import tr, N_
 
 OPS_REQUIRED = {"fecha operacion", "isin", "tipo operacion", "participaciones", "importe"}
 PORTFOLIO_REQUIRED = {"producto", "isin", "participaciones totales", "valor liquidativo actual"}
@@ -25,18 +26,18 @@ def _operation_type(raw: str) -> OperationType | None:
 def parse_operations(table: Table, source_file: str) -> ParseResult:
     missing = OPS_REQUIRED - set(table.columns)
     if missing:
-        raise ParseError(f"Faltan columnas de operaciones de MyInvestor: {sorted(missing)}")
+        raise ParseError(tr("Faltan columnas de operaciones de MyInvestor: {missing}").format(missing=sorted(missing)))
     hashes = HashFactory(Bank.MYINVESTOR.value)
     result = ParseResult(FileKind.MYINVESTOR_OPERATIONS, source_file)
 
     for line, row in enumerate(table.rows, start=2):
         status = normalize(str(row.get("estado") or "EJECUTADA"))
         if status != "EJECUTADA":
-            result.warnings.append(f"Fila {line} omitida: estado '{row.get('estado')}' (no ejecutada).")
+            result.warnings.append(tr("Fila {line} omitida: estado '{estado}' (no ejecutada).").format(line=line, estado=row.get('estado')))
             continue
         op_type = _operation_type(row["tipo operacion"])
         if op_type is None:
-            result.warnings.append(f"Fila {line} omitida: tipo de operacion desconocido '{row['tipo operacion']}'.")
+            result.warnings.append(tr("Fila {line} omitida: tipo de operacion desconocido '{operacion}'.").format(line=line, operacion=row['tipo operacion']))
             continue
         try:
             trade = to_date(row["fecha operacion"])
@@ -45,14 +46,13 @@ def parse_operations(table: Table, source_file: str) -> ParseResult:
             nav = to_decimal(row["valor liquidativo"]) if str(row.get("valor liquidativo") or "").strip() else None
             amount = abs(to_decimal(row["importe"]))
         except ParseError as exc:
-            result.warnings.append(f"Fila {line} ignorada: {exc}")
+            result.warnings.append(tr("Fila {line} ignorada: {exc}").format(line=line, exc=exc))
             continue
         isin = clean_text(row["isin"]).upper()
         cash = -amount if op_type is OperationType.BUY else amount
         if nav is not None and amount and abs(units * nav - amount) / amount > Decimal("0.005"):
             result.warnings.append(
-                f"Fila {line}: participaciones x valor liquidativo ({units * nav:.2f}) "
-                f"difiere del importe ({amount:.2f})."
+                tr("Fila {line}: participaciones x valor liquidativo ({nav:.2f}) difiere del importe ({amount:.2f}).").format(line=line, nav=units * nav, amount=amount)
             )
         result.operations.append(
             OperationDraft(
@@ -76,7 +76,7 @@ def parse_portfolio(table: Table, source_file: str, as_of: date | None = None) -
     """El extracto de cartera no incluye fecha: se usa `as_of` (por defecto, hoy)."""
     missing = PORTFOLIO_REQUIRED - set(table.columns)
     if missing:
-        raise ParseError(f"Faltan columnas de cartera de MyInvestor: {sorted(missing)}")
+        raise ParseError(tr("Faltan columnas de cartera de MyInvestor: {missing}").format(missing=sorted(missing)))
     as_of = as_of or date.today()
     result = ParseResult(FileKind.MYINVESTOR_PORTFOLIO, source_file)
 
@@ -88,12 +88,11 @@ def parse_portfolio(table: Table, source_file: str, as_of: date | None = None) -
             invested = to_decimal(row["capital invertido"])
             avg = to_decimal(row["precio medio compra"])
         except (ParseError, KeyError) as exc:
-            result.warnings.append(f"Fila {line} ignorada: {exc}")
+            result.warnings.append(tr("Fila {line} ignorada: {exc}").format(line=line, exc=exc))
             continue
         if abs(units * nav - market) > Decimal("0.05"):
             result.warnings.append(
-                f"Fila {line}: participaciones x valor liquidativo ({units * nav:.2f}) "
-                f"difiere del valor de mercado ({market:.2f})."
+                tr("Fila {line}: participaciones x valor liquidativo ({nav:.2f}) difiere del valor de mercado ({market:.2f}).").format(line=line, nav=units * nav, market=market)
             )
         result.positions.append(
             PositionSnapshot(

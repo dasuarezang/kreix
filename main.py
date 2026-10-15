@@ -5,10 +5,16 @@ import argparse
 import os
 import sys
 
+from pathlib import Path
+
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
 
+from core import i18n
+from core.i18n import tr
 from data.database import default_db_path, init_db, make_engine, make_session_factory
+from data.secure_store import SecureStore, default_vault_path, erase_legacy_db, erase_vault, legacy_db_path, read_legacy_db
+from data.vault import CorruptVaultError, WrongPasswordError
 from services.accounts_service import AccountsService
 from services.dashboard_service import DashboardService
 from services.category_service import CategoryService
@@ -18,13 +24,16 @@ from services.import_service import ImportService
 from services.investment_service import InvestmentService
 from services.settings_service import SettingsService
 from services.transfer_service import TransferService
-from ui import assets, fonts
+from ui import assets, fonts, theme
+from ui.dialogs import system_language
+from ui.lock_screen import LockDialog, LockMode
 from ui.main_window import MainWindow, Services
 
 
-def build_window(db_url: str | None = None, db_label: str | None = None) -> MainWindow:
-    engine = make_engine(db_url)
-    init_db(engine)
+def build_window(db_url: str | None = None, db_label: str | None = None, engine=None) -> MainWindow:
+    if engine is None:
+        engine = make_engine(db_url)
+        init_db(engine)
     factory = make_session_factory(engine)
     import_service = ImportService(factory)
     services = Services(
@@ -33,6 +42,49 @@ def build_window(db_url: str | None = None, db_label: str | None = None) -> Main
         CategoryService(factory), DemoService(import_service),
     )
     return MainWindow(services, db_label or str(default_db_path()))
+
+
+def unlock_store(path: Path, legacy: Path, parent=None) -> SecureStore | None:
+    """Pantalla de bloqueo: abre el almacen cifrado (o lo crea, cifrando de paso los datos sin cifrar de versiones
+    anteriores). Devuelve None si el usuario sale sin entrar."""
+    opened: list[SecureStore] = []
+
+    def unlock(password: str) -> str | None:
+        try:
+            opened.append(SecureStore.open(path, password))
+        except WrongPasswordError:
+            return tr("Contraseña incorrecta. Inténtalo de nuevo.")
+        except CorruptVaultError:
+            return tr("Este archivo de datos no es válido o está dañado.")
+        return None
+
+    def create(password: str) -> str | None:
+        try:
+            plain = read_legacy_db(legacy) if legacy.is_file() else None
+            store = SecureStore.create(path, password, plain)
+        except Exception:                                 # que un fallo nunca deje la pantalla "colgada" sin explicacion
+            return tr("No se pudieron leer los datos anteriores. No se ha borrado nada: cierra Kreix y vuelve a intentarlo.")
+        try:
+            SecureStore.open(path, password)              # se comprueba que el archivo cifrado se abre antes de borrar nada
+        except Exception:                                 # pragma: no cover - disco o permisos
+            return tr("No se pudo guardar el archivo cifrado. Revisa el espacio y los permisos de la carpeta de datos.")
+        if plain is not None:
+            erase_legacy_db(legacy)
+        opened.append(store)
+        return None
+
+    if path.is_file():
+        mode, attempt = LockMode.UNLOCK, unlock
+    else:
+        mode, attempt = (LockMode.MIGRATE if legacy.is_file() else LockMode.CREATE), create
+    i18n.set_language(system_language())                   # el idioma elegido esta dentro de los datos cifrados: aun no se conoce
+    dialog = LockDialog(mode, attempt, parent)
+    dialog.exec()
+    if dialog.reset_requested:                              # "He olvidado la contraseña": se borra todo y se empieza de cero
+        erase_vault(path)
+        dialog = LockDialog(LockMode.CREATE, create, parent)
+        dialog.exec()
+    return opened[0] if opened else None
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -45,10 +97,25 @@ def main(argv: list[str] | None = None) -> int:
     fonts.setup_application(app)
     app.setApplicationName("Kreix")
     app.setWindowIcon(assets.app_icon())
+    app.setStyleSheet(theme.stylesheet(theme.DARK))        # la pantalla de bloqueo ya sale con el estilo de la app
     db = args.db or os.environ.get("KREIX_DB")
-    window = build_window(f"sqlite:///{db}" if db else None, db)
+    store = None
+    if db:                                                  # solo pruebas/desarrollo: base alternativa sin cifrar
+        window = build_window(f"sqlite:///{db}", db)
+    else:
+        store = unlock_store(default_vault_path(), legacy_db_path())
+        if store is None:
+            return 0
+        window = build_window(engine=store.engine, db_label=str(store.path))
+        autosave = QTimer(window)                           # guarda cifrado poco despues de cada cambio
+        autosave.setInterval(2000)
+        autosave.timeout.connect(store.flush)
+        autosave.start()
+        app.aboutToQuit.connect(store.flush)                # y al cerrar
+    window.detect_language = True                           # la primera vez se propone el idioma del sistema
+    app.kreix_window = window
     window.show()
-    QTimer.singleShot(400, window.announce_new_version)     # tras pintar la ventana
+    window._later(400, window.start_up)                     # tras pintar la ventana: nombre y novedades
     return app.exec()
 
 

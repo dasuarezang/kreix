@@ -64,8 +64,8 @@ def test_sidebar_layout_top_buttons_and_bottom_pills_in_order(window):
     QApplication.processEvents()
     nav = [b for b in window.findChildren(QPushButton) if b.objectName() == "NavButton"]
     pills = [b for b in window.findChildren(QPushButton) if b.objectName() == "PillButton"]
-    assert [b.text() for b in sorted(nav, key=lambda b: b.y())] == ["Resumen", "Cuentas", "Inversiones"]
-    assert [b.text() for b in sorted(pills, key=lambda b: b.y())] == ["Importar", "Exportar", "Ajustes", "Ayuda"]
+    assert [b.text() for b in sorted(nav, key=lambda b: b.y())] == ["Inicio", "Cuentas", "Inversiones"]
+    assert [b.text() for b in sorted(pills, key=lambda b: b.y())] == ["Datos", "Ajustes", "Ayuda"]
     assert max(b.mapTo(window, b.rect().topLeft()).y() for b in nav) < min(b.mapTo(window, b.rect().topLeft()).y() for b in pills)
     toggle_y = window.theme_switch.mapTo(window, window.theme_switch.rect().topLeft()).y()
     assert toggle_y > max(p.mapTo(window, p.rect().topLeft()).y() for p in pills)    # el conmutador, debajo de las pildoras
@@ -73,7 +73,7 @@ def test_sidebar_layout_top_buttons_and_bottom_pills_in_order(window):
 
 def test_pills_have_icons_and_follow_the_theme(window):
     pills = [b for b in window.findChildren(QPushButton) if b.objectName() == "PillButton"]
-    assert len(pills) == 4 and all(not p.icon().isNull() for p in pills)
+    assert len(pills) == 3 and all(not p.icon().isNull() for p in pills)
     assert all(p.isCheckable() and p.toolTip() for p in pills)
     window.apply_theme("light")
     assert all(not p.icon().isNull() for p in pills)
@@ -92,7 +92,7 @@ def test_theme_toggle_is_visual_without_text(window):
 def test_only_one_page_button_is_active_at_a_time(window):
     for page, name in enumerate(window.PAGES):
         window.navigate(page)
-        checked = [b.text() for b in window.findChildren(QPushButton) if b.isCheckable() and b.isChecked()]
+        checked = [b.text() for b in window._nav.buttons() if b.isChecked()]
         assert checked == [name]
 
 
@@ -114,7 +114,8 @@ REQUIRED_TERMS = [
     "Valor de la cartera", "Aportación media mensual", "Posición mayor", "Operaciones", "ISIN", "Plusvalía",
     "Rentabilidad global", "TWR", "TIR", "Variación del mes", "Valor estimado", "Bizum", "Traspaso", "Participación",
     "Presupuestos", "Pagos recurrentes", "Comparación con el mes anterior", "Cambiar la categoría",
-    "Primeros pasos", "Revisar antes de importar", "Avisos y Deshacer", "Buscar en todo",
+    "Primeros pasos", "Revisar antes de importar", "Avisos y Deshacer", "Buscar en todo", "Tu nombre y el saludo",
+    "Cielo y luz según la hora", "Lo que te interesa",
 ]
 
 
@@ -271,3 +272,18 @@ def test_invalid_kreix_file_is_rejected_with_a_message_and_changes_nothing(windo
     assert dialogs.kinds() == ["warning"]
     assert window.accounts_view.table.proxy.rowCount() == 6
     assert theme.current() is theme.DARK
+
+
+def test_data_button_groups_import_and_export_in_a_hover_flyout(window):
+    window.resize(1280, 900)
+    window.show()
+    QApplication.processEvents()
+    assert not window.data_flyout.isVisible()
+    window.data_button.flyout.open_for(window.data_button)
+    QApplication.processEvents()
+    items = [b.text() for b in window.data_flyout.findChildren(QPushButton)]
+    assert items == ["Importar", "Exportar"]
+    window.navigate(window.EXPORT)
+    assert window.data_button.isChecked() and window._nav.button(window.EXPORT).isChecked()
+    window.navigate(window.SETTINGS)
+    assert not window.data_button.isChecked()

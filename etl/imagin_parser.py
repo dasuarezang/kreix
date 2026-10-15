@@ -5,6 +5,7 @@ from core.categorizer import Categorizer, normalize
 from core.entities import FileKind, ParseResult, TransactionDraft
 from core.enums import Bank
 from etl.common import HashFactory, ParseError, Table, clean_text, to_date, to_decimal
+from core.i18n import tr
 
 REQUIRED = {"concepto", "fecha", "importe", "saldo"}
 
@@ -12,7 +13,7 @@ REQUIRED = {"concepto", "fecha", "importe", "saldo"}
 def parse(table: Table, source_file: str, categorizer: Categorizer | None = None) -> ParseResult:
     missing = REQUIRED - set(table.columns)
     if missing:
-        raise ParseError(f"Faltan columnas de Imagin: {sorted(missing)}")
+        raise ParseError(tr("Faltan columnas de Imagin: {missing}").format(missing=sorted(missing)))
     categorizer = categorizer or Categorizer()
     hashes = HashFactory(Bank.IMAGIN.value)
     result = ParseResult(FileKind.IMAGIN_STATEMENT, source_file)
@@ -24,7 +25,7 @@ def parse(table: Table, source_file: str, categorizer: Categorizer | None = None
             amount = to_decimal(row["importe"])
             balance = to_decimal(row["saldo"]) if str(row["saldo"] or "").strip() else None
         except ParseError as exc:
-            result.warnings.append(f"Fila {line} ignorada: {exc}")
+            result.warnings.append(tr("Fila {line} ignorada: {exc}").format(line=line, exc=exc))
             continue
         # El saldo posterior forma parte del hash: separa pagos iguales el mismo dia
         # sin depender del orden del fichero ni de la ventana de fechas exportada.
@@ -65,8 +66,7 @@ def _check_balance_continuity(txs: list[TransactionDraft]) -> list[str]:
     check = newest_first if ok_desc >= ok_asc else oldest_first
     bad = [(a, b) for a, b in pairs if not check(a, b)]
     return [
-        f"El saldo no cuadra entre '{a.description}' ({a.booking_date}) y "
-        f"'{b.description}' ({b.booking_date}): posible movimiento faltante."
+        tr("El saldo no cuadra entre '{description}' ({booking_date}) y '{description2}' ({booking_date2}): posible movimiento faltante.").format(description=a.description, booking_date=a.booking_date, description2=b.description, booking_date2=b.booking_date)
         for a, b in bad
     ]
 

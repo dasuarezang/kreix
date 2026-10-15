@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import QTimer, Signal, Qt
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QWidget
+from core.i18n import tr
 
 DURATION_MS = 7000
 MARGIN_BOTTOM = 28
@@ -17,14 +18,14 @@ class Toast(QFrame):
         self._text = QLabel("")
         self._text.setObjectName("ToastText")
         self._text.setWordWrap(True)
-        self.undo_button = QPushButton("Deshacer")
+        self.undo_button = QPushButton(tr("Deshacer"))
         self.undo_button.setObjectName("ToastAction")
         self.undo_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.undo_button.clicked.connect(self._on_undo)
         self.close_button = QPushButton("×")
         self.close_button.setObjectName("ToastClose")
         self.close_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.close_button.setAccessibleName("Cerrar aviso")
+        self.close_button.setAccessibleName(tr("Cerrar aviso"))
         self.close_button.clicked.connect(self.hide)
         row = QHBoxLayout(self)
         row.setContentsMargins(20, 12, 10, 12)
@@ -36,7 +37,7 @@ class Toast(QFrame):
         self._timer.setSingleShot(True)
         self._timer.setInterval(DURATION_MS)
         self._timer.timeout.connect(self.hide)
-        self.setAccessibleName("Aviso")
+        self.setAccessibleName(tr("Aviso"))
         self.hide()
 
     @property

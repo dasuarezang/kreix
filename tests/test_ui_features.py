@@ -147,13 +147,15 @@ def test_window_remembers_size_and_last_page(tmp_path, qapp):
         dispose_windows(second)
 
 
-def test_summary_shows_upcoming_payments_and_budget_alerts(loaded):
+def test_summary_shows_upcoming_payments_and_all_the_budgets(loaded):
     d = loaded.dashboard
     assert [r.name for r in d.upcoming.table.visible_rows()] == ["NETFLIX.COM"]
-    assert "Sin presupuestos" in d.alerts.subtitle.text()
+    assert "Sin presupuestos" in d.budgets.subtitle.text() and d.budgets.lines == []
     loaded.accounts_view.save_budgets({TxCategory.GROCERIES: D(10), TxCategory.SUBSCRIPTIONS: D(500)})
     loaded.refresh()
-    assert [(l.category, l.state) for l in d.alerts.bars._lines] == [(TxCategory.GROCERIES, "over")]
+    assert [(l.category, l.state) for l in d.budgets.lines] == [(TxCategory.GROCERIES, "over"), (TxCategory.SUBSCRIPTIONS, "ok")]
+    assert "2 presupuestos" in d.budgets.subtitle.text() and "1 superado" in d.budgets.subtitle.text()
     loaded.accounts_view.save_budgets({TxCategory.GROCERIES: D(500)})
     loaded.refresh()
-    assert d.alerts.bars.isHidden() and "dentro de todos" in d.alerts._message.text()
+    assert [(l.category, l.state) for l in d.budgets.lines] == [(TxCategory.GROCERIES, "ok")]     # uno solo: sin flechas ni puntos
+    assert d.budgets.dots.isHidden() and d.budgets._controls.isHidden()

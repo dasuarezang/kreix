@@ -16,6 +16,10 @@ htmlcov/
 *.db-shm
 *.sqlite
 *.sqlite3
+*.krx
+*.krx.bak
+*.krx.part
+*.kreix
 ejemplos/
 demo/
 extractos/

@@ -41,6 +41,7 @@ def main() -> None:
     fonts.setup_application(app)
     window = build_window(f"sqlite:///{tmp / 'demo.db'}", "demo")
     window.show()
+    window._apply_user_name("Ana", announce=False)             # nombre inventado para el saludo de Inicio
 
     def shot(name: str) -> None:
         QTest.qWait(1800)  # espera a que terminen las animaciones de los graficos
@@ -56,12 +57,12 @@ def main() -> None:
     shot("importar-oscuro")
     window.import_view.confirm_import()
 
-    # presupuestos de demostracion, para que se vean los paneles de Resumen y Cuentas
+    # presupuestos de demostracion, para que se vean los paneles de Inicio y Cuentas
     window._svc.categories.save_budgets({TxCategory.GROCERIES: Decimal(250), TxCategory.LEISURE: Decimal(30),
                                          TxCategory.DINING: Decimal(60), TxCategory.TRANSPORT: Decimal(40)})
     window.refresh()
 
-    tabs = (("resumen", window.SUMMARY), ("cuentas", window.ACCOUNTS), ("inversion", window.INVESTMENT),
+    tabs = (("inicio", window.SUMMARY), ("cuentas", window.ACCOUNTS), ("inversion", window.INVESTMENT),
             ("ayuda", window.HELP), ("exportar", window.EXPORT))
     for theme_name, suffix in (("dark", "oscuro"), ("light", "claro")):
         window.apply_theme(theme_name)

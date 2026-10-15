@@ -1,18 +1,26 @@
 """Pantalla principal: indicadores y graficos."""
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Signal
+from collections.abc import Callable
+from datetime import datetime
+
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QFrame, QHBoxLayout, QLabel, QPushButton, QScrollArea, QStackedLayout, QVBoxLayout, QWidget,
 )
 
 from services.dashboard_service import DashboardData
-from ui.format import fmt_eur, fmt_pct, month_long
+from ui.format import fmt_date, fmt_datetime_long, fmt_eur, fmt_pct
+from core.greeting import greeting
 from ui.headlines import allocation_headline, flow_headline, wealth_headline
 from ui.widgets.cards import ChartCard, HeroCard, PageHeader, StatCard
 from ui.widgets.charts import DonutChart, FlowChart, WealthChart
 from ui.widgets.onboarding import Onboarding, SetupPanel
-from ui.widgets.panels import AlertsPanel, UpcomingPanel
+from ui.widgets.budget_carousel import BudgetCarousel
+from ui.widgets.panels import UpcomingPanel
+from ui.widgets.sky import SkyWidget
+from ui.widgets.ambient import hour_of
+from core.i18n import tr, trn
 
 
 class DashboardView(QWidget):
@@ -20,15 +28,23 @@ class DashboardView(QWidget):
     demo_requested = Signal()
     navigate_requested = Signal(str)      # "import" | "accounts": acceso directo desde los primeros pasos
     setup_dismissed = Signal()
-    category_clicked = Signal(object)     # desde un presupuesto del Resumen: ver esos movimientos en Cuentas
+    category_clicked = Signal(object)     # desde un presupuesto de Inicio: ver esos movimientos en Cuentas
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.setObjectName("Page")
         self._setup_hidden = False
+        self._user_name = ""
+        self._interests = (True, True)       # (cuentas, inversiones)
+        self.clock: Callable[[], datetime] = datetime.now      # las pruebas lo sustituyen
         self._stack = QStackedLayout(self)
         self._stack.addWidget(self._build_empty())
         self._stack.addWidget(self._build_content())
+        self._greeting_timer = QTimer(self)
+        self._greeting_timer.setInterval(1000)       # el reloj de Inicio se actualiza cada segundo (solo repinta si cambia)
+        self._greeting_timer.timeout.connect(self.update_greeting)
+        self._greeting_timer.start()
+        self.update_greeting()
 
     # ------------------------------------------------------------------ construccion
     def _build_empty(self) -> QWidget:
@@ -41,10 +57,15 @@ class DashboardView(QWidget):
         body = QWidget()
         body.setObjectName("Page")
         root = QVBoxLayout(body)
-        root.setContentsMargins(32, 28, 32, 32)
-        root.setSpacing(18)
+        root.setContentsMargins(48, 40, 48, 48)
+        root.setSpacing(28)
 
-        self.header = PageHeader("Resumen", eyebrow="Visión general")
+        self.header = PageHeader(greeting(datetime.now()), eyebrow=tr("Inicio"))
+        self.sky = SkyWidget()                              # sol o luna animados, a la derecha del nombre
+        self.header.add_title_accessory(self.sky)
+        self.date_line = QLabel("")                         # el dia y la hora, siempre al dia
+        self.date_line.setObjectName("DateLine")
+        self.header.add_line(self.date_line)
         root.addWidget(self.header)
 
         self._banner = QFrame()
@@ -54,21 +75,21 @@ class DashboardView(QWidget):
         self._banner_text = QLabel("")
         self._banner_text.setWordWrap(True)
         self._banner_text.setTextFormat(Qt.TextFormat.RichText)
-        fix = QPushButton("Ir a Importar")
+        fix = QPushButton(tr("Ir a Importar"))
         fix.clicked.connect(self.go_import)
         banner_row.addWidget(self._banner_text, 1)
         banner_row.addWidget(fix)
         root.addWidget(self._banner)
 
-        self.card_net = HeroCard("Patrimonio neto")
-        self.card_return = StatCard("Rendimiento global")
-        self.card_savings = StatCard("Tasa de ahorro del mes")
+        self.card_net = HeroCard(tr("Patrimonio neto"))
+        self.card_return = StatCard(tr("Rendimiento global"))
+        self.card_savings = StatCard(tr("Tasa de ahorro del mes"))
         side = QVBoxLayout()
-        side.setSpacing(16)
+        side.setSpacing(28)
         side.addWidget(self.card_return, 1)
         side.addWidget(self.card_savings, 1)
         top = QHBoxLayout()
-        top.setSpacing(16)
+        top.setSpacing(28)
         top.addWidget(self.card_net, 6)
         top.addLayout(side, 4)
         root.addLayout(top)
@@ -79,20 +100,20 @@ class DashboardView(QWidget):
         root.addWidget(self.setup)
 
         self.upcoming = UpcomingPanel()
-        self.alerts = AlertsPanel()
+        self.budgets = BudgetCarousel()
         attention = QHBoxLayout()
-        attention.setSpacing(16)
+        attention.setSpacing(28)
         attention.addWidget(self.upcoming, 5)
-        attention.addWidget(self.alerts, 5)
+        attention.addWidget(self.budgets, 5)
         root.addLayout(attention)
-        self.alerts.bars.category_clicked.connect(self.category_clicked)
+        self.budgets.category_clicked.connect(self.category_clicked)
 
         self.donut, self.flow, self.wealth = DonutChart(), FlowChart(), WealthChart()
         row = QHBoxLayout()
-        row.setSpacing(16)
-        self.allocation_card = ChartCard("Distribución de activos", "Liquidez en Imagin frente a inversión en MyInvestor", self.donut)
-        self.flow_card = ChartCard("Flujo de caja mensual", "Ingresos, gastos y aportaciones a MyInvestor", self.flow)
-        self.wealth_card = ChartCard("Evolución patrimonial", "Lo aportado frente a lo que vale hoy: la diferencia es el efecto de la rentabilidad compuesta", self.wealth)
+        row.setSpacing(28)
+        self.allocation_card = ChartCard(tr("Distribución de activos"), tr("Liquidez en Imagin frente a inversión en MyInvestor"), self.donut)
+        self.flow_card = ChartCard(tr("Flujo de caja mensual"), tr("Ingresos, gastos y aportaciones a MyInvestor"), self.flow)
+        self.wealth_card = ChartCard(tr("Evolución patrimonial"), tr("Lo aportado frente a lo que vale hoy: la diferencia es el efecto de la rentabilidad compuesta"), self.wealth)
         row.addWidget(self.allocation_card, 4)
         row.addWidget(self.flow_card, 6)
         root.addLayout(row)
@@ -110,64 +131,108 @@ class DashboardView(QWidget):
         self._stack.setCurrentIndex(1 if d.has_data else 0)
         if not d.has_data:
             return
-        self.header.set_subtitle(f"Datos hasta {month_long(d.report_month)}" if d.report_month else "Cartera de inversión")
+        self.header.set_subtitle(tr("Fecha de última actualización de datos: {date}").format(date=fmt_date(d.last_update)) if d.last_update else "")
 
         reliable = not d.warnings and d.xirr is not None and d.twr is not None
         net = self.card_net
-        net.set_content(fmt_eur(d.net_worth), "Todo lo que tienes: cuentas más inversiones")
+        net.set_content(fmt_eur(d.net_worth), {
+            (True, True): tr("Todo lo que tienes: cuentas más inversiones"),
+            (True, False): tr("Lo que tienes en tus cuentas"),
+            (False, True): tr("Lo que tienes invertido"),
+        }[self._interests])
         chips: list[tuple[str, str]] = []
         if d.simple_return is not None:
-            chips.append((f"{fmt_pct(d.simple_return, 2, signed=True)} rendimiento", "negative" if d.simple_return < 0 else "positive"))
+            chips.append((tr("{signed} rendimiento").format(signed=fmt_pct(d.simple_return, 2, signed=True)), "negative" if d.simple_return < 0 else "positive"))
         if reliable:
-            chips.append((f"TIR {fmt_pct(d.xirr)} anual", ""))
+            chips.append((tr("TIR {xirr} anual").format(xirr=fmt_pct(d.xirr)), ""))
+        if not self._interests[1]:
+            chips = []                              # el rendimiento y la TIR son de las inversiones
         net.set_chips(chips)
         net.trend.set_values([float(w.net_worth) for w in d.wealth])
         total = float(d.net_worth) or 1.0
-        net.split.set_parts([
-            ("Liquidez", fmt_eur(d.cash or 0), max(float(d.cash or 0), 0) / total, "neutral"),
-            ("Inversión", fmt_eur(d.portfolio_value), float(d.portfolio_value) / total, "accent"),
-        ])
+        parts = [
+            (tr("Liquidez"), fmt_eur(d.cash or 0), max(float(d.cash or 0), 0) / total, "neutral"),
+            (tr("Inversión"), fmt_eur(d.portfolio_value), float(d.portfolio_value) / total, "accent"),
+        ]
+        accounts, investments = self._interests
+        net.split.set_parts([part for part, keep in zip(parts, (accounts, investments)) if keep])
 
         if d.simple_return is None:
-            self.card_return.set_content("—", "Importa el extracto de cartera de MyInvestor")
+            self.card_return.set_content("—", tr("Importa el extracto de cartera de MyInvestor"))
         else:
-            sub = (f"TIR {fmt_pct(d.xirr)} anual  ·  TWR {fmt_pct(d.twr)}" if reliable else "Sobre el capital invertido")
+            sub = (tr("TIR {xirr} anual  ·  TWR {twr}").format(xirr=fmt_pct(d.xirr), twr=fmt_pct(d.twr)) if reliable else tr("Sobre el capital invertido"))
             self.card_return.set_content(fmt_pct(d.simple_return, 2, signed=True), sub,
                                          negative=d.simple_return < 0, positive=d.simple_return > 0)
         if d.month_savings_rate is None:
-            self.card_savings.set_content("—", "Este mes aún no hay ingresos registrados")
+            self.card_savings.set_content("—", tr("Este mes aún no hay ingresos registrados"))
         else:
             rate = d.month_savings_rate
             self.card_savings.set_content(
                 fmt_pct(rate, 0),
-                f"Ingresos {fmt_eur(d.month_income)}  ·  Gastos {fmt_eur(d.month_expenses)}",
+                tr("Ingresos {month_income}  ·  Gastos {month_expenses}").format(month_income=fmt_eur(d.month_income), month_expenses=fmt_eur(d.month_expenses)),
                 negative=rate < 0, positive=rate > 0,
             )
 
         self._banner.setVisible(bool(d.warnings))
         if d.warnings:
             extra = len(d.warnings) - 1
-            more = f" Hay {extra} aviso{'s' if extra > 1 else ''} más en Importar." if extra else ""
+            more = trn(" Hay {extra} aviso más en Importar.", " Hay {extra} avisos más en Importar.", extra).format(extra=extra) if extra else ""
             self._banner_text.setText(
-                f"<b>La cartera no cuadra con las operaciones importadas.</b> {d.warnings[0]}{more} "
-                "La TIR y el TWR no se muestran hasta que cuadre."
+                tr("<b>La cartera no cuadra con las operaciones importadas.</b> {warnings}{more} La TIR y el TWR no se muestran hasta que cuadre.").format(warnings=d.warnings[0], more=more)
             )
-        steps = [
-            ("Importa el extracto de tu cuenta", d.has_transactions, "import"),
-            ("Importa tus operaciones de MyInvestor", d.has_operations, "import"),
-            ("Importa la cartera de MyInvestor", d.has_portfolio, "import"),
-            ("Define un presupuesto mensual en Cuentas", d.has_budgets, "accounts"),
-        ]
+        accounts, investments = self._interests
+        steps = []
+        if accounts:
+            steps.append((tr("Importa el extracto de tu cuenta"), d.has_transactions, "import"))
+        if investments:
+            steps += [(tr("Importa tus operaciones de MyInvestor"), d.has_operations, "import"),
+                      (tr("Importa la cartera de MyInvestor"), d.has_portfolio, "import")]
+        if accounts:
+            steps.append((tr("Define un presupuesto mensual en Cuentas"), d.has_budgets, "accounts"))
         self.setup.set_steps(steps)
         self.setup.setVisible(not self._setup_hidden and not all(done for _, done, _ in steps))
         self.upcoming.set_items(d.upcoming)
-        self.alerts.set_state(d.budget_alerts, d.has_budgets)
+        self.budgets.set_state(d.budgets, d.has_budgets)
         self.allocation_card.set_headline(allocation_headline(d.cash, d.portfolio_value, d.net_worth))
         self.flow_card.set_headline(flow_headline(d.flows))
         self.wealth_card.set_headline(wealth_headline(d.wealth))
         self.donut.set_data(d.allocation)
         self.flow.set_data(d.flows)
         self.wealth.set_data(d.wealth)
+
+    def set_interests(self, accounts: bool, investments: bool) -> None:
+        """Muestra solo lo que le interesa al usuario: sin inversiones no hay rendimiento ni reparto de activos; sin
+        cuentas no hay tasa de ahorro, flujo de caja, pagos recurrentes ni presupuestos."""
+        self._interests = (accounts, investments)
+        self.onboarding.set_interests(accounts, investments)
+        self.card_return.setVisible(investments)
+        self.allocation_card.setVisible(investments)
+        self.card_savings.setVisible(accounts)
+        self.flow_card.setVisible(accounts)
+        self.upcoming.setVisible(accounts)
+        self.budgets.setVisible(accounts)
+
+    def set_user_name(self, name: str) -> None:
+        self._user_name = name
+        self.update_greeting()
+
+    def update_greeting(self) -> None:
+        """Pone el saludo de la hora actual. Se repite cada minuto para que cambie solo al pasar de turno."""
+        now = self.clock()
+        text = greeting(now, self._user_name)
+        self.header.title.setText(text)
+        self.onboarding.set_greeting(text)
+        stamp = fmt_datetime_long(now)
+        if self.date_line.text() != stamp:
+            self.date_line.setText(stamp)
+            self.onboarding.set_date(stamp)
+        for sky in (self.sky, self.onboarding.sky):
+            sky.set_hour(hour_of(now))
+
+    def set_animated(self, on: bool) -> None:
+        """Activa o quita el movimiento del cielo y del carrusel de presupuestos (el resto de la app no cambia)."""
+        for sky in (self.sky, self.onboarding.sky):
+            sky.set_animated(on)
 
     def set_setup_hidden(self, hidden: bool) -> None:
         self._setup_hidden = hidden
@@ -179,4 +244,4 @@ class DashboardView(QWidget):
             chart.refresh_theme()
         self.card_net.refresh_theme()
         self.upcoming.refresh_theme()
-        self.alerts.bars.update()
+        self.budgets.refresh_theme()

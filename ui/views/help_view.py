@@ -9,13 +9,15 @@ from PySide6.QtWidgets import (
 
 from ui import icons, theme
 from ui.widgets.cards import PageHeader
-from ui.help_content import ENTRIES, SECTION_INFO, SECTIONS, HelpEntry, grouped, search
+from ui.widgets.section_card import GroupHeading, SectionCard
+from ui.help_content import SECTION_INFO, SECTIONS, HelpEntry, grouped, localized_entries, search
+from core.i18n import tr
 
 ICON_PX = 26
 
 
 def entries_of(section: str) -> list[HelpEntry]:
-    return [e for e in ENTRIES if e.section == section]
+    return [e for e in localized_entries() if e.section == section]
 
 
 def _clear(layout) -> None:
@@ -45,7 +47,7 @@ class IconChip(QLabel):
         self.refresh_theme()
 
     def refresh_theme(self) -> None:
-        self.setPixmap(icons.pixmap(self._name, theme.current().on_accent, ICON_PX, 1.9))
+        self.setPixmap(icons.pixmap(self._name, theme.current().on_accent, ICON_PX, 1.4))
 
 
 class HubCard(QPushButton):
@@ -58,14 +60,14 @@ class HubCard(QPushButton):
         self.setObjectName("HubCard")
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setMinimumHeight(92)
-        self.setAccessibleName(section)
-        self.setToolTip(section)
+        self.setAccessibleName(tr(section))
+        self.setToolTip(tr(section))
 
         self.chip = IconChip(icon_name)
-        title = QLabel(section)
+        title = QLabel(tr(section))
         title.setObjectName("HubTitle")
         title.setWordWrap(True)
-        sub = QLabel(f"{description}  ·  {len(entries_of(section))} términos")
+        sub = QLabel(tr("{description}  ·  {count} términos").format(description=tr(description), count=len(entries_of(section))))
         sub.setObjectName("Small")
         sub.setWordWrap(True)
         self.chevron = QLabel()
@@ -76,8 +78,8 @@ class HubCard(QPushButton):
         text.addWidget(title)
         text.addWidget(sub)
         row = QHBoxLayout(self)
-        row.setContentsMargins(18, 14, 18, 14)
-        row.setSpacing(16)
+        row.setContentsMargins(26, 20, 26, 20)
+        row.setSpacing(18)
         row.addWidget(self.chip)
         row.addLayout(text, 1)
         row.addWidget(self.chevron)
@@ -85,7 +87,7 @@ class HubCard(QPushButton):
 
     def refresh_theme(self) -> None:
         self.chip.refresh_theme()
-        self.chevron.setPixmap(icons.pixmap("chevron", theme.current().muted, 18, 2.0))
+        self.chevron.setPixmap(icons.pixmap("chevron", theme.current().muted, 18, 1.5))
 
 
 class HelpView(QWidget):
@@ -103,20 +105,20 @@ class HelpView(QWidget):
 
     # ------------------------------------------------------------------ menu (hub)
     def _build_hub(self) -> QWidget:
-        header = PageHeader("Ayuda", eyebrow="Glosario",
-                            subtitle="Qué significa cada cifra y cada gráfico de Kreix, explicado sin tecnicismos. Elige un tema.")
+        header = PageHeader(tr("Ayuda"), eyebrow=tr("Glosario"),
+                            subtitle=tr("Qué significa cada cifra y cada gráfico de Kreix, explicado sin tecnicismos. Elige un tema."))
 
         self.search = QLineEdit()
-        self.search.setPlaceholderText("O busca un término: TIR, patrimonio neto, tasa de ahorro…")
+        self.search.setPlaceholderText(tr("O busca un término: TIR, patrimonio neto, tasa de ahorro…"))
         self.search.setClearButtonEnabled(True)
-        self.search.setAccessibleName("Buscar en la ayuda")
+        self.search.setAccessibleName(tr("Buscar en la ayuda"))
         self.search.textChanged.connect(self._on_query)
 
         self._grid_holder = QWidget()
         self._grid_holder.setObjectName("Page")
         grid = QGridLayout(self._grid_holder)
         grid.setContentsMargins(0, 0, 0, 0)
-        grid.setSpacing(14)
+        grid.setSpacing(22)
         self.cards: list[HubCard] = []
         for i, section in enumerate(SECTIONS):
             card = HubCard(section)
@@ -138,8 +140,8 @@ class HelpView(QWidget):
         body = QWidget()
         body.setObjectName("Page")
         col = QVBoxLayout(body)
-        col.setContentsMargins(32, 28, 32, 32)
-        col.setSpacing(14)
+        col.setContentsMargins(48, 40, 48, 48)
+        col.setSpacing(22)
         for w in (header, self.search, self._summary, self._grid_holder, self._results_holder):
             col.addWidget(w)
         col.addStretch(1)
@@ -147,11 +149,11 @@ class HelpView(QWidget):
 
     # ------------------------------------------------------------------ seccion
     def _build_section(self) -> QWidget:
-        self.back_button = QPushButton("  Ayuda")
+        self.back_button = QPushButton(tr("  Ayuda"))
         self.back_button.setObjectName("BackButton")
         self.back_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.back_button.setToolTip("Volver al menú de Ayuda")
-        self.back_button.setAccessibleName("Volver al menú de Ayuda")
+        self.back_button.setToolTip(tr("Volver al menú de Ayuda"))
+        self.back_button.setAccessibleName(tr("Volver al menú de Ayuda"))
         self.back_button.clicked.connect(self.show_hub)
         self.back_button.setIcon(icons.button_icon("back", theme.current(), 18))
 
@@ -179,8 +181,8 @@ class HelpView(QWidget):
         body = QWidget()
         body.setObjectName("Page")
         col = QVBoxLayout(body)
-        col.setContentsMargins(32, 24, 32, 32)
-        col.setSpacing(14)
+        col.setContentsMargins(48, 34, 48, 48)
+        col.setSpacing(22)
         col.addLayout(top)
         col.addLayout(head_row)
         col.addSpacing(6)
@@ -214,8 +216,8 @@ class HelpView(QWidget):
         self._shown = entries
         icon_name, description = SECTION_INFO[section]
         self._section_chip.set_icon(icon_name)
-        self._section_title.setText(section)
-        self._section_sub.setText(f"{description}  ·  {len(entries)} términos")
+        self._section_title.setText(tr(section))
+        self._section_sub.setText(tr("{description}  ·  {count} términos").format(description=tr(description), count=len(entries)))
         _clear(self._entries)
         for entry in entries:
             self._entries.addWidget(self._card(entry))
@@ -234,21 +236,20 @@ class HelpView(QWidget):
             if self.is_hub():
                 self._shown = []
             return
-        found = search(ENTRIES, query)
+        everything = localized_entries()
+        found = search(everything, query)
         if self.is_hub():
             self._shown = found
         if not found:
-            empty = QLabel(f"No hay resultados para «{query}». Prueba con otra palabra.")
+            empty = QLabel(tr("No hay resultados para «{query}». Prueba con otra palabra.").format(query=query))
             empty.setObjectName("Muted")
             self._results.addWidget(empty)
             self._summary.setText("")
             return
-        self._summary.setText(f"{len(found)} de {len(ENTRIES)} términos")
+        self._summary.setText(tr("{found} de {total} términos").format(found=len(found), total=len(everything)))
         for section, entries in grouped(found):
-            heading = QLabel(section.upper())
-            heading.setObjectName("SectionTitle")
             self._results.addSpacing(8)
-            self._results.addWidget(heading)
+            self._results.addWidget(GroupHeading(tr(section)))
             for entry in entries:
                 self._results.addWidget(self._card(entry))
 
@@ -274,25 +275,28 @@ class HelpView(QWidget):
     # ------------------------------------------------------------------ tarjeta de termino
     @staticmethod
     def _card(entry: HelpEntry) -> QFrame:
-        card = QFrame()
-        card.setObjectName("Card")
-        lay = QVBoxLayout(card)
-        lay.setContentsMargins(20, 16, 20, 16)
-        lay.setSpacing(6)
-        term = QLabel(entry.term)
-        term.setObjectName("H2")
-        term.setWordWrap(True)
-        lay.addWidget(term)
+        """Un termino: cabecera con su nombre, la explicacion sencilla y, debajo, filas separadas (calculo, ejemplo, aviso, consejo)."""
+        card = SectionCard(entry.term)
         plain = QLabel(entry.plain)
         plain.setWordWrap(True)
-        lay.addWidget(plain)
-        for label, text in (("Cómo lo calcula", entry.how), ("Ejemplo", entry.example),
-                            ("Ojo", entry.note), ("Qué hacer", entry.todo)):
+        card.add(plain)
+        for label, text, tone in ((tr("Cómo lo calcula"), entry.how, ""), (tr("Ejemplo"), entry.example, ""),
+                                  (tr("Ojo"), entry.note, "alert"), (tr("Qué hacer"), entry.todo, "tip")):
             if text:
-                line = QLabel(f"<b>{label}:</b> {text}")
-                line.setObjectName("Small")
-                line.setWordWrap(True)
-                line.setTextFormat(Qt.TextFormat.RichText)
-                lay.addWidget(line)
+                name = QLabel(label)
+                name.setObjectName("DetailLabel")
+                name.setProperty("tone", tone)
+                name.setFixedWidth(116)
+                name.setAlignment(Qt.AlignmentFlag.AlignTop)
+                body = QLabel(text)
+                body.setObjectName("Small")
+                body.setWordWrap(True)
+                row = QWidget()
+                lay = QHBoxLayout(row)
+                lay.setContentsMargins(0, 0, 0, 0)
+                lay.setSpacing(16)
+                lay.addWidget(name, 0, Qt.AlignmentFlag.AlignTop)
+                lay.addWidget(body, 1)
+                card.add_row(row)
         card.setAccessibleName(entry.term)
         return card

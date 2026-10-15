@@ -7,8 +7,9 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QComboBox, QHBoxLayout, QPushButton, QWidget
 
 from ui.format import month_long
+from core.i18n import tr, N_
 
-GLOBAL_LABEL = "Todo el historial"
+GLOBAL_LABEL = N_("Todo el historial")
 
 
 class PeriodBar(QWidget):
@@ -19,7 +20,7 @@ class PeriodBar(QWidget):
         self._months: list[date] = []
         self.older = QPushButton("‹")
         self.newer = QPushButton("›")
-        for button, tip in ((self.older, "Mes anterior"), (self.newer, "Mes siguiente")):
+        for button, tip in ((self.older, tr("Mes anterior")), (self.newer, tr("Mes siguiente"))):
             button.setObjectName("Arrow")
             button.setCursor(Qt.CursorShape.PointingHandCursor)
             button.setToolTip(tip)
@@ -27,8 +28,8 @@ class PeriodBar(QWidget):
             button.setFixedWidth(38)
         self.combo = QComboBox()
         self.combo.setMinimumWidth(190)
-        self.combo.setAccessibleName("Periodo")
-        self.combo.addItem(GLOBAL_LABEL, None)
+        self.combo.setAccessibleName(tr("Periodo"))
+        self.combo.addItem(tr(GLOBAL_LABEL), None)
 
         row = QHBoxLayout(self)
         row.setContentsMargins(0, 0, 0, 0)
@@ -58,7 +59,7 @@ class PeriodBar(QWidget):
         keep = self.current_month()
         self.combo.blockSignals(True)
         self.combo.clear()
-        self.combo.addItem(GLOBAL_LABEL, None)
+        self.combo.addItem(tr(GLOBAL_LABEL), None)
         for m in months:
             self.combo.addItem(month_long(m).capitalize(), m)
         self._months = list(months)

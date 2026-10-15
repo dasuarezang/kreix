@@ -8,6 +8,7 @@ from typing import Any
 from core.entities import FileKind, ParseResult
 from etl import imagin_parser, myinvestor_parser
 from etl.common import ParseError, build_table, load_rows, normalize_header
+from core.i18n import tr
 
 SIGNATURES: dict[FileKind, set[str]] = {
     FileKind.IMAGIN_STATEMENT: imagin_parser.REQUIRED,
@@ -24,14 +25,14 @@ def detect(rows: list[list[Any]]) -> tuple[FileKind, int]:
         for kind, required in SIGNATURES.items():
             if required <= headers:
                 return kind, idx
-    raise ParseError("Formato no reconocido: no se encontraron las cabeceras de Imagin ni de MyInvestor.")
+    raise ParseError(tr("Formato no reconocido: no se encontraron las cabeceras de Imagin ni de MyInvestor."))
 
 
 def parse_file(path: str | Path, portfolio_as_of: date | None = None) -> ParseResult:
     path = Path(path)
     if path.suffix.lower() == ".pdf":
         raise ParseError(
-            "Kreix solo importa extractos en CSV o Excel. Descárgalo en uno de esos formatos desde tu banco."
+            tr("Kreix solo importa extractos en CSV o Excel. Descárgalo en uno de esos formatos desde tu banco.")
         )
     rows = load_rows(path)
     kind, header_idx = detect(rows)

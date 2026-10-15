@@ -14,6 +14,7 @@ from PySide6.QtCore import QObject, Signal
 
 from services.transfer_service import TransferService
 from ui.widgets.toast import Toast
+from core.i18n import tr
 
 
 class Feedback(QObject):
@@ -46,7 +47,7 @@ class Feedback(QObject):
             self._transfer.restore_snapshot(snapshot)
         finally:
             self.remove(snapshot)
-        self._toast.show_message("Cambio deshecho")
+        self._toast.show_message(tr("Cambio deshecho"))
         self.restored.emit()
         return True
 

@@ -6,6 +6,7 @@ dos veces el mismo extracto (o extractos que se solapan) no duplica nada.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date, timezone
 from decimal import Decimal
 
 from sqlalchemy import delete, select, update
@@ -164,6 +165,23 @@ def delete_account(session: Session, account_id: int) -> None:
     if account is None:
         raise AccountError("La cuenta no existe.")
     session.delete(account)  # sus movimientos y operaciones caen en cascada
+
+
+def last_import_date(session: Session) -> date | None:
+    """El dia (hora local) en que se importaron datos por ultima vez; None si no hay marcas de importacion."""
+    from sqlalchemy import func
+
+    latest = [
+        session.scalar(select(func.max(Transaction.imported_at))),
+        session.scalar(select(func.max(InvestmentOperation.imported_at))),
+    ]
+    latest = [d for d in latest if d is not None]
+    if not latest:
+        return None
+    moment = max(latest)
+    if moment.tzinfo is None:                       # SQLite devuelve la fecha sin zona: se guardo en UTC
+        moment = moment.replace(tzinfo=timezone.utc)
+    return moment.astimezone().date()
 
 
 # ----------------------------------------------------------------- categorias y presupuestos

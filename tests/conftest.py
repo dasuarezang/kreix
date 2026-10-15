@@ -50,3 +50,13 @@ def _freeze_garbage_after_each_test():
     Se congela lo que ha quedado de cada prueba para que el recolector no vuelva a recorrerlo."""
     yield
     gc.freeze()
+
+
+@pytest.fixture(autouse=True)
+def _spanish_by_default():
+    """Cada prueba empieza (y termina) en castellano: el idioma es un estado global."""
+    from core import i18n
+
+    i18n.set_language("es")
+    yield
+    i18n.set_language("es")

@@ -133,7 +133,7 @@ class DataTable(QTableView):
         self.proxy.setSourceModel(self.model_)
         self.setModel(self.proxy)
         self.setAlternatingRowColors(False)
-        self.setFont(fonts.qfont(fonts.BODY_MEDIUM, 13, tabular=True))   # cifras de ancho fijo: las columnas se alinean
+        self.setFont(fonts.qfont(fonts.BODY, 13, tabular=True))   # cifras de ancho fijo: las columnas se alinean
         self.setShowGrid(False)
         self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
@@ -172,7 +172,7 @@ class DataTable(QTableView):
         self.setWordWrap(True)
         self.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         # la altura de fila depende del ancho de las columnas: se recalcula cuando el diseno ya se ha asentado
-        self.horizontalHeader().sectionResized.connect(lambda *_: QTimer.singleShot(0, self._refit))
+        self.horizontalHeader().sectionResized.connect(self._refit_soon)
 
     def set_rows(self, rows: Sequence[Any]) -> None:
         self.model_.set_rows(rows)
@@ -194,6 +194,16 @@ class DataTable(QTableView):
         Se recalcula al cambiar el ancho: con texto en varias lineas, la altura de fila depende del ancho."""
         self._fit_rows = max_rows
         self._refit()
+
+    def _refit_soon(self, *_args) -> None:
+        """Reajusta el alto en cuanto el diseno se asiente. El temporizador cuelga de la tabla: si la tabla desaparece antes,
+        no se ejecuta (un QTimer.singleShot suelto disparaba sobre una tabla ya destruida)."""
+        timer = getattr(self, "_refit_timer", None)
+        if timer is None:
+            timer = self._refit_timer = QTimer(self)
+            timer.setSingleShot(True)
+            timer.timeout.connect(self._refit)
+        timer.start(0)
 
     def _refit(self) -> None:
         max_rows = getattr(self, "_fit_rows", None)
@@ -220,11 +230,11 @@ class DataTable(QTableView):
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
         if getattr(self, "_fit_rows", None) is not None and getattr(self, "_wrap", False):
-            QTimer.singleShot(0, self._refit)
+            self._refit_soon()
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
-        QTimer.singleShot(0, self._refit)
+        self._refit_soon()
 
     def refresh_theme(self) -> None:
         self.viewport().update()

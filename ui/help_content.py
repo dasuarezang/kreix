@@ -8,6 +8,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from core import i18n
+from core.i18n import N_
 from core.categorizer import normalize
 
 
@@ -23,22 +25,22 @@ class HelpEntry:
     keywords: tuple[str, ...] = ()      # sinonimos para el buscador
 
 
-S_OVERVIEW = "Tu dinero de un vistazo"
-S_ACCOUNTS = "Tus cuentas bancarias"
-S_INVEST = "Tus inversiones"
-S_RETURNS = "Rentabilidad: ¿cuánto he ganado?"
-S_WARNINGS = "Avisos"
-S_USE = "Usar Kreix"
+S_OVERVIEW = N_("Tu dinero de un vistazo")
+S_ACCOUNTS = N_("Tus cuentas bancarias")
+S_INVEST = N_("Tus inversiones")
+S_RETURNS = N_("Rentabilidad: ¿cuánto he ganado?")
+S_WARNINGS = N_("Avisos")
+S_USE = N_("Usar Kreix")
 SECTIONS = (S_OVERVIEW, S_ACCOUNTS, S_INVEST, S_RETURNS, S_WARNINGS, S_USE)
 
 # icono (de ui.icons) y descripcion corta de cada seccion, para los botones del menu de ayuda
 SECTION_INFO: dict[str, tuple[str, str]] = {
-    S_OVERVIEW: ("pie", "Patrimonio, liquidez e inversión"),
-    S_ACCOUNTS: ("card", "Saldo, ingresos, gastos y ahorro"),
-    S_INVEST: ("trend", "Fondos, participaciones y aportaciones"),
-    S_RETURNS: ("percent", "Plusvalía, TWR y TIR"),
-    S_WARNINGS: ("alert", "Qué significan y qué hacer"),
-    S_USE: ("book", "Importar, exportar y atajos"),
+    S_OVERVIEW: ("pie", N_("Patrimonio, liquidez e inversión")),
+    S_ACCOUNTS: ("card", N_("Saldo, ingresos, gastos y ahorro")),
+    S_INVEST: ("trend", N_("Fondos, participaciones y aportaciones")),
+    S_RETURNS: ("percent", N_("Plusvalía, TWR y TIR")),
+    S_WARNINGS: ("alert", N_("Qué significan y qué hacer")),
+    S_USE: ("book", N_("Importar, exportar y atajos")),
 }
 
 ENTRIES: tuple[HelpEntry, ...] = (
@@ -143,7 +145,9 @@ ENTRIES: tuple[HelpEntry, ...] = (
     HelpEntry(
         S_ACCOUNTS, "Presupuestos",
         "Un tope de gasto al mes en una categoría (por ejemplo, 250 € en supermercado). Kreix te enseña cuánto llevas "
-        "gastado y cuánto te queda, y avisa en rojo cuando te pasas.",
+        "gastado y cuánto te queda, y avisa en rojo cuando te pasas. En Inicio, «Presupuestos del mes» los va mostrando "
+        "todos, de uno en uno, cada pocos segundos; con las flechas, los puntos o las teclas ← → pasas tú, y se detiene "
+        "mientras tienes el ratón encima.",
         "Gasto de la categoría en el periodo frente a tu tope. Barra verde: vas bien; amarilla: has usado más del 85 %; "
         "roja: te has pasado. Si miras todo el historial, se compara el gasto medio mensual con el tope.",
         "Tu tope de ocio es 60 € y llevas 51 €: barra amarilla, «Quedan 9,00 €».",
@@ -379,7 +383,7 @@ ENTRIES: tuple[HelpEntry, ...] = (
         "Si aún no has importado nada, la pantalla de inicio te explica qué hacer en tres pasos. Con «Probar con datos de "
         "ejemplo» puedes explorar Kreix con datos inventados, sin importar los tuyos.",
         "Los datos de ejemplo se ven con un aviso arriba. Con «Empezar con mis datos» se quitan, y también se quitan solos "
-        "cuando importas tus extractos reales: nunca se mezclan con los tuyos. Cuando ya tienes datos, el Resumen muestra "
+        "cuando importas tus extractos reales: nunca se mezclan con los tuyos. Cuando ya tienes datos, Inicio muestra "
         "una lista de primeros pasos con lo que te falta; puedes ocultarla.",
         "",
         keywords=("empezar", "demo", "ejemplo", "bienvenida", "tutorial", "primera vez"),
@@ -409,6 +413,49 @@ ENTRIES: tuple[HelpEntry, ...] = (
         "Elige con las flechas y Intro. Entiende las palabras sin acentos y por el principio de cada palabra.",
         "",
         keywords=("buscador", "atajo", "comandos", "ir a", "paleta"),
+    ),
+    HelpEntry(
+        S_USE, "Lo que te interesa: cuentas, inversiones o ambas",
+        "La primera vez, Kreix te pregunta qué quieres gestionar: tus cuentas bancarias, tus inversiones o las dos cosas. "
+        "Se elige con dos interruptores y siempre tiene que quedar al menos uno activado.",
+        "Inicio se adapta: sin inversiones no muestra el rendimiento ni el reparto de activos; sin cuentas no muestra la tasa "
+        "de ahorro, el flujo de caja, los pagos recurrentes ni los presupuestos. Lo desactivado no se borra: su pestaña sigue "
+        "ahí y ofrece un botón para activarlo. También puedes cambiarlo en Ajustes, en «Lo que te interesa». Se guarda con "
+        "tus datos y viaja con ellos al exportar e importar.",
+        "",
+        keywords=("interés", "intereses", "gestionar", "activar", "desactivar", "solo cuentas", "solo inversiones"),
+    ),
+    HelpEntry(
+        S_USE, "Idioma de la aplicación",
+        "Kreix está en castellano, català y English. La primera vez eliges el idioma en el mismo cuadro donde te pregunta "
+        "el nombre y lo que te interesa; cada idioma lleva la bandera de su país o región.",
+        "Puedes cambiarlo cuando quieras en Ajustes, en «Idioma»: toda la aplicación (menús, ayuda, avisos, fechas y "
+        "números) cambia al instante, sin perder tu sitio. El idioma se guarda con tus datos y viaja con ellos al exportar "
+        "e importar. En inglés los números se escriben como 1,234.56; en castellano y catalán, como 1.234,56.",
+        "",
+        keywords=("idioma", "lengua", "castellano", "catalán", "català", "english", "inglés", "bandera", "language"),
+    ),
+    HelpEntry(
+        S_USE, "Tu nombre y el saludo",
+        "Inicio te saluda según la hora: buenos días, buenas tardes o buenas noches, seguido de tu nombre y de un punto. "
+        "Kreix te lo pregunta la primera vez que lo abres, y puedes cambiarlo o quitarlo cuando quieras en Ajustes, en «Tu nombre».",
+        "El nombre se guarda en tu ordenador junto al resto de ajustes. Al exportar tus datos a un archivo .kreix viaja "
+        "con ellos, y al importarlo en otro equipo Kreix te saluda igual, sin volver a preguntarte. Debajo del saludo, Inicio "
+        "muestra el día y la hora (siempre al día) y la fecha de la última actualización de tus datos: el último día en que "
+        "importaste algo.",
+        "",
+        keywords=("nombre", "usuario", "saludo", "perfil", "buenos días", "inicio"),
+    ),
+    HelpEntry(
+        S_USE, "Cielo y luz según la hora",
+        "Junto a tu nombre, Inicio dibuja un sol que sale por la mañana y sube hasta el mediodía, el mismo sol bajando por la "
+        "tarde hasta ponerse, y una luna con estrellas por la noche. Se mueve despacio: los rayos giran, pasa una nube, las "
+        "estrellas centellean. Recorre su ciclo completo con la hora real, aunque dejes Kreix abierto todo el día.",
+        "Además, por la tarde y por la noche la pantalla baja su brillo muy poco (como mucho un 7 %), sin cambiar de tema ni de "
+        "colores. Si lo prefieres quieto y sin atenuar, desactiva «Cielo animado y luz según la hora» en Ajustes. "
+        "Las horas son: sol de 6 a 21, luna de 21 a 6.",
+        "",
+        keywords=("sol", "luna", "animación", "noche", "día", "brillo", "atenuar", "ambiente"),
     ),
     HelpEntry(
         S_USE, "Importar extractos",
@@ -457,7 +504,7 @@ ENTRIES: tuple[HelpEntry, ...] = (
     ),
     HelpEntry(
         S_USE, "Atajos de teclado",
-        "Ctrl+1 Resumen, Ctrl+2 Cuentas, Ctrl+3 Inversiones, Ctrl+4 Importar, Ctrl+5 Exportar, Ctrl+6 Ajustes, "
+        "Ctrl+1 Inicio, Ctrl+2 Cuentas, Ctrl+3 Inversiones, Ctrl+4 Importar, Ctrl+5 Exportar, Ctrl+6 Ajustes, "
         "Ctrl+7 Ayuda. Ctrl+T cambia entre modo claro y oscuro, Ctrl+K busca en todo, Ctrl+F busca en tus movimientos "
         "y F5 recalcula la página.",
         "",
@@ -494,3 +541,30 @@ def search(entries: tuple[HelpEntry, ...] | list[HelpEntry], query: str) -> list
 def grouped(entries: list[HelpEntry] | tuple[HelpEntry, ...]) -> list[tuple[str, list[HelpEntry]]]:
     """Entradas agrupadas por seccion, en el orden de SECTIONS."""
     return [(s, [e for e in entries if e.section == s]) for s in SECTIONS if any(e.section == s for e in entries)]
+
+
+def localized_entries() -> tuple[HelpEntry, ...]:
+    """Las entradas del glosario en el idioma activo (en castellano son las originales). Lo que no tenga traduccion
+    se queda en castellano; la seccion siempre es la clave original (se traduce al mostrarla)."""
+    language = i18n.language()
+    if language == i18n.DEFAULT:
+        return ENTRIES
+    texts = _help_texts(language)
+    out: list[HelpEntry] = []
+    for entry in ENTRIES:
+        t = texts.get(entry.term)
+        if t is None:
+            out.append(entry)
+            continue
+        out.append(HelpEntry(
+            entry.section, t.get("term", entry.term), t.get("plain", entry.plain), t.get("how", entry.how),
+            t.get("example", entry.example), t.get("note", entry.note), t.get("todo", entry.todo),
+            tuple(t.get("keywords", entry.keywords)),
+        ))
+    return tuple(out)
+
+
+def _help_texts(language: str) -> dict[str, dict]:
+    import importlib
+
+    return importlib.import_module(f"ui.help_texts.{language}").HELP

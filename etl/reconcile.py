@@ -6,6 +6,7 @@ from decimal import Decimal
 
 from core.entities import OperationDraft, PositionSnapshot
 from core.enums import OperationType
+from core.i18n import tr
 
 TOLERANCE = Decimal("0.0001")
 
@@ -24,13 +25,11 @@ def reconcile_portfolio(positions: list[PositionSnapshot], operations: list[Oper
         diff = pos.units - net.get(isin, Decimal(0))
         if abs(diff) > TOLERANCE:
             warnings.append(
-                f"{pos.product_name} ({isin}): la cartera tiene {pos.units} participaciones y las "
-                f"operaciones importadas suman {net.get(isin, Decimal(0))}. Faltan operaciones por importar."
+                tr("{product_name} ({isin}): la cartera tiene {units} participaciones y las operaciones importadas suman {Decimal}. Faltan operaciones por importar.").format(product_name=pos.product_name, isin=isin, units=pos.units, Decimal=net.get(isin, Decimal(0)))
             )
     for isin, units in net.items():
         if units > TOLERANCE and isin not in held:
             warnings.append(
-                f"{isin}: las operaciones dejan {units} participaciones pero no aparece en la cartera "
-                "(vendido, traspasado o extracto de cartera incompleto)."
+                tr("{isin}: las operaciones dejan {units} participaciones pero no aparece en la cartera (vendido, traspasado o extracto de cartera incompleto).").format(isin=isin, units=units)
             )
     return warnings

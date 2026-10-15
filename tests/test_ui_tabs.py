@@ -174,7 +174,7 @@ def test_refresh_only_reloads_the_visible_page_and_the_rest_on_entering(window, 
     window.navigate(window.SUMMARY)
     calls.clear()
     window.refresh()
-    assert calls == []                                   # el Resumen esta a la vista: no se tocan las demas
+    assert calls == []                                   # Inicio esta a la vista: no se tocan las demas
     window.navigate(window.ACCOUNTS)
     assert calls == ["accounts"]
     window.navigate(window.SUMMARY)

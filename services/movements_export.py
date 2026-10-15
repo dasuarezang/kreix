@@ -10,8 +10,9 @@ from openpyxl import Workbook
 from openpyxl.styles import Font
 
 from core.entities import TransactionDraft
+from core.i18n import tr, N_
 
-HEADERS = ("Fecha", "Cuenta", "Concepto", "Categoría", "Importe", "Saldo")
+HEADERS = (N_("Fecha"), N_("Cuenta"), N_("Concepto"), N_("Categoría"), N_("Importe"), N_("Saldo"))
 SUPPORTED = (".csv", ".xlsx")
 
 
@@ -34,7 +35,7 @@ def write_movements(
     path = Path(path)
     suffix = path.suffix.lower()
     if suffix not in SUPPORTED:
-        raise ExportError("Solo se puede exportar a CSV o Excel (.csv, .xlsx).")
+        raise ExportError(tr("Solo se puede exportar a CSV o Excel (.csv, .xlsx)."))
     rows = [
         (t.booking_date, account_names.get(t.account_id, ""), t.description, category_name(t.category), t.amount, t.balance_after)
         for t in movements
@@ -43,14 +44,14 @@ def write_movements(
         if suffix == ".csv":
             with open(path, "w", newline="", encoding="utf-8-sig") as f:      # utf-8-sig: Excel lo abre con acentos
                 writer = csv.writer(f, delimiter=";")
-                writer.writerow(HEADERS)
+                writer.writerow([tr(h) for h in HEADERS])
                 for day, account, concept, category, amount, balance in rows:
                     writer.writerow([f"{day:%d/%m/%Y}", account, concept, category, _spanish(amount), _spanish(balance)])
         else:
             book = Workbook()
             sheet = book.active
-            sheet.title = "Movimientos"
-            sheet.append(HEADERS)
+            sheet.title = tr("Movimientos")
+            sheet.append([tr(h) for h in HEADERS])
             for cell in sheet[1]:
                 cell.font = Font(bold=True)
             for day, account, concept, category, amount, balance in rows:
@@ -63,5 +64,5 @@ def write_movements(
             sheet.freeze_panes = "A2"
             book.save(path)
     except OSError as exc:
-        raise ExportError(f"No se pudo guardar el archivo: {exc.strerror or exc}") from exc
+        raise ExportError(tr("No se pudo guardar el archivo: {exc}").format(exc=exc.strerror or exc)) from exc
     return len(rows)
