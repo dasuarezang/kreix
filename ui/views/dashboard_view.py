@@ -7,48 +7,35 @@ from PySide6.QtWidgets import (
 )
 
 from services.dashboard_service import DashboardData
-from ui import assets
 from ui.format import fmt_eur, fmt_pct, month_long
+from ui.headlines import allocation_headline, flow_headline, wealth_headline
 from ui.widgets.cards import ChartCard, HeroCard, PageHeader, StatCard
 from ui.widgets.charts import DonutChart, FlowChart, WealthChart
+from ui.widgets.onboarding import Onboarding, SetupPanel
 from ui.widgets.panels import AlertsPanel, UpcomingPanel
 
 
 class DashboardView(QWidget):
     go_import = Signal()
+    demo_requested = Signal()
+    navigate_requested = Signal(str)      # "import" | "accounts": acceso directo desde los primeros pasos
+    setup_dismissed = Signal()
+    category_clicked = Signal(object)     # desde un presupuesto del Resumen: ver esos movimientos en Cuentas
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.setObjectName("Page")
+        self._setup_hidden = False
         self._stack = QStackedLayout(self)
         self._stack.addWidget(self._build_empty())
         self._stack.addWidget(self._build_content())
 
     # ------------------------------------------------------------------ construccion
     def _build_empty(self) -> QWidget:
-        page = QWidget()
-        page.setObjectName("Page")
-        logo = QLabel()
-        logo.setPixmap(assets.mark(96))
-        logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title = QLabel("Bienvenido a Kreix")
-        title.setObjectName("H1")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        text = QLabel("Tus finanzas, en tu equipo y sin conexión.\nImporta un extracto de Imagin o MyInvestor para empezar.")
-        text.setObjectName("Muted")
-        text.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        button = QPushButton("Importar extractos")
-        button.setObjectName("Primary")
-        button.setCursor(Qt.CursorShape.PointingHandCursor)
-        button.clicked.connect(self.go_import)
-        col = QVBoxLayout(page)
-        col.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        col.setSpacing(12)
-        for w in (logo, title, text):
-            col.addWidget(w)
-        col.addSpacing(8)
-        col.addWidget(button, 0, Qt.AlignmentFlag.AlignCenter)
-        return page
+        self.onboarding = Onboarding()
+        self.onboarding.go_import.connect(self.go_import)
+        self.onboarding.demo_requested.connect(self.demo_requested)
+        return self.onboarding
 
     def _build_content(self) -> QWidget:
         body = QWidget()
@@ -86,6 +73,11 @@ class DashboardView(QWidget):
         top.addLayout(side, 4)
         root.addLayout(top)
 
+        self.setup = SetupPanel()
+        self.setup.navigate_requested.connect(self.navigate_requested)
+        self.setup.dismissed.connect(self.setup_dismissed)
+        root.addWidget(self.setup)
+
         self.upcoming = UpcomingPanel()
         self.alerts = AlertsPanel()
         attention = QHBoxLayout()
@@ -93,14 +85,18 @@ class DashboardView(QWidget):
         attention.addWidget(self.upcoming, 5)
         attention.addWidget(self.alerts, 5)
         root.addLayout(attention)
+        self.alerts.bars.category_clicked.connect(self.category_clicked)
 
         self.donut, self.flow, self.wealth = DonutChart(), FlowChart(), WealthChart()
         row = QHBoxLayout()
         row.setSpacing(16)
-        row.addWidget(ChartCard("Distribución de activos", "Liquidez en Imagin frente a inversión en MyInvestor", self.donut), 4)
-        row.addWidget(ChartCard("Flujo de caja mensual", "Ingresos, gastos y aportaciones a MyInvestor", self.flow), 6)
+        self.allocation_card = ChartCard("Distribución de activos", "Liquidez en Imagin frente a inversión en MyInvestor", self.donut)
+        self.flow_card = ChartCard("Flujo de caja mensual", "Ingresos, gastos y aportaciones a MyInvestor", self.flow)
+        self.wealth_card = ChartCard("Evolución patrimonial", "Lo aportado frente a lo que vale hoy: la diferencia es el efecto de la rentabilidad compuesta", self.wealth)
+        row.addWidget(self.allocation_card, 4)
+        row.addWidget(self.flow_card, 6)
         root.addLayout(row)
-        root.addWidget(ChartCard("Evolución patrimonial", "Lo aportado frente a lo que vale hoy: la diferencia es el efecto de la rentabilidad compuesta", self.wealth))
+        root.addWidget(self.wealth_card)
         root.addStretch(1)
 
         scroll = QScrollArea()
@@ -156,11 +152,27 @@ class DashboardView(QWidget):
                 f"<b>La cartera no cuadra con las operaciones importadas.</b> {d.warnings[0]}{more} "
                 "La TIR y el TWR no se muestran hasta que cuadre."
             )
+        steps = [
+            ("Importa el extracto de tu cuenta", d.has_transactions, "import"),
+            ("Importa tus operaciones de MyInvestor", d.has_operations, "import"),
+            ("Importa la cartera de MyInvestor", d.has_portfolio, "import"),
+            ("Define un presupuesto mensual en Cuentas", d.has_budgets, "accounts"),
+        ]
+        self.setup.set_steps(steps)
+        self.setup.setVisible(not self._setup_hidden and not all(done for _, done, _ in steps))
         self.upcoming.set_items(d.upcoming)
         self.alerts.set_state(d.budget_alerts, d.has_budgets)
+        self.allocation_card.set_headline(allocation_headline(d.cash, d.portfolio_value, d.net_worth))
+        self.flow_card.set_headline(flow_headline(d.flows))
+        self.wealth_card.set_headline(wealth_headline(d.wealth))
         self.donut.set_data(d.allocation)
         self.flow.set_data(d.flows)
         self.wealth.set_data(d.wealth)
+
+    def set_setup_hidden(self, hidden: bool) -> None:
+        self._setup_hidden = hidden
+        if hidden:
+            self.setup.hide()
 
     def refresh_theme(self) -> None:
         for chart in (self.donut, self.flow, self.wealth):

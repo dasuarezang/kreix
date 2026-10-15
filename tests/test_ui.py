@@ -56,6 +56,9 @@ def test_drop_files_imports_and_fills_dashboard(window):
     window.import_view.dropzone.files_dropped.connect(got.append)
     drop(window.import_view.dropzone, [FIX / "imagin_sample.csv", FIX / "myinvestor_operaciones.csv"])
     assert len(got) == 1 and len(got[0]) == 2
+    assert window.dashboard._stack.currentIndex() == 0          # soltar solo ensena lo leido: aun no se ha guardado nada
+    assert window.import_view._preview.count() == 2
+    window.import_view.confirm_import()
 
     assert window.dashboard._stack.currentIndex() == 1          # el dashboard se actualizo solo
     assert window.dashboard.card_net._value.text() == fmt_eur(Decimal("117.51"))
@@ -121,4 +124,5 @@ def test_drop_accepts_file_without_extension(window, tmp_path):
     plain = tmp_path / "extractImagin"
     plain.write_text((FIX / "imagin_sample.csv").read_text(encoding="utf-8"), encoding="utf-8")
     drop(window.import_view.dropzone, [plain])
+    window.import_view.confirm_import()
     assert window.dashboard._stack.currentIndex() == 1

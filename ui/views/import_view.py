@@ -1,16 +1,20 @@
 """Pantalla de importacion de extractos."""
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import date
 
 from PySide6.QtCore import QDate, Qt, Signal
 from PySide6.QtWidgets import (
-    QComboBox, QDateEdit, QFrame, QHBoxLayout, QLabel, QScrollArea, QVBoxLayout, QWidget,
+    QComboBox, QDateEdit, QFrame, QHBoxLayout, QLabel, QPushButton, QScrollArea, QVBoxLayout, QWidget,
 )
 
+from core.entities import FileKind
 from services.accounts_service import AccountInfo
-from services.import_service import FileReport, ImportReport, ImportService
+from services.import_service import FilePreview, FileReport, ImportReport, ImportService
 from services.transfer_service import EXTENSION
+from ui.feedback import Feedback, snapshot_of, tell
+from ui.format import fmt_date
 from ui.widgets.cards import PageHeader, repolish
 from ui.widgets.dropzone import DropZone
 
@@ -46,7 +50,7 @@ class ResultRow(QFrame):
             if report.skipped:
                 detail += f"  ·  {report.skipped} ya existían"
         else:
-            detail = report.error or ""
+            detail = report.explanation
         sub = QLabel(detail)
         sub.setObjectName("Muted")
         sub.setWordWrap(True)
@@ -67,20 +71,88 @@ class ResultRow(QFrame):
             col.addWidget(w)
 
 
+ROW_NAMES = {
+    FileKind.IMAGIN_STATEMENT: ("movimiento", "movimientos"),
+    FileKind.MYINVESTOR_OPERATIONS: ("operación", "operaciones"),
+    FileKind.MYINVESTOR_PORTFOLIO: ("posición", "posiciones"),
+}
+
+
+def plural(n: int, kind: FileKind | None) -> str:
+    one, many = ROW_NAMES.get(kind, ("fila", "filas"))
+    return f"{n} {one if n == 1 else many}"
+
+
+class PreviewRow(QFrame):
+    """Un archivo leido y lo que pasara al importarlo: cuantas filas, de cuando a cuando, nuevas y repetidas."""
+
+    def __init__(self, preview: FilePreview) -> None:
+        super().__init__()
+        self.setObjectName("Card")
+        if not preview.ok:
+            state, label = "error", "No se puede importar"
+        elif not preview.changes_data:
+            state, label = "warn", "Nada nuevo"
+        else:
+            state, label = "ok", "Listo para importar"
+        pill = QLabel(label)
+        pill.setObjectName("Pill")
+        pill.setProperty("state", state)
+        repolish(pill)
+        name = QLabel(preview.file_name)
+        name.setObjectName("H2")
+        lines: list[str] = []
+        if preview.ok:
+            read = f"{preview.kind_label}  ·  {plural(preview.rows, preview.kind)}"
+            if preview.first and preview.last:
+                read += (f"  ·  del {fmt_date(preview.first)} al {fmt_date(preview.last)}"
+                         if preview.first != preview.last else f"  ·  {fmt_date(preview.first)}")
+            lines.append(read)
+            parts = [f"{preview.new} nuevos"]
+            if preview.updated:
+                parts.append(f"{preview.updated} se actualizarán")
+            if preview.existing:
+                parts.append(f"{preview.existing} ya estaban importados y se ignoran")
+            lines.append("  ·  ".join(parts))
+        else:
+            lines.append(preview.explanation)
+        top = QHBoxLayout()
+        top.addWidget(name)
+        top.addStretch(1)
+        top.addWidget(pill)
+        col = QVBoxLayout(self)
+        col.setContentsMargins(18, 14, 18, 14)
+        col.setSpacing(4)
+        col.addLayout(top)
+        for i, text in enumerate(lines):
+            label_ = QLabel(text)
+            label_.setObjectName("Muted" if i == 0 or not preview.ok else "Small")
+            label_.setWordWrap(True)
+            col.addWidget(label_)
+        for warning in preview.warnings:
+            w = QLabel(f"• {warning}")
+            w.setObjectName("Small")
+            w.setWordWrap(True)
+            col.addWidget(w)
+
+
 class ImportView(QWidget):
     imported = Signal()
     restore_requested = Signal(str)     # se ha soltado un archivo .kreix exportado desde otro Kreix
+    feedback: Feedback | None = None    # lo asigna la ventana: avisos y "Deshacer"
 
     def __init__(self, service: ImportService, parent=None) -> None:
         super().__init__(parent)
         self.setObjectName("Page")
         self._service = service
+        self.before_import: Callable[[], None] | None = None   # la ventana lo usa para quitar los datos de ejemplo
+        self._pending: list[str] = []
 
         header = PageHeader("Importar extractos", eyebrow="Entrada de datos",
                             subtitle="Los archivos se procesan en tu equipo. Reimportar un extracto no duplica movimientos.")
 
         self.dropzone = DropZone()
-        self.dropzone.files_dropped.connect(self.import_paths)
+        self.dropzone.files_dropped.connect(self.preview_paths)
 
         self.as_of = QDateEdit(QDate.currentDate())
         self.as_of.setCalendarPopup(True)
@@ -116,6 +188,32 @@ class ImportView(QWidget):
 
         self._results = QVBoxLayout()
         self._results.setSpacing(10)
+        self._preview = QVBoxLayout()
+        self._preview.setSpacing(10)
+        self._preview_title = QLabel("Revisa antes de importar")
+        self._preview_title.setObjectName("H2")
+        self._preview_hint = QLabel("Esto es lo que Kreix ha leído. Todavía no se ha guardado nada.")
+        self._preview_hint.setObjectName("Small")
+        self.cancel_button = QPushButton("Cancelar")
+        self.cancel_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.cancel_button.clicked.connect(self.cancel_preview)
+        self.confirm_button = QPushButton("Importar")
+        self.confirm_button.setObjectName("Primary")
+        self.confirm_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.confirm_button.clicked.connect(self.confirm_import)
+        actions = QHBoxLayout()
+        actions.addStretch(1)
+        actions.addWidget(self.cancel_button)
+        actions.addWidget(self.confirm_button)
+        self._preview_box = QWidget()
+        box = QVBoxLayout(self._preview_box)
+        box.setContentsMargins(0, 0, 0, 0)
+        box.setSpacing(8)
+        box.addWidget(self._preview_title)
+        box.addWidget(self._preview_hint)
+        box.addLayout(self._preview)
+        box.addLayout(actions)
+        self._preview_box.hide()
         results_title = QLabel("Resultado")
         results_title.setObjectName("H2")
         self._results_title = results_title
@@ -131,6 +229,7 @@ class ImportView(QWidget):
         col.addLayout(account_row)
         col.addLayout(as_of_row)
         col.addSpacing(6)
+        col.addWidget(self._preview_box)
         col.addWidget(results_title)
         col.addLayout(self._results)
         col.addStretch(1)
@@ -160,6 +259,41 @@ class ImportView(QWidget):
         qd = self.as_of.date()
         return date(qd.year(), qd.month(), qd.day())
 
+    def preview_paths(self, paths: list[str]) -> None:
+        """Lo que se suelta o se elige: se lee y se ensena que pasaria; se guarda al pulsar Importar."""
+        backups = [p for p in paths if p.lower().endswith(EXTENSION)]
+        paths = [p for p in paths if p not in backups]
+        if backups:
+            self.restore_requested.emit(backups[0])
+            if not paths:
+                return
+        previews = self._service.preview(paths, self.portfolio_date(), self.account_combo.currentData())
+        _clear(self._preview)
+        for preview in previews:
+            self._preview.addWidget(PreviewRow(preview))
+        self._pending = [p for p, preview in zip(paths, previews) if preview.ok]
+        ready = [pr for pr in previews if pr.changes_data]
+        self.confirm_button.setEnabled(bool(ready))
+        if ready:
+            total = sum(pr.new + pr.updated for pr in ready)
+            self.confirm_button.setText(f"Importar {total} filas nuevas" if total != 1 else "Importar 1 fila nueva")
+        else:
+            self.confirm_button.setText("No hay nada nuevo que importar")
+        self._preview_box.show()
+        self._results_title.hide()
+        _clear(self._results)
+
+    def cancel_preview(self) -> None:
+        self._pending = []
+        self._preview_box.hide()
+        _clear(self._preview)
+
+    def confirm_import(self) -> ImportReport | None:
+        paths, self._pending = self._pending, []
+        self._preview_box.hide()
+        _clear(self._preview)
+        return self.import_paths(paths) if paths else None
+
     def import_paths(self, paths: list[str]) -> ImportReport | None:
         backups = [p for p in paths if p.lower().endswith(EXTENSION)]
         paths = [p for p in paths if p not in backups]
@@ -167,10 +301,22 @@ class ImportView(QWidget):
             self.restore_requested.emit(backups[0])
             if not paths:
                 return None
+        if self.before_import is not None:
+            self.before_import()
+        snapshot = snapshot_of(self.feedback)
         report = self._service.import_files(paths, self.portfolio_date(), self.account_combo.currentData())
         self.show_report(report)
         if report.total_changed:
             self.imported.emit()
+            added = sum(f.inserted for f in report.files)
+            changed = sum(f.updated for f in report.files)
+            text = f"Importado: {added} nuevos" + (f" y {changed} actualizados" if changed else "") + "."
+            tell(self.feedback, text, snapshot)
+        else:
+            tell(self.feedback, "No había nada nuevo que importar." if any(f.ok for f in report.files)
+                 else "No se ha podido importar ningún archivo.")
+            if snapshot is not None:
+                self.feedback.remove(snapshot)       # no cambio nada: no hay nada que deshacer
         return report
 
     def show_report(self, report: ImportReport) -> None:

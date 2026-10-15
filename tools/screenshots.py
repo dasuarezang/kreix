@@ -35,6 +35,7 @@ def main() -> None:
     as_of = demo_data.build(tmp / "demo")
 
     app = QApplication(sys.argv[:1])
+    app.setStyle("Fusion")
     from ui import fonts
 
     fonts.setup_application(app)
@@ -46,10 +47,14 @@ def main() -> None:
         window.grab().save(str(out / f"{name}.png"))
 
     window.resize(1280, 1180)
+    shot("bienvenida-oscuro")                                   # la app vacia: la guia de tres pasos
+
     window.navigate(window.IMPORT)
     window.import_view.as_of.setDate(QDate(as_of.year, as_of.month, as_of.day))
-    window.import_view.import_paths([str(p) for p in sorted((tmp / "demo").glob("*.csv"))])
+    files = [str(p) for p in sorted((tmp / "demo").glob("*.csv"))]
+    window.import_view.preview_paths(files)                     # lo que Kreix ha leido, antes de guardar nada
     shot("importar-oscuro")
+    window.import_view.confirm_import()
 
     # presupuestos de demostracion, para que se vean los paneles de Resumen y Cuentas
     window._svc.categories.save_budgets({TxCategory.GROCERIES: Decimal(250), TxCategory.LEISURE: Decimal(30),

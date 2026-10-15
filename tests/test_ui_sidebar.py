@@ -114,6 +114,7 @@ REQUIRED_TERMS = [
     "Valor de la cartera", "Aportación media mensual", "Posición mayor", "Operaciones", "ISIN", "Plusvalía",
     "Rentabilidad global", "TWR", "TIR", "Variación del mes", "Valor estimado", "Bizum", "Traspaso", "Participación",
     "Presupuestos", "Pagos recurrentes", "Comparación con el mes anterior", "Cambiar la categoría",
+    "Primeros pasos", "Revisar antes de importar", "Avisos y Deshacer", "Buscar en todo",
 ]
 
 
@@ -222,7 +223,8 @@ def test_data_moves_between_two_instances_through_the_kreix_file(tmp_path, dialo
 
         assert b.dashboard._stack.currentIndex() == 0                # el destino arranca vacio
         drop(b.import_view.dropzone, [file])                         # se suelta el archivo en Importar
-        assert dialogs.kinds() == ["information"]                    # sin datos previos: no pide confirmar
+        assert dialogs.kinds() == []                                 # sin datos previos: ni pide confirmar ni abre ventanas
+        assert b.toast.text.startswith("Datos importados")                   # avisa con un aviso flotante, no con una ventana
 
         assert b.dashboard._stack.currentIndex() == 1
         assert b.dashboard.card_net._value.text() == a.dashboard.card_net._value.text()
@@ -252,8 +254,11 @@ def test_restoring_over_existing_data_asks_first(tmp_path, monkeypatch, qapp):
 
         accept = Dialogs(monkeypatch, QMessageBox.StandardButton.Yes)
         assert b.restore_from(str(file)) is True
-        assert accept.kinds() == ["question", "information"]
+        assert accept.kinds() == ["question"]
         assert b.accounts_view.table.proxy.rowCount() == 6                    # ahora son los del archivo
+        assert b.feedback.can_undo and b.toast.text.startswith("Datos importados")
+        b.feedback.undo()                                                     # Deshacer devuelve los datos de antes
+        assert b.accounts_view.table.proxy.rowCount() == 4
     finally:
         dispose_windows(a, b)
 

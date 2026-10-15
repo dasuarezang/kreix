@@ -16,7 +16,10 @@
 
 ## Qué hace
 
-- **Importa extractos arrastrándolos a la ventana.** Kreix detecta el banco y el tipo de archivo por las cabeceras, no por el nombre ni la extensión.
+- **Importa extractos arrastrándolos a la ventana.** Kreix detecta el banco y el tipo de archivo por las cabeceras, no por el nombre ni la extensión, y **te enseña lo que ha leído antes de guardar nada**: cuántos movimientos, de qué fechas, cuántos son nuevos y cuántos ya estaban.
+- **Pensado para no perderse:** una guía de tres pasos la primera vez, datos de ejemplo para explorar sin importar nada, una lista de primeros pasos en el Resumen, una frase bajo cada gráfico que dice lo que cuenta y errores que explican qué hacer.
+- **Todo se confirma y se puede deshacer:** cada cambio importante avisa con un mensaje breve y un botón **Deshacer** (importar, categorías, reglas, presupuestos, borrados...).
+- **Búsqueda en todo (`Ctrl+K`):** páginas, acciones, movimientos y explicaciones de la ayuda.
 - **Nunca duplica movimientos.** Puedes reimportar el mismo extracto, o varios que se solapan, y solo se añade lo nuevo. Dos pagos idénticos el mismo día se distinguen por el saldo posterior.
 - **Categoriza los gastos** con reglas por palabras clave (supermercado, suscripciones, ocio, restaurantes, transporte, vivienda, salud, Bizum...) y **tú mandas**: cambia la categoría de un movimiento con clic derecho o crea tus propias reglas.
 - **Presupuestos por categoría:** fija un tope mensual y mira cuánto llevas gastado; el Resumen avisa de los que estás a punto de superar o ya has superado.
@@ -44,7 +47,18 @@ Arriba a la izquierda están las tres vistas de tus datos; abajo, en forma de p�
 | **Ajustes** | Qué cuenta como ingreso, tus reglas de categorías, borrar datos, ruta de la base de datos. |
 | **Ayuda** | Qué significa cada cifra y cada gráfico, explicado sin tecnicismos y con ejemplos. |
 
-Atajos: `Ctrl+1` a `Ctrl+7` cambian de página en el orden de la tabla, `Ctrl+T` alterna el modo claro y oscuro, `Ctrl+F` va al buscador de movimientos y `F5` recalcula la página.
+Atajos: `Ctrl+1` a `Ctrl+7` cambian de página en el orden de la tabla, `Ctrl+K` busca en todo, `Ctrl+T` alterna el modo claro y oscuro, `Ctrl+F` va al buscador de movimientos y `F5` recalcula la página.
+
+<p align="center">
+  <img src="docs/screenshots/bienvenida-oscuro.png" alt="Pantalla de bienvenida" width="49%">
+  <img src="docs/screenshots/importar-oscuro.png" alt="Vista previa de la importación" width="49%">
+</p>
+
+**La primera vez.** Con la app vacía, la pantalla de inicio explica en tres pasos qué descargar y dónde soltarlo, y ofrece **Probar con datos de ejemplo**: datos inventados con un aviso arriba y un botón *Empezar con mis datos*. Se quitan solos al importar tus extractos reales, así que nunca se mezclan con los tuyos. Con datos ya cargados, el Resumen muestra una lista de **primeros pasos** (importar la cuenta, las operaciones, la cartera, definir un presupuesto) que puedes ocultar.
+
+**Revisar antes de importar.** Al soltar archivos, Kreix muestra una tarjeta por archivo (tipo, número de filas, fechas, nuevas, ya importadas y, en la cartera, las que se actualizan) y espera a que pulses *Importar*. Si un archivo no se puede leer, explica el motivo y qué hacer (por ejemplo, descargarlo otra vez en CSV o Excel sin editarlo). Un archivo `.kreix` se restaura directamente, con su propia confirmación.
+
+**Avisos y Deshacer.** Tras cada cambio importante aparece un aviso abajo. Mientras siga a la vista, *Deshacer* devuelve los datos exactamente a como estaban: antes de cada cambio Kreix guarda una copia de la base de datos. Solo se deshace el último cambio.
 
 **Ayuda.** Un menú de seis temas (Tu dinero de un vistazo, Tus cuentas bancarias, Tus inversiones, Rentabilidad, Avisos y Usar Kreix); cada botón abre su sección y una flecha vuelve al menú. Es un glosario para quien no sabe de finanzas: patrimonio neto, tasa de ahorro, valor liquidativo, plusvalía, TWR, TIR y el resto de términos que muestra Kreix. Cada uno explica qué es, cómo lo calcula Kreix y da un ejemplo con números. Buscar "tir" encuentra la TIR, pero no "invertir".
 
@@ -65,9 +79,11 @@ Atajos: `Ctrl+1` a `Ctrl+7` cambian de página en el orden de la tabla, `Ctrl+T`
 - En Cuentas, el saldo es el **saldo al cierre** del mes y la media de gasto pasa de mensual a diaria.
 - En Inversión, el mes muestra el valor estimado al cierre, lo aportado en el mes, la variación sin contar aportaciones y la rentabilidad del mes.
 
+**Acciones visibles.** Cada movimiento tiene un botón **•••** (también doble clic o clic derecho) para cambiar su categoría, crear una regla o copiar el concepto. Pulsar una categoría en el gráfico de gastos, o un presupuesto, filtra la tabla con esos movimientos.
+
 **Movimientos.** La tabla de Cuentas ordena los movimientos del más reciente al más antiguo y, dentro de un mismo día, en su orden real (se reconstruye con la cadena de saldos). Se puede buscar por concepto, filtrar por categoría y ordenar pulsando cualquier cabecera. Con varias cuentas aparece una columna "Cuenta".
 
-**Categorías a tu gusto.** Clic derecho sobre un movimiento: *Cambiar categoría* (tu elección no la pisa ninguna regla), *Volver a la categoría automática* o *Crear regla para…*, que lleva a una categoría todos los conceptos con esa palabra, también los que importes después. Tus reglas mandan sobre las que trae Kreix y se gestionan en **Ajustes > Reglas de categorías**.
+**Categorías a tu gusto.** Con ••• (o clic derecho) sobre un movimiento: *Cambiar categoría* (tu elección no la pisa ninguna regla), *Volver a la categoría automática* o *Crear regla para…*, que lleva a una categoría todos los conceptos con esa palabra, también los que importes después. Tus reglas mandan sobre las que trae Kreix y se gestionan en **Ajustes > Reglas de categorías**.
 
 **Presupuestos.** En Cuentas, el panel *Presupuestos* (botón *Definir presupuestos*) fija un tope mensual por categoría. La barra se pone verde mientras te sobra, amarilla al pasar del 85 % y roja al superarlo. Con un mes elegido compara el gasto de ese mes; con todo el historial, el gasto medio mensual.
 
@@ -151,7 +167,8 @@ core/                   lógica pura: métricas (generales, por cuenta y de inve
                         periodos, categorizador, pagos recurrentes, presupuestos, entidades, enumeraciones
 logo-mejorado/          logotipos e iconos de la marca
 assets/fonts/           tipografías incluidas (Montserrat y DM Sans, licencia OFL)
-tools/                  datos de demostración, capturas y generador de fuentes
+tools/                  capturas, generador de fuentes y atajo para los datos de demostración
+                        (la lógica de los datos de ejemplo vive en services/demo_data.py)
 tests/                  suite de pruebas
 ```
 
@@ -185,6 +202,7 @@ Los tests de interfaz usan Qt sin pantalla (`QT_QPA_PLATFORM=offscreen`) y simul
 - Migraciones de base de datos con Alembic.
 - Cifrado de la base de datos y del archivo `.kreix` exportado.
 - Empaquetado como ejecutable (`.exe` / `.app`).
+- Iconos «?» junto a cada cifra que abran su explicación en la Ayuda.
 
 ## Privacidad
 

@@ -8,10 +8,11 @@ from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QScrollA
 
 from core.entities import PositionSnapshot
 from services.investment_service import InvestmentService, InvestmentViewData
-from ui import assets
 from ui.format import EMPTY, OPERATION_LABELS, fmt_date, fmt_eur, fmt_pct, fmt_units, month_long
 from ui.views.accounts_view import signed_eur
+from ui.headlines import evolution_headline, fund_headline
 from ui.widgets.cards import ChartCard, PageHeader, StatBand, StatCard
+from ui.widgets.onboarding import EmptyState
 from ui.widgets.charts import DonutChart
 from ui.widgets.charts_period import PortfolioChart
 from ui.widgets.period_bar import PeriodBar
@@ -54,29 +55,13 @@ class InvestmentView(QWidget):
 
     # ------------------------------------------------------------------ construccion
     def _build_empty(self) -> QWidget:
-        page = QWidget()
-        page.setObjectName("Page")
-        logo = QLabel()
-        logo.setPixmap(assets.mark(72))
-        logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title = QLabel("Aún no hay datos de inversión")
-        title.setObjectName("H1")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        text = QLabel("Importa las operaciones y la cartera de MyInvestor para ver aquí tus métricas y movimientos.")
-        text.setObjectName("Muted")
-        text.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        text.setWordWrap(True)
-        button = QPushButton("Importar extractos")
-        button.setObjectName("Primary")
-        button.setCursor(Qt.CursorShape.PointingHandCursor)
-        button.clicked.connect(self.go_import)
-        col = QVBoxLayout(page)
-        col.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        col.setSpacing(12)
-        for w in (logo, title, text):
-            col.addWidget(w)
-        col.addSpacing(8)
-        col.addWidget(button, 0, Qt.AlignmentFlag.AlignCenter)
+        page = EmptyState(
+            "Aún no hay datos de inversión",
+            "Aquí verás el valor de tu cartera, lo que has aportado, tu plusvalía y tu rentabilidad (TWR y TIR), "
+            "con todas tus posiciones y operaciones.",
+            "Dos archivos de MyInvestor, en CSV o Excel: tus operaciones (el historial de compras) y tu cartera "
+            "(las posiciones de hoy). Arrástralos a Importar; la cartera te pedirá a qué día corresponde.")
+        page.action.connect(self.go_import)
         return page
 
     def _build_content(self) -> QWidget:
@@ -115,8 +100,10 @@ class InvestmentView(QWidget):
         self.evolution = PortfolioChart()
         row = QHBoxLayout()
         row.setSpacing(16)
-        row.addWidget(ChartCard("Distribución por fondo", "Cartera actual", self.donut), 4)
-        row.addWidget(ChartCard("Aportado frente a valor", "La diferencia es lo que ha aportado la rentabilidad", self.evolution), 6)
+        self.funds_card = ChartCard("Distribución por fondo", "Cartera actual", self.donut)
+        self.evolution_card = ChartCard("Aportado frente a valor", "La diferencia es lo que ha aportado la rentabilidad", self.evolution)
+        row.addWidget(self.funds_card, 4)
+        row.addWidget(self.evolution_card, 6)
         root.addLayout(row)
 
         self.positions_table = DataTable([
@@ -238,6 +225,8 @@ class InvestmentView(QWidget):
         lp = s.largest_position
         self.mini_largest.set_content(lp.label if lp else EMPTY, f"{fmt_pct(lp.weight, 1)} de la cartera" if lp else "")
 
+        self.funds_card.set_headline(fund_headline(d.allocation))
+        self.evolution_card.set_headline(evolution_headline(d.evolution))
         self.donut.set_data(d.allocation)
         self.evolution.set_data(d.evolution)
         self.positions_table.set_rows(d.positions)

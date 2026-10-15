@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from decimal import Decimal
+from pathlib import Path
 
 from PySide6.QtCore import QPoint, Qt, QTimer, Signal
-from PySide6.QtGui import QGuiApplication
+from PySide6.QtGui import QCursor, QGuiApplication
 from PySide6.QtWidgets import (
     QComboBox, QFileDialog, QFrame, QHBoxLayout, QInputDialog, QLabel, QLineEdit, QMenu, QMessageBox,
     QPushButton, QScrollArea, QStackedLayout, QVBoxLayout, QWidget,
@@ -18,12 +19,14 @@ from data.repositories import AccountError, RuleError
 from services.accounts_service import AccountsService, AccountsViewData
 from services.category_service import CategoryService
 from services.movements_export import ExportError, write_movements
-from ui import assets
 from ui.dialogs import ALL_CATEGORIES as CATEGORY_CHOICES
 from ui.dialogs import BudgetDialog, RuleDialog
+from ui.feedback import Feedback, snapshot_of, tell
+from ui.headlines import balance_headline, category_headline, monthly_headline
 from ui.format import category_label, fmt_date, fmt_eur, fmt_pct, month_long, month_short
 from ui.widgets.cards import ChartCard, PageHeader, StatBand, StatCard
 from ui.widgets.charts_period import BalanceChart, CategoryBarsChart, IncomeExpenseChart
+from ui.widgets.onboarding import EmptyState
 from ui.widgets.panels import BudgetPanel, RecurringPanel
 from ui.widgets.period_bar import PeriodBar
 from ui.widgets.tables import RIGHT, Column, DataTable
@@ -50,6 +53,7 @@ class AccountsView(QWidget):
     accounts_changed = Signal()
     categories_changed = Signal()
     go_import = Signal()
+    feedback: Feedback | None = None       # lo asigna la ventana: avisos y "Deshacer"
 
     def __init__(self, service: AccountsService, options: Callable[[], FlowOptions],
                  categories: CategoryService | None = None, parent=None) -> None:
@@ -102,29 +106,14 @@ class AccountsView(QWidget):
         return col
 
     def _build_empty(self) -> QWidget:
-        page = QWidget()
-        page.setObjectName("Page")
-        logo = QLabel()
-        logo.setPixmap(assets.mark(72))
-        logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._empty_title = QLabel("Aún no hay movimientos")
-        self._empty_title.setObjectName("H1")
-        self._empty_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        text = QLabel("Importa el extracto de tu cuenta de Imagin para ver aquí tus métricas y todos tus movimientos.")
-        text.setObjectName("Muted")
-        text.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        text.setWordWrap(True)
-        button = QPushButton("Importar extractos")
-        button.setObjectName("Primary")
-        button.setCursor(Qt.CursorShape.PointingHandCursor)
-        button.clicked.connect(self.go_import)
-        col = QVBoxLayout(page)
-        col.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        col.setSpacing(12)
-        for w in (logo, self._empty_title, text):
-            col.addWidget(w)
-        col.addSpacing(8)
-        col.addWidget(button, 0, Qt.AlignmentFlag.AlignCenter)
+        page = EmptyState(
+            "Aún no hay movimientos",
+            "Aquí verás tu saldo, tus ingresos y gastos, a dónde se va el dinero, tus presupuestos y tus pagos "
+            "recurrentes, con todos tus movimientos para buscar y ordenar.",
+            "El extracto de movimientos de tu cuenta de Imagin, en CSV o Excel. Arrástralo a Importar: Kreix lo "
+            "reconoce solo y te enseña lo que ha leído antes de guardar nada.")
+        page.action.connect(self.go_import)
+        self._empty_title = page.title_label
         return page
 
     def _build_content(self) -> QWidget:
@@ -150,13 +139,18 @@ class AccountsView(QWidget):
         self.monthly = IncomeExpenseChart()
         row = QHBoxLayout()
         row.setSpacing(16)
-        row.addWidget(ChartCard("Gastos por categoría", "Dónde se va el dinero en el periodo", self.categories), 5)
-        row.addWidget(ChartCard("Evolución del saldo", "Saldo al cierre de cada día con movimientos", self.balance), 5)
+        self.category_card = ChartCard("Gastos por categoría", "Dónde se va el dinero en el periodo. Pulsa una para ver sus movimientos", self.categories)
+        self.balance_card = ChartCard("Evolución del saldo", "Saldo al cierre de cada día con movimientos", self.balance)
+        self.monthly_card = ChartCard("Ingresos y gastos por mes", "Los últimos 12 meses de las cuentas seleccionadas", self.monthly)
+        row.addWidget(self.category_card, 5)
+        row.addWidget(self.balance_card, 5)
         root.addLayout(row)
-        root.addWidget(ChartCard("Ingresos y gastos por mes", "Los últimos 12 meses de las cuentas seleccionadas", self.monthly))
+        root.addWidget(self.monthly_card)
         self.budget_panel = BudgetPanel()
         self.recurring_panel = RecurringPanel()
         self.budget_panel.edit_requested.connect(self.edit_budgets)
+        self.budget_panel.bars.category_clicked.connect(self.show_category)
+        self.categories.category_clicked.connect(self.show_category)
         panels = QHBoxLayout()
         panels.setSpacing(16)
         panels.addWidget(self.budget_panel, 5)
@@ -168,6 +162,7 @@ class AccountsView(QWidget):
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
         scroll.setWidget(body)
+        self._scroll = scroll
         return scroll
 
     def _build_movements(self) -> QFrame:
@@ -180,6 +175,8 @@ class AccountsView(QWidget):
                    tone=lambda t: "negative" if t.amount < 0 else "positive"),
             Column("SALDO", lambda t: fmt_eur(t.balance_after), lambda t: t.balance_after or Decimal(0), RIGHT,
                    tone=lambda t: "muted"),
+            Column("", lambda t: "•••", lambda t: 0, Qt.AlignmentFlag.AlignCenter, tone=lambda t: "accent",
+                   tooltip=lambda t: "Cambiar la categoría, crear una regla o copiar el concepto"),
         ]
         self.table = DataTable(columns, min_height=440)
         self.search = QLineEdit()
@@ -201,9 +198,14 @@ class AccountsView(QWidget):
         self.export_button.setToolTip("Guarda en CSV o Excel los movimientos que se ven ahora")
         self.export_button.clicked.connect(self.export_movements)
         self.table.context_requested.connect(self._show_row_menu)
+        self.table.clicked.connect(self._on_cell_clicked)
+        self.table.doubleClicked.connect(lambda index: self._open_menu_for(index))
 
         heading = QLabel("Movimientos")
         heading.setObjectName("H2")
+        hint = QLabel("Pulsa ••• (o haz doble clic o clic derecho) en un movimiento para cambiar su categoría o crear una regla.")
+        hint.setObjectName("Small")
+        hint.setWordWrap(True)
         bar = QHBoxLayout()
         bar.setSpacing(10)
         bar.addWidget(heading)
@@ -219,7 +221,9 @@ class AccountsView(QWidget):
         lay.setContentsMargins(20, 18, 20, 14)
         lay.setSpacing(10)
         lay.addLayout(bar)
+        lay.addWidget(hint)
         lay.addWidget(self.table)
+        self.movements_card = card
         return card
 
     # ------------------------------------------------------------------ datos
@@ -304,6 +308,9 @@ class AccountsView(QWidget):
         self.categories.set_data(d.categories)
         self.balance.set_data(d.balance_series, daily=month is not None)
         self.monthly.set_data(d.monthly)
+        self.category_card.set_headline(category_headline(d.categories))
+        self.balance_card.set_headline(balance_headline(d.balance_series, month is not None))
+        self.monthly_card.set_headline(monthly_headline(d.monthly[-12:]))
         self.budget_panel.set_lines(d.budgets, monthly=month is not None)
         self.recurring_panel.set_items(d.recurring)
 
@@ -345,6 +352,33 @@ class AccountsView(QWidget):
         self._count.setText(f"{total} movimientos" if shown == total else f"{shown} de {total} movimientos")
 
     # ------------------------------------------------------------------ categorias, presupuestos y exportacion
+    def _on_cell_clicked(self, index) -> None:
+        if index.column() == self.table.model_.columnCount() - 1:       # la columna de acciones (•••)
+            self._open_menu_for(index)
+
+    def _open_menu_for(self, index) -> None:
+        self._show_row_menu(self.table.row_data(index.row()), QCursor.pos())
+
+    def search_for(self, text: str) -> None:
+        """Pone un texto en el buscador de movimientos (desde el buscador global) y lleva la vista hasta la tabla."""
+        self.category_filter.setCurrentIndex(0)
+        self.search.setText(text)
+        self._apply_filter()
+        self._scroll.ensureWidgetVisible(self.movements_card, 0, 40)
+
+    def show_category(self, category) -> None:
+        """Filtra la tabla por una categoria (desde un grafico o un presupuesto) y lleva la vista hasta ella."""
+        pos = self.category_filter.findData(category)
+        if pos < 0:
+            return
+        self.search.clear()
+        self.category_filter.setCurrentIndex(pos)
+        self._apply_filter()
+        self._scroll.ensureWidgetVisible(self.movements_card, 0, 40)
+        n = self.table.proxy.rowCount()
+        tell(self.feedback, f"Mostrando {n} movimiento{'s' if n != 1 else ''} de «{category_label(category)}». "
+                            "Quita el filtro en el selector de categorías de la tabla.")
+
     def _show_row_menu(self, tx: TransactionDraft, pos: QPoint) -> None:
         menu = QMenu(self)
         if self._categories is not None:
@@ -362,13 +396,19 @@ class AccountsView(QWidget):
             menu.addSeparator()
         copy = menu.addAction("Copiar concepto")
         copy.triggered.connect(lambda _=False: QGuiApplication.clipboard().setText(tx.description))
+        self._run_menu(menu, pos)
+
+    def _run_menu(self, menu: QMenu, pos: QPoint) -> None:
         menu.exec(pos)
 
     def change_category(self, tx: TransactionDraft, category) -> None:
         if self._categories is None:
             return
+        snapshot = snapshot_of(self.feedback)
         self._categories.set_category(tx.tx_hash, category)
         self.categories_changed.emit()
+        tell(self.feedback, f"Categoría cambiada a «{category_label(category)}»." if category is not None
+             else "Vuelve a la categoría automática.", snapshot)
 
     def create_rule(self, tx: TransactionDraft) -> bool:
         if self._categories is None:
@@ -379,13 +419,15 @@ class AccountsView(QWidget):
         return self.add_rule(*dialog.result_rule())
 
     def add_rule(self, keyword: str, category) -> bool:
+        snapshot = snapshot_of(self.feedback)
         try:
             changed = self._categories.add_rule(keyword, category)
         except RuleError as exc:
             QMessageBox.warning(self, "No se pudo guardar la regla", str(exc))
             return False
         self.categories_changed.emit()
-        self.header.set_subtitle(f"{self._describe(self._data)}  ·  regla aplicada a {changed} movimiento{'s' if changed != 1 else ''}")
+        tell(self.feedback, f"Regla creada: {changed} movimiento{'s' if changed != 1 else ''} "
+                            f"cambiado{'s' if changed != 1 else ''} a «{category_label(category)}».", snapshot)
         return True
 
     def edit_budgets(self) -> None:
@@ -396,8 +438,10 @@ class AccountsView(QWidget):
             self.save_budgets(dialog.result_budgets())
 
     def save_budgets(self, budgets) -> None:
+        snapshot = snapshot_of(self.feedback)
         self._categories.save_budgets(budgets)
-        self.reload()
+        self.categories_changed.emit()          # el Resumen tambien enseña los presupuestos
+        tell(self.feedback, "Presupuestos guardados." if budgets else "Presupuestos eliminados.", snapshot)
 
     def export_movements(self, path: str | None = None) -> int | None:
         """Guarda en CSV o Excel los movimientos que se ven (con el filtro y el orden de la tabla)."""
@@ -413,10 +457,12 @@ class AccountsView(QWidget):
             if not path.lower().endswith((".csv", ".xlsx")):
                 path += ".csv" if "csv" in chosen.lower() else ".xlsx"
         try:
-            return write_movements(path, rows, self._names, category_label)
+            count = write_movements(path, rows, self._names, category_label)
         except ExportError as exc:
             QMessageBox.warning(self, "No se pudo exportar", str(exc))
             return None
+        tell(self.feedback, f"{count} movimientos exportados a «{Path(path).name}».")
+        return count
 
     # ------------------------------------------------------------------ gestion de cuentas
     def add_account_named(self, name: str) -> bool:
@@ -428,6 +474,7 @@ class AccountsView(QWidget):
         self._fill_account_combo()
         self.account_combo.setCurrentIndex(self.account_combo.findData(info.id))
         self.accounts_changed.emit()
+        tell(self.feedback, f"Cuenta «{info.name}» añadida. Elígela al importar tus extractos.")
         return True
 
     def rename_selected(self, name: str) -> bool:
@@ -446,9 +493,12 @@ class AccountsView(QWidget):
         ids = self.selected_account_ids()
         if not ids:
             return False
+        name = self.account_combo.currentText()
+        snapshot = snapshot_of(self.feedback)
         self._service.delete(ids[0])
         self.account_combo.setCurrentIndex(0)
         self.accounts_changed.emit()
+        tell(self.feedback, f"Cuenta «{name}» eliminada.", snapshot)
         return True
 
     def prompt_add(self) -> None:

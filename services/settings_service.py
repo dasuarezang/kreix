@@ -44,6 +44,13 @@ class SettingsService:
         with session_scope(self._factory) as s:
             return {row.key[3:]: row.value for row in s.scalars(select(Setting)) if row.key.startswith("ui.")}
 
+    def clear_state(self, *keys: str) -> None:
+        with session_scope(self._factory) as s:
+            for key in keys:
+                row = s.get(Setting, f"ui.{key}")
+                if row is not None:
+                    s.delete(row)
+
     def save_state(self, **values: str | int) -> None:
         with session_scope(self._factory) as s:
             for key, value in values.items():

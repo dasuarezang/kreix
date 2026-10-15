@@ -36,7 +36,7 @@ DB_ENTRY, MANIFEST_ENTRY = "kreix.db", "manifest.json"
 MAX_DB_BYTES = 1 << 30            # 1 GB
 MAX_MANIFEST_BYTES = 1 << 20      # 1 MB
 REQUIRED_TABLES = {"accounts", "transactions", "investments", "investment_operations", "valuations", "settings"}
-APP_VERSION = "0.1.0"
+APP_VERSION = "0.2.0"
 
 
 class TransferError(ValueError):
@@ -142,6 +142,31 @@ class TransferService:
             return summary
         finally:
             shutil.rmtree(workdir, ignore_errors=True)
+
+    # ------------------------------------------------------------------ instantaneas (para "Deshacer")
+    def snapshot(self) -> Path:
+        """Copia consistente de la base de datos en un archivo temporal; quien la pide debe borrarla."""
+        fd, name = tempfile.mkstemp(prefix="kreix-undo-", suffix=".db")
+        os.close(fd)
+        dest = sqlite3.connect(name)
+        try:
+            with closing(self._engine.raw_connection()) as raw:
+                raw.driver_connection.backup(dest)
+            dest.execute("PRAGMA journal_mode=DELETE")
+            dest.commit()
+        finally:
+            dest.close()
+        return Path(name)
+
+    def restore_snapshot(self, path: str | Path) -> None:
+        """Vuelve a los datos de una instantanea propia (no pasa por la validacion de archivos recibidos)."""
+        src = sqlite3.connect(str(path))
+        try:
+            with closing(self._engine.raw_connection()) as raw:
+                src.backup(raw.driver_connection)
+        finally:
+            src.close()
+        init_db(self._engine)
 
     # ------------------------------------------------------------------ leer un archivo
     @contextmanager

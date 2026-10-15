@@ -163,7 +163,7 @@ ENTRIES: tuple[HelpEntry, ...] = (
     ),
     HelpEntry(
         S_ACCOUNTS, "Cambiar la categoría de un movimiento",
-        "Si Kreix pone un movimiento en la categoría equivocada, haz clic derecho sobre él y elige otra. Tu elección "
+        "Si Kreix pone un movimiento en la categoría equivocada, pulsa ••• (o haz doble clic o clic derecho) sobre él y elige otra. Tu elección "
         "nunca se cambia sola. También puedes volver a la categoría automática.",
         "Con «Crear regla para…» le dices a Kreix que todos los conceptos con esa palabra van a una categoría, también "
         "los que importes en el futuro. Tus reglas mandan sobre las que trae Kreix y se gestionan en Ajustes.",
@@ -375,6 +375,42 @@ ENTRIES: tuple[HelpEntry, ...] = (
 
     # ------------------------------------------------------------------ Usar Kreix
     HelpEntry(
+        S_USE, "Primeros pasos y datos de ejemplo",
+        "Si aún no has importado nada, la pantalla de inicio te explica qué hacer en tres pasos. Con «Probar con datos de "
+        "ejemplo» puedes explorar Kreix con datos inventados, sin importar los tuyos.",
+        "Los datos de ejemplo se ven con un aviso arriba. Con «Empezar con mis datos» se quitan, y también se quitan solos "
+        "cuando importas tus extractos reales: nunca se mezclan con los tuyos. Cuando ya tienes datos, el Resumen muestra "
+        "una lista de primeros pasos con lo que te falta; puedes ocultarla.",
+        "",
+        keywords=("empezar", "demo", "ejemplo", "bienvenida", "tutorial", "primera vez"),
+    ),
+    HelpEntry(
+        S_USE, "Revisar antes de importar",
+        "Al soltar un extracto, Kreix no lo guarda a la primera: te enseña qué ha leído (cuántos movimientos, de qué fechas, "
+        "cuántos son nuevos y cuántos ya estaban) y tú decides si importar.",
+        "Los movimientos que ya tenías se ignoran. Si un archivo no se puede leer, Kreix te dice por qué y qué hacer "
+        "(por ejemplo, descargarlo otra vez en CSV o Excel sin editarlo).",
+        "",
+        keywords=("vista previa", "importar", "confirmar", "error", "archivo", "duplicados"),
+    ),
+    HelpEntry(
+        S_USE, "Avisos y Deshacer",
+        "Cada cambio importante (importar, cambiar una categoría, crear una regla, borrar datos...) muestra un aviso breve "
+        "abajo. Si te has equivocado, pulsa Deshacer mientras el aviso siga a la vista.",
+        "Solo se puede deshacer el último cambio: al hacer otro, el anterior ya no se puede revertir. Kreix guarda una copia "
+        "de tus datos justo antes de cada cambio, así que deshacer vuelve exactamente a cómo estaba todo.",
+        "",
+        keywords=("deshacer", "revertir", "error", "equivocación", "confirmación", "aviso"),
+    ),
+    HelpEntry(
+        S_USE, "Buscar en todo (Ctrl+K)",
+        "Con Ctrl+K se abre un buscador: escribe «presupuesto», «modo oscuro», el nombre de un comercio o «TIR» y salta "
+        "directamente a esa página, acción, movimiento o explicación de la ayuda.",
+        "Elige con las flechas y Intro. Entiende las palabras sin acentos y por el principio de cada palabra.",
+        "",
+        keywords=("buscador", "atajo", "comandos", "ir a", "paleta"),
+    ),
+    HelpEntry(
         S_USE, "Importar extractos",
         "Arrastra a la pantalla Importar los archivos que descargas del banco (CSV o Excel). Kreix reconoce solo de qué "
         "banco y de qué tipo son, aunque no tengan extensión. Importar dos veces el mismo extracto no duplica nada.",
@@ -422,8 +458,8 @@ ENTRIES: tuple[HelpEntry, ...] = (
     HelpEntry(
         S_USE, "Atajos de teclado",
         "Ctrl+1 Resumen, Ctrl+2 Cuentas, Ctrl+3 Inversiones, Ctrl+4 Importar, Ctrl+5 Exportar, Ctrl+6 Ajustes, "
-        "Ctrl+7 Ayuda. Ctrl+T cambia entre modo claro y oscuro, Ctrl+F busca en tus movimientos y F5 recalcula "
-        "la página.",
+        "Ctrl+7 Ayuda. Ctrl+T cambia entre modo claro y oscuro, Ctrl+K busca en todo, Ctrl+F busca en tus movimientos "
+        "y F5 recalcula la página.",
         "",
         "",
         keywords=("teclado", "ctrl"),

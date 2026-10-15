@@ -1,7 +1,7 @@
 """Paneles de la pestana Cuentas: presupuestos del periodo y pagos recurrentes."""
 from __future__ import annotations
 
-from PySide6.QtCore import QRectF, QSize, Qt, Signal
+from PySide6.QtCore import QPointF, QRectF, QSize, Qt, Signal
 from PySide6.QtGui import QColor, QFontMetricsF, QPainter
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
@@ -17,9 +17,26 @@ ROW_H = 58
 class BudgetBars(QWidget):
     """Una barra por presupuesto: verde mientras sobra, amarilla cerca del tope y roja al pasarse."""
 
+    category_clicked = Signal(object)
+
     def __init__(self) -> None:
         super().__init__()
         self._lines: list[BudgetLine] = []
+        self.setMouseTracking(True)
+
+    def _line_at(self, pos: QPointF) -> BudgetLine | None:
+        index = int(pos.y() // ROW_H)
+        return self._lines[index] if 0 <= index < len(self._lines) else None
+
+    def mouseMoveEvent(self, event) -> None:
+        over = self._line_at(event.position()) is not None
+        self.setCursor(Qt.CursorShape.PointingHandCursor if over else Qt.CursorShape.ArrowCursor)
+        self.setToolTip("Clic para ver los movimientos de esta categoría" if over else "")
+
+    def mousePressEvent(self, event) -> None:
+        line = self._line_at(event.position())
+        if line is not None and event.button() == Qt.MouseButton.LeftButton:
+            self.category_clicked.emit(line.category)
 
     def set_lines(self, lines: list[BudgetLine]) -> None:
         self._lines = lines

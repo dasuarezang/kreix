@@ -41,6 +41,9 @@ class DashboardData:
     upcoming: list[Recurring] = field(default_factory=list)       # proximos pagos recurrentes, el mas cercano primero
     budget_alerts: list[BudgetLine] = field(default_factory=list)  # presupuestos cerca del tope o superados este mes
     has_budgets: bool = False
+    has_transactions: bool = False
+    has_operations: bool = False
+    has_portfolio: bool = False
 
 
 class DashboardService:
@@ -58,6 +61,10 @@ class DashboardService:
         cash = metrics.total_cash(txs)
         data = DashboardData(
             has_data=True,
+            has_transactions=bool(txs),
+            has_operations=bool(ops),
+            has_portfolio=bool(snaps),
+            has_budgets=bool(budgets),
             cash=cash,
             portfolio_value=metrics.portfolio_value(latest),
             net_worth=metrics.net_worth(cash, latest),

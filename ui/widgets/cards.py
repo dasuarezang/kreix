@@ -291,11 +291,22 @@ class ChartCard(QFrame):
         sub = QLabel(subtitle)
         sub.setObjectName("Small")
         sub.setWordWrap(True)
+        self._headline = QLabel("")
+        self._headline.setObjectName("Headline")
+        self._headline.setWordWrap(True)
+        self._headline.hide()
         layout = QVBoxLayout(self)
         layout.setContentsMargins(24, 22, 24, 18)
         layout.setSpacing(2)
         layout.addWidget(heading)
         layout.addWidget(sub)
-        layout.addSpacing(8)
+        layout.addSpacing(6)
+        layout.addWidget(self._headline)
+        layout.addSpacing(6)
         layout.addWidget(content, 1)
         self.setAccessibleName(title)
+
+    def set_headline(self, text: str) -> None:
+        """La idea del grafico en una frase, para quien no quiera interpretarlo."""
+        self._headline.setText(text)
+        self._headline.setVisible(bool(text))

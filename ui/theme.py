@@ -84,6 +84,7 @@ QToolTip {{
 QLabel#H1 {{ font-family: {display}; font-size: 32px; }}
 QLabel#H2 {{ font-family: {bold}; font-size: 16px; }}
 QLabel#Muted {{ color: {p.muted}; }}
+QLabel#Headline {{ color: {p.text}; font-family: {bold}; font-size: 14px; }}
 QLabel#Small {{ color: {p.muted}; font-size: 12px; }}
 QLabel#Eyebrow {{ color: {p.accent}; font-family: {label}; font-size: 11px; }}
 QLabel#SectionTitle {{ color: {p.muted}; font-family: {label}; font-size: 11px; }}
@@ -93,20 +94,20 @@ QLabel#Small[state="error"] {{ color: {p.red}; font-family: {bold}; }}
 /* ---------------------------------------------------------------- barra lateral */
 QFrame#Sidebar {{ background: {p.side}; border: none; }}
 QPushButton#NavButton {{
-    text-align: left; padding: 11px 16px; border: none; border-radius: 12px;
-    color: {p.muted}; background: transparent; font-family: {bold}; font-size: 14px;
+    text-align: left; padding: 11px 16px; border: 2px solid transparent; border-radius: 12px;
+    color: {p.muted}; background: transparent; font-family: {bold}; font-size: 14px; outline: none;
 }}
 QPushButton#NavButton:hover {{ background: {p.hover}; color: {p.text}; }}
 QPushButton#NavButton:checked {{ background: {p.accent}; color: {p.on_accent}; }}
-QPushButton#NavButton:focus {{ border: 2px solid {p.accent}; padding: 9px 14px; }}
+QPushButton#NavButton:focus {{ border: 2px solid {p.text}; }}
 QPushButton#PillButton {{
-    text-align: left; padding: 0 18px 0 14px; min-height: 40px; max-height: 40px;
-    border: none; border-radius: 20px; background: {p.surface_alt};
-    color: {p.text}; font-family: {bold}; font-size: 13px;
+    text-align: left; padding: 0 16px 0 12px; min-height: 40px; max-height: 40px;
+    border: 2px solid transparent; border-radius: 20px; background: {p.surface_alt};
+    color: {p.text}; font-family: {bold}; font-size: 13px; outline: none;
 }}
 QPushButton#PillButton:hover {{ background: {p.hover}; }}
 QPushButton#PillButton:checked {{ background: {p.accent}; color: {p.on_accent}; }}
-QPushButton#PillButton:focus {{ border: 2px solid {p.accent}; padding: 0 16px 0 12px; }}
+QPushButton#PillButton:focus {{ border: 2px solid {p.text}; }}
 QLabel#SidebarFoot {{ color: {p.muted}; font-size: 11px; }}
 
 /* ---------------------------------------------------------------- tarjetas */
@@ -150,10 +151,10 @@ QLabel#Pill[state="error"] {{ background: {p.red_soft}; color: {p.red}; }}
 /* ---------------------------------------------------------------- botones */
 QPushButton {{
     background: {p.surface_alt}; color: {p.text}; border: none; border-radius: 12px;
-    padding: 10px 20px; font-family: {bold}; font-size: 13px;
+    padding: 10px 20px; font-family: {bold}; font-size: 13px; outline: none;
 }}
 QPushButton:hover {{ background: {p.hover}; }}
-QPushButton:focus {{ border: 2px solid {p.accent}; padding: 8px 18px; }}
+QPushButton:focus {{ border: 2px solid {p.accent}; padding: 8px 18px; outline: none; }}
 QPushButton:disabled {{ color: {p.muted}; }}
 QPushButton#Primary {{ background: {p.accent}; color: {p.on_accent}; padding: 11px 24px; }}
 QPushButton#Primary:hover {{ background: {p.accent_hover}; }}
@@ -176,6 +177,32 @@ QLabel#StepBadge {{
     background: {p.accent}; color: {p.on_accent}; border-radius: 13px; font-family: {display_bold}; font-size: 12px;
 }}
 QFrame#Card QLabel#StepBadge {{ background: {p.accent}; color: {p.on_accent}; }}
+
+/* ---------------------------------------------------------------- buscador global (Ctrl+K) */
+QFrame#PaletteCard {{ background: {p.surface}; border: 1px solid {p.accent}; border-radius: 20px; }}
+QFrame#PaletteCard QLabel {{ background: transparent; }}
+QListWidget#PaletteList {{ background: transparent; border: none; outline: none; }}
+QListWidget#PaletteList::item {{ border-radius: 10px; padding: 0; margin: 1px 0; }}
+QListWidget#PaletteList::item:selected {{ background: {p.accent}; }}
+QListWidget#PaletteList::item:selected QLabel {{ color: {p.on_accent}; }}
+QListWidget#PaletteList::item:hover:!selected {{ background: {p.hover}; }}
+QLabel#PaletteRow {{ font-family: {medium}; font-size: 13px; }}
+
+/* ---------------------------------------------------------------- aviso de datos de ejemplo */
+QFrame#DemoBanner {{ background: {p.accent_soft}; border: none; border-bottom: 1px solid {p.accent}; }}
+QLabel#DemoBannerText {{ color: {p.text}; font-family: {bold}; font-size: 13px; background: transparent; }}
+
+/* ---------------------------------------------------------------- aviso flotante */
+QFrame#Toast {{ background: {p.surface_alt}; border: 1px solid {p.accent}; border-radius: 16px; }}
+QFrame#Toast QLabel {{ background: transparent; font-family: {medium}; font-size: 13px; color: {p.text}; }}
+QPushButton#ToastAction {{
+    background: {p.accent}; color: {p.on_accent}; padding: 7px 16px; border-radius: 10px; font-size: 12px;
+}}
+QPushButton#ToastAction:hover {{ background: {p.accent_hover}; }}
+QPushButton#ToastClose {{
+    background: transparent; color: {p.muted}; padding: 2px 10px; font-size: 18px; border-radius: 10px;
+}}
+QPushButton#ToastClose:hover {{ background: {p.hover}; color: {p.text}; }}
 
 /* ---------------------------------------------------------------- zona de importacion */
 QFrame#DropZone {{ background: {p.surface}; border: 2px dashed {p.border}; border-radius: 24px; }}

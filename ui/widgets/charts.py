@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Sequence
 
-from PySide6.QtCore import QEasingCurve, QPointF, QRectF, Qt, QVariantAnimation
+from PySide6.QtCore import QEasingCurve, QPointF, QRectF, Qt, QVariantAnimation, Signal
 from PySide6.QtGui import QColor, QFontMetricsF, QLinearGradient, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import QSizePolicy, QWidget
 
@@ -758,10 +758,28 @@ class CategoryBarsChart(BaseChart):
 
     EMPTY_TEXT = "Sin gastos en este periodo"
     ROW_H = 40
+    category_clicked = Signal(object)      # TxCategory: el usuario quiere ver los movimientos de esa categoria
 
     def __init__(self) -> None:
         super().__init__(min_height=300)
         self._items: list[tuple[str, float, float]] = []      # (nombre, importe, peso)
+        self._categories: list[object] = []                   # categoria de cada fila (None en "Otras categorias")
+
+    def _row_at(self, pos: QPointF) -> int | None:
+        index = int((pos.y() - 8) // self.ROW_H)
+        return index if 0 <= index < len(self._items) else None
+
+    def mouseMoveEvent(self, event) -> None:
+        row = self._row_at(event.position())
+        clickable = row is not None and self._categories[row] is not None
+        self.setCursor(Qt.CursorShape.PointingHandCursor if clickable else Qt.CursorShape.ArrowCursor)
+        self.setToolTip("Clic para ver estos movimientos" if clickable else "")
+        super().mouseMoveEvent(event)
+
+    def mousePressEvent(self, event) -> None:
+        row = self._row_at(event.position())
+        if row is not None and self._categories[row] is not None and event.button() == Qt.MouseButton.LeftButton:
+            self.category_clicked.emit(self._categories[row])
 
     @property
     def has_data(self) -> bool:
@@ -774,6 +792,7 @@ class CategoryBarsChart(BaseChart):
         if rest:
             rows.append(("Otras categorías", float(sum(i.amount for i in rest)), float(sum(i.share for i in rest))))
         self._items = rows
+        self._categories = [i.category for i in shown] + ([None] if rest else [])
         self.setMinimumHeight(max(300, 16 + self.ROW_H * len(rows)))
         self._restart_animation()
 

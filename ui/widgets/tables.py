@@ -29,6 +29,7 @@ class Column:
     align: Qt.AlignmentFlag = LEFT
     tone: Callable[[Any], str | None] | None = None      # "negative" | "positive" | "muted" | "accent"
     stretch: bool = False                                # la columna que absorbe el ancho sobrante
+    tooltip: Callable[[Any], str] | None = None          # texto al pasar el raton (por defecto, el de la celda)
 
 
 class RowsModel(QAbstractTableModel):
@@ -90,7 +91,7 @@ class RowsModel(QAbstractTableModel):
         if role == Qt.ItemDataRole.TextAlignmentRole:
             return col.align
         if role == Qt.ItemDataRole.ToolTipRole:
-            return col.text(item)          # el texto completo, por si la celda lo recorta
+            return col.tooltip(item) if col.tooltip else col.text(item)   # el texto completo, por si la celda lo recorta
         if role == Qt.ItemDataRole.ForegroundRole and col.tone:
             p = theme.current()
             color = {"negative": p.red, "positive": p.green, "muted": p.muted, "accent": p.accent}.get(col.tone(item) or "")

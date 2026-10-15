@@ -14,11 +14,16 @@ from services.accounts_service import AccountsService
 from services.dashboard_service import DashboardService
 from services.category_service import CategoryService
 from services.data_service import DataService
+from services.demo_service import DemoService
 from services.import_service import ImportService
 from services.investment_service import InvestmentService
 from services.settings_service import AppSettings, SettingsService
 from services.transfer_service import TransferError, TransferService
 from ui import assets, icons, theme
+from ui.command_palette import Command, CommandPalette
+from ui.feedback import Feedback, snapshot_of, tell
+from ui.format import category_label, fmt_date, fmt_eur
+from ui.help_content import ENTRIES
 from ui.views.accounts_view import AccountsView
 from ui.views.dashboard_view import DashboardView
 from ui.views.export_view import ExportView
@@ -26,8 +31,10 @@ from ui.views.help_view import HelpView
 from ui.views.import_view import ImportView
 from ui.views.investment_view import InvestmentView
 from ui.views.settings_view import VERSION, SettingsView
+from ui.whats_new import WhatsNewDialog
 from ui.widgets import charts
 from ui.widgets.switch import ThemeToggle
+from ui.widgets.toast import Toast
 
 
 class Backdrop(QWidget):
@@ -58,6 +65,7 @@ class Services:
     investment: InvestmentService
     transfer: TransferService
     categories: CategoryService
+    demo: DemoService
 
 
 class MainWindow(QMainWindow):
@@ -99,26 +107,50 @@ class MainWindow(QMainWindow):
         self.accounts_view.categories_changed.connect(self.refresh)
         self.import_view.imported.connect(self.refresh)
         self.import_view.restore_requested.connect(self.restore_from)
+        self.import_view.before_import = self.leave_demo
+        self.dashboard.demo_requested.connect(self.start_demo)
+        self.dashboard.navigate_requested.connect(self._go_from_setup)
+        self.dashboard.setup_dismissed.connect(self._dismiss_setup)
+        self.dashboard.category_clicked.connect(self._show_category_in_accounts)
         self.settings_view.settings_changed.connect(self._on_settings_changed)
         self.settings_view.rules_changed.connect(self.refresh)
+        self.settings_view.whats_new_requested.connect(self.show_whats_new)
         self.settings_view.reset_requested.connect(self.confirm_reset)
+
+        self.demo_banner = self._build_demo_banner()
+        right = QWidget()
+        right.setObjectName("Page")
+        right_col = QVBoxLayout(right)
+        right_col.setContentsMargins(0, 0, 0, 0)
+        right_col.setSpacing(0)
+        right_col.addWidget(self.demo_banner)
+        right_col.addWidget(self.stack, 1)
 
         root = Backdrop()
         root.setObjectName("Root")
+        self.toast = Toast(root)
+        self.feedback = Feedback(services.transfer, self.toast, self)
+        self.feedback.restored.connect(self._after_undo)
+        for view in (self.accounts_view, self.import_view, self.settings_view):
+            view.feedback = self.feedback
         layout = QHBoxLayout(root)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         layout.addWidget(self._build_sidebar())
-        layout.addWidget(self.stack, 1)
+        layout.addWidget(right, 1)
         self.setCentralWidget(root)
 
         QShortcut(QKeySequence("Ctrl+T"), self, activated=lambda: self.theme_switch.toggle())
         QShortcut(QKeySequence("Ctrl+F"), self, activated=self.focus_search)
+        QShortcut(QKeySequence("Ctrl+K"), self, activated=self.open_palette)
         QShortcut(QKeySequence("F5"), self, activated=self.reload_current)
         for i in range(len(self.PAGES)):
             QShortcut(QKeySequence(f"Ctrl+{i + 1}"), self, activated=lambda i=i: self.navigate(i))
 
         self.apply_theme(self._settings.theme)
+        self._demo = self._state.get("demo") == "1" and not self._svc.transfer.summary().is_empty
+        self.demo_banner.setVisible(self._demo)
+        self.dashboard.set_setup_hidden(self._state.get("setup_hidden") == "1")
         self.refresh()
         saved = self._state.get("page", "")
         if saved.isdigit() and int(saved) in self.DATA_PAGES:      # se vuelve a la ultima vista de datos
@@ -183,9 +215,9 @@ class MainWindow(QMainWindow):
         self._load_if_stale(index)
         if changed:
             self._fade_in(self.stack.currentWidget())
+        self._nav.button(index).setFocus(Qt.FocusReason.OtherFocusReason)   # el reborde acompana a la pagina activa
         button = self._nav.button(index)
         button.setChecked(True)
-        button.setFocus(Qt.FocusReason.OtherFocusReason)   # el aro de foco acompana a la pestana activa
         if index == self.HELP:
             self.help_view.show_hub()          # al entrar en Ayuda siempre se ve el menu de secciones
         elif index == self.EXPORT:
@@ -204,6 +236,60 @@ class MainWindow(QMainWindow):
         animation.setEasingCurve(QEasingCurve.Type.OutCubic)
         animation.finished.connect(lambda: page.setGraphicsEffect(None))
         animation.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
+
+    # ------------------------------------------------------------------ buscador global (Ctrl+K)
+    def palette_commands(self) -> list[Command]:
+        go = [Command(f"Ir a {name}", f"Ctrl+{i + 1}", lambda i=i: self.navigate(i), group="Páginas")
+              for i, name in enumerate(self.PAGES)]
+        actions = [
+            Command("Cambiar entre modo claro y oscuro", "Ctrl+T", self.theme_switch.toggle,
+                    "tema aspecto color noche día", "Acciones"),
+            Command("Buscar en mis movimientos", "Ctrl+F", self.focus_search, "concepto pagos gastos"),
+            Command("Definir presupuestos mensuales", "Cuentas", self._edit_budgets, "tope límite gastar categoría"),
+            Command("Crear una regla de categoría", "Ajustes", self._new_rule, "clasificar categorizar palabra"),
+            Command("Exportar movimientos a CSV o Excel", "Cuentas", self._export_movements, "descargar hoja de cálculo xlsx"),
+            Command("Recalcular la página", "F5", self.reload_current, "actualizar refrescar"),
+            Command("Ver las novedades de esta versión", "Novedades", self.show_whats_new, "cambios nuevo versión"),
+        ]
+        if self._svc.transfer.summary().is_empty:
+            actions.append(Command("Probar con datos de ejemplo", "Sin importar nada", self.start_demo, "demo explorar"))
+        elif self._demo:
+            actions.append(Command("Quitar los datos de ejemplo", "Empezar con mis datos", self.end_demo, "demo borrar"))
+        helps = [Command(f"Ayuda: {e.term}", e.section, lambda t=e.term: self._open_help(t), " ".join(e.keywords), "Ayuda")
+                 for e in ENTRIES]
+        return go + actions + helps
+
+    def _movement_commands(self, text: str) -> list[Command]:
+        out = []
+        for t in self._svc.accounts.search_movements(text):
+            detail = f"{fmt_date(t.booking_date)}  ·  {fmt_eur(t.amount)}  ·  {category_label(t.category)}"
+            out.append(Command(t.description, detail, lambda d=t.description: self._show_movement(d), group="Movimientos"))
+        return out
+
+    def open_palette(self) -> None:
+        palette = CommandPalette(self.palette_commands(), self._movement_commands, self)
+        palette.popup(self)
+
+    def _show_movement(self, description: str) -> None:
+        self.navigate(self.ACCOUNTS)
+        self.accounts_view.search_for(description)
+
+    def _open_help(self, term: str) -> None:
+        self.navigate(self.HELP)
+        self.help_view.set_query(term)
+
+    def _edit_budgets(self) -> None:
+        self.navigate(self.ACCOUNTS)
+        self.accounts_view.edit_budgets()
+
+    def _new_rule(self) -> None:
+        self.navigate(self.SETTINGS)
+        if self.settings_view.rules is not None:
+            self.settings_view.rules.prompt_add()
+
+    def _export_movements(self) -> None:
+        self.navigate(self.ACCOUNTS)
+        self.accounts_view.export_movements()
 
     def focus_search(self) -> None:
         """Ctrl+F: lleva a Cuentas y pone el cursor en el buscador de movimientos."""
@@ -243,6 +329,95 @@ class MainWindow(QMainWindow):
         for index in self.DATA_PAGES:
             self._load_if_stale(index)
 
+    # ------------------------------------------------------------------ datos de ejemplo y primeros pasos
+    def _build_demo_banner(self) -> QFrame:
+        banner = QFrame()
+        banner.setObjectName("DemoBanner")
+        text = QLabel("Estás viendo datos de ejemplo inventados. Nada de esto es tuyo.")
+        text.setObjectName("DemoBannerText")
+        self.demo_exit = QPushButton("Empezar con mis datos")
+        self.demo_exit.setObjectName("Primary")
+        self.demo_exit.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.demo_exit.clicked.connect(self.end_demo)
+        row = QHBoxLayout(banner)
+        row.setContentsMargins(24, 8, 24, 8)
+        row.addWidget(text, 1)
+        row.addWidget(self.demo_exit)
+        banner.hide()
+        return banner
+
+    def start_demo(self) -> bool:
+        """Carga los datos de ejemplo. Solo con la app vacia: nunca se mezclan con datos reales."""
+        if not self._svc.transfer.summary().is_empty:
+            return False
+        self._svc.demo.load()
+        self._set_demo(True)
+        self.refresh()
+        self.navigate(self.SUMMARY)
+        tell(self.feedback, "Datos de ejemplo cargados. Explora con calma: se quitan con «Empezar con mis datos».")
+        return True
+
+    def leave_demo(self) -> None:
+        """Quita los datos de ejemplo (sin avisar) antes de importar los reales."""
+        if self._demo:
+            self._svc.data.reset_all()
+            self._set_demo(False)
+            self.import_view.set_accounts(self._svc.accounts.accounts())     # la cuenta de ejemplo ya no existe
+
+    def end_demo(self) -> None:
+        snapshot = snapshot_of(self.feedback)
+        self.leave_demo()
+        self.refresh()
+        self.navigate(self.SUMMARY)
+        tell(self.feedback, "Datos de ejemplo eliminados. Importa tus extractos para empezar.", snapshot)
+
+    def _set_demo(self, on: bool) -> None:
+        self._demo = on
+        self.demo_banner.setVisible(on)
+        if on:
+            self._svc.settings.save_state(demo=1)
+        else:
+            self._svc.settings.clear_state("demo")
+
+    def _show_category_in_accounts(self, category) -> None:
+        self.navigate(self.ACCOUNTS)
+        self.accounts_view.show_category(category)
+
+    def _go_from_setup(self, target: str) -> None:
+        self.navigate(self.IMPORT if target == "import" else self.ACCOUNTS)
+
+    def _dismiss_setup(self) -> None:
+        self.dashboard.set_setup_hidden(True)
+        self._svc.settings.save_state(setup_hidden=1)
+        tell(self.feedback, "Lista de primeros pasos oculta.")
+
+    def show_whats_new(self) -> None:
+        WhatsNewDialog(VERSION, self).exec()
+
+    def announce_new_version(self) -> None:
+        """Tras actualizar, ensena las novedades una sola vez. En la primera ejecucion no hay nada que contar."""
+        seen = self._state.get("seen_version")
+        self._svc.settings.save_state(seen_version=VERSION)
+        self._state["seen_version"] = VERSION
+        upgraded = (seen is not None and seen != VERSION) or (
+            seen is None and not self._demo and not self._svc.transfer.summary().is_empty)   # ya usaba una version antigua
+        if upgraded:
+            self.show_whats_new()
+
+    def _after_undo(self) -> None:
+        self._state = self._svc.settings.load_state()
+        self._demo = self._state.get("demo") == "1" and not self._svc.transfer.summary().is_empty
+        self.demo_banner.setVisible(self._demo)
+        self._settings = self._svc.settings.load()
+        self.settings_view.set_settings(self._settings)
+        self.apply_theme(self._settings.theme)
+        self.refresh()
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        if self.toast.isVisible():
+            self.toast.reposition()
+
     def confirm_reset(self) -> None:
         answer = QMessageBox.question(
             self, "Borrar todos los datos",
@@ -256,9 +431,13 @@ class MainWindow(QMainWindow):
             self.reset_data()
 
     def reset_data(self) -> None:
+        snapshot = snapshot_of(self.feedback)
         self._svc.data.reset_all()
+        if self._demo:
+            self._set_demo(False)
         self.refresh()
         self.navigate(self.SUMMARY)
+        tell(self.feedback, "Datos borrados.", snapshot)
 
     # ------------------------------------------------------------------ traspaso de datos
     def restore_from(self, path: str) -> bool:
@@ -280,17 +459,20 @@ class MainWindow(QMainWindow):
             )
             if answer != QMessageBox.StandardButton.Yes:
                 return False
+        snapshot = snapshot_of(self.feedback)
         try:
             self._svc.transfer.restore(path)
         except TransferError as exc:
             QMessageBox.warning(self, "No se pudo importar el archivo", str(exc))
             return False
+        if self._demo:
+            self._set_demo(False)                                   # lo restaurado es de verdad
         self._settings = self._svc.settings.load()                 # los ajustes viajan con los datos
         self.settings_view.set_settings(self._settings)
         self.apply_theme(self._settings.theme)
         self.refresh()
         self.navigate(self.SUMMARY)
-        QMessageBox.information(self, "Datos importados", "Los datos se han importado correctamente.")
+        tell(self.feedback, "Datos importados desde el archivo .kreix.", snapshot)
         return True
 
     # ------------------------------------------------------------------ tema
@@ -325,6 +507,7 @@ class MainWindow(QMainWindow):
         self.resize(max(self.minimumWidth(), min(width, limit.width())), max(self.minimumHeight(), min(height, limit.height())))
 
     def closeEvent(self, event) -> None:
+        self.feedback.close()
         if not self.isMaximized() and not self.isFullScreen():
             self._svc.settings.save_state(width=self.width(), height=self.height(), page=self.stack.currentIndex())
         else:

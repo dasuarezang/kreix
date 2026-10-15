@@ -1,3 +1,4 @@
+import gc
 import os
 
 # Qt sin pantalla para poder probar la interfaz en cualquier equipo / CI.
@@ -41,3 +42,11 @@ def window(qapp):
     w.eager = True
     yield w
     dispose_windows(w)
+
+
+@pytest.fixture(autouse=True)
+def _freeze_garbage_after_each_test():
+    """Con PySide, recoger mas tarde ventanas ya destruidas puede recorrer objetos C++ liberados y tumbar el proceso.
+    Se congela lo que ha quedado de cada prueba para que el recolector no vuelva a recorrerlo."""
+    yield
+    gc.freeze()

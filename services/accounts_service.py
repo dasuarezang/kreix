@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core import metrics
@@ -16,6 +17,7 @@ from core.metrics import FlowOptions, MonthlyFlow
 from core.periods import GLOBAL, Period, month_start, previous_month_end
 from core.recurring import Recurring, detect_recurring
 from data.database import session_scope
+from data.models import Account, Transaction
 from data.repositories import add_account, delete_account, get_budgets, list_accounts, rename_account
 from services.mappers import load_transactions
 
@@ -70,6 +72,21 @@ class AccountsService:
     def delete(self, account_id: int) -> None:
         with session_scope(self._factory) as s:
             delete_account(s, account_id)
+
+    def search_movements(self, text: str, limit: int = 6) -> list[TransactionDraft]:
+        """Los movimientos mas recientes cuyo concepto contiene el texto (para el buscador global)."""
+        like = "%" + text.replace("%", r"\%").replace("_", r"\_") + "%"
+        with session_scope(self._factory) as s:
+            rows = s.execute(
+                select(Transaction, Account.bank).join(Account, Account.id == Transaction.account_id)
+                .where(Transaction.description.like(like, escape="\\"))
+                .order_by(Transaction.booking_date.desc(), Transaction.id.desc()).limit(limit))
+            return [
+                TransactionDraft(bank=bank, booking_date=t.booking_date, description=t.description, amount=t.amount,
+                                 balance_after=t.balance_after, category=t.category, tx_hash=t.tx_hash,
+                                 source_file=t.source_file or "", account_id=t.account_id, is_manual=t.category_is_manual)
+                for t, bank in rows
+            ]
 
     # -- datos de la pestana ----------------------------------------------
     def view(

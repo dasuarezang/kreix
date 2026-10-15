@@ -10,11 +10,12 @@ from data.repositories import RuleError
 from services.category_service import CategoryService
 from services.settings_service import AppSettings
 from ui.dialogs import RuleDialog
+from ui.feedback import Feedback, snapshot_of, tell
 from ui.format import category_label
 from ui.widgets.cards import PageHeader
 from ui.widgets.switch import SwitchToggle
 
-VERSION = "0.1.0"
+from ui.whats_new import VERSION  # noqa: E402  (la version vive en un solo sitio)
 
 
 class SettingRow(QWidget):
@@ -42,6 +43,7 @@ class RulesList(QWidget):
     """Reglas de categoria del usuario: palabra clave -> categoria, con alta y baja."""
 
     rules_changed = Signal()
+    feedback: Feedback | None = None
 
     def __init__(self, service: CategoryService) -> None:
         super().__init__()
@@ -91,18 +93,24 @@ class RulesList(QWidget):
             self._rows.addWidget(row)
 
     def remove(self, rule_id: int) -> None:
-        self._service.delete_rule(rule_id)
+        snapshot = snapshot_of(self.feedback)
+        changed = self._service.delete_rule(rule_id)
         self.reload()
         self.rules_changed.emit()
+        tell(self.feedback, f"Regla eliminada: {changed} movimiento{'s' if changed != 1 else ''} "
+                            f"vuelve{'n' if changed != 1 else ''} a su categoría automática.", snapshot)
 
     def add(self, keyword: str, category) -> bool:
+        snapshot = snapshot_of(self.feedback)
         try:
-            self._service.add_rule(keyword, category)
+            changed = self._service.add_rule(keyword, category)
         except RuleError as exc:
             QMessageBox.warning(self, "No se pudo guardar la regla", str(exc))
             return False
         self.reload()
         self.rules_changed.emit()
+        tell(self.feedback, f"Regla creada: {changed} movimiento{'s' if changed != 1 else ''} "
+                            f"cambiado{'s' if changed != 1 else ''} a «{category_label(category)}».", snapshot)
         return True
 
     def prompt_add(self) -> None:
@@ -115,6 +123,7 @@ class SettingsView(QWidget):
     settings_changed = Signal(object)
     reset_requested = Signal()
     rules_changed = Signal()
+    whats_new_requested = Signal()
 
     def __init__(self, settings: AppSettings, db_path: str, categories: CategoryService | None = None, parent=None) -> None:
         super().__init__(parent)
@@ -166,7 +175,16 @@ class SettingsView(QWidget):
         reset_row.setContentsMargins(0, 6, 0, 0)
         data = self._card("Tus datos", path, privacy, reset_box)
 
-        about = self._card("Acerca de", QLabel(f"Kreix {VERSION}"))
+        self.whats_new_button = QPushButton("Ver las novedades")
+        self.whats_new_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.whats_new_button.clicked.connect(self.whats_new_requested)
+        whats_row = QHBoxLayout()
+        whats_row.addWidget(self.whats_new_button)
+        whats_row.addStretch(1)
+        whats_box = QWidget()
+        whats_box.setLayout(whats_row)
+        whats_row.setContentsMargins(0, 4, 0, 0)
+        about = self._card("Acerca de", QLabel(f"Kreix {VERSION}"), whats_box)
 
         body = QWidget()
         body.setObjectName("Page")
@@ -215,6 +233,15 @@ class SettingsView(QWidget):
             row.switch.setChecked(value)
             row.switch.blockSignals(False)
             row.switch.update()
+
+    @property
+    def feedback(self) -> Feedback | None:
+        return self.rules.feedback if self.rules is not None else None
+
+    @feedback.setter
+    def feedback(self, value: Feedback | None) -> None:
+        if self.rules is not None:
+            self.rules.feedback = value
 
     def reload_rules(self) -> None:
         if self.rules is not None:
