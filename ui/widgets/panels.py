@@ -15,7 +15,7 @@ from ui.widgets.cards import BrandRule
 from ui.widgets.tables import RIGHT, Column, DataTable
 from core.i18n import tr, trn
 
-ROW_H = 58
+ROW_H = 66
 
 
 class BudgetBars(QWidget):

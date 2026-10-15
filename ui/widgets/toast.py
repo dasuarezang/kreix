@@ -1,8 +1,8 @@
 """Aviso flotante y breve (como un "snackbar"): confirma una accion y, si se puede, ofrece deshacerla."""
 from __future__ import annotations
 
-from PySide6.QtCore import QTimer, Signal, Qt
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QWidget
+from PySide6.QtCore import QPropertyAnimation, QTimer, Signal, Qt
+from PySide6.QtWidgets import QFrame, QGraphicsOpacityEffect, QHBoxLayout, QLabel, QPushButton, QWidget
 from core.i18n import tr
 
 DURATION_MS = 7000
@@ -38,7 +38,23 @@ class Toast(QFrame):
         self._timer.setInterval(DURATION_MS)
         self._timer.timeout.connect(self.hide)
         self.setAccessibleName(tr("Aviso"))
+        self._fade: QPropertyAnimation | None = None
         self.hide()
+
+    def _fade_in(self) -> None:
+        """Entrada breve de 160 ms: confirma que la accion ha tenido efecto sin llamar la atencion."""
+        effect = QGraphicsOpacityEffect(self)
+        effect.setOpacity(0.0)
+        self.setGraphicsEffect(effect)
+        self._fade = QPropertyAnimation(effect, b"opacity", self)
+        self._fade.setDuration(160)
+        self._fade.setStartValue(0.0)
+        self._fade.setEndValue(1.0)
+        self._fade.finished.connect(self._drop_effect)
+        self._fade.start()
+
+    def _drop_effect(self) -> None:
+        self.setGraphicsEffect(None)
 
     @property
     def text(self) -> str:
@@ -53,6 +69,7 @@ class Toast(QFrame):
         self.reposition()
         self.show()
         self.raise_()
+        self._fade_in()
         self._timer.start()
         self.setAccessibleDescription(text)
 

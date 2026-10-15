@@ -21,6 +21,7 @@ from data.paths import default_db_path, default_vault_path, legacy_db_path
 from data.vault import CorruptVaultError, WrongPasswordError
 from ui import assets, fonts, theme
 from ui.lock_screen import LockDialog, LockMode
+from ui.widgets.nav_button import install_keyboard_rings
 from ui.system_language import system_language
 
 
@@ -138,6 +139,7 @@ def main(argv: list[str] | None = None) -> int:
     fonts.setup_application(app)
     app.setApplicationName("Kreix")
     app.setWindowIcon(assets.app_icon())
+    install_keyboard_rings(app)
     app.setStyleSheet(theme.stylesheet(theme.DARK))        # la pantalla de bloqueo ya sale con el estilo de la app
     db = args.db or os.environ.get("KREIX_DB")
     threading.Thread(target=preload, name="kreix-preload", daemon=True).start()

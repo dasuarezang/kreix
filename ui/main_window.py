@@ -43,7 +43,7 @@ from ui.whats_new import WhatsNewDialog
 from ui.widgets import charts
 from ui.widgets.ambient import AmbientLight, hour_of
 from ui.widgets.data_menu import DataFlyout, DataMenuButton
-from ui.widgets.nav_button import NavButton
+from ui.widgets.nav_button import NavButton, install_keyboard_rings
 from ui.widgets.switch import ThemeToggle
 from ui.widgets.toast import Toast
 from core.i18n import tr, N_
@@ -751,6 +751,7 @@ class MainWindow(QMainWindow):
         palette = theme.PALETTES[name]
         theme.set_current(palette)
         app = QApplication.instance()
+        install_keyboard_rings(app)
         sheet = theme.stylesheet(palette)
         if app.styleSheet() != sheet:                    # repulir toda la interfaz es lo mas caro del cambio de tema: solo si cambia
             app.setStyleSheet(sheet)

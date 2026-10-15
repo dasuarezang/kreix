@@ -202,6 +202,8 @@ class AccountsView(QWidget):
         self.search.setAccessibleName(tr("Buscar movimientos"))
         self.category_filter = Combo()
         self.category_filter.setAccessibleName(tr("Filtrar por categoría"))
+        self.category_filter.setSizeAdjustPolicy(Combo.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        self.category_filter.setMinimumContentsLength(max(len(tr(ALL_CATEGORIES)), 18))   # que "Todas las categorías" nunca se corte
         self._count = QLabel("")
         self._count.setObjectName("Small")
         self._search_timer = QTimer(self)                     # espera a que dejes de teclear: con miles de filas, fluido
@@ -229,7 +231,7 @@ class AccountsView(QWidget):
         bar.addWidget(self._count)
         bar.addStretch(1)
         bar.addWidget(self.search, 2)
-        bar.addWidget(self.category_filter, 1)
+        bar.addWidget(self.category_filter)
         bar.addWidget(self.export_button)
 
         card = QFrame()

@@ -195,7 +195,7 @@ QPushButton {{
     padding: 11px 22px; font-family: {bold}; font-size: 13px; outline: none;
 }}
 QPushButton:hover {{ background: {p.hover}; }}
-QPushButton:focus {{ border: 2px solid {p.accent}; padding: 8px 18px; outline: none; }}
+QPushButton[kbd="true"]:focus {{ border: 2px solid {p.accent}; padding: 8px 18px; outline: none; }}
 QPushButton:disabled {{ color: {p.muted}; }}
 QPushButton#Primary {{ background: {p.accent}; color: {p.on_accent}; padding: 12px 26px; }}
 QPushButton#Primary:hover {{ background: {p.accent_hover}; }}
@@ -220,7 +220,7 @@ QLabel#IconChip {{ background: {accent_soft}; border-radius: 30px; }}
 QLabel#StepBadge {{
     background: {accent_soft}; color: {p.accent_text}; border-radius: 13px; font-family: {medium}; font-size: 12px;
 }}
-QFrame#Card QLabel#StepBadge, QFrame#GroupCard QLabel#StepBadge {{ background: {accent_soft}; color: {p.accent_text}; }}
+QFrame#Card QLabel#StepBadge, QFrame#GroupCard QLabel#StepBadge, QFrame#Section QLabel#StepBadge {{ background: {accent_soft}; color: {p.accent_text}; }}
 
 /* ---------------------------------------------------------------- tarjetas tematicas (Ajustes y Ayuda) */
 QFrame#GroupCard {{ background: {p.surface}; border: 1px solid {p.border}; border-radius: 22px; }}
@@ -291,7 +291,9 @@ QPushButton#ToastClose {{
 QPushButton#ToastClose:hover {{ background: {p.hover}; color: {p.text}; }}
 
 /* ---------------------------------------------------------------- zona de importacion */
-QFrame#DropZone {{ background: {p.surface}; border: 1px dashed {p.accent}; border-radius: 30px; }}
+QFrame#DropZone {{ background: {p.surface}; border: 1px dashed {p.accent}; border-radius: 34px; }}
+QFrame#ListRow {{ background: transparent; border: none; border-top: 1px solid {p.border}; }}
+QFrame#ListRow QLabel {{ background: transparent; }}
 QFrame#DropZone[dragging="true"] {{ background: {accent_soft}; border: 2px dashed {p.accent}; }}
 QFrame#DropZone QLabel {{ background: transparent; }}
 
@@ -348,7 +350,7 @@ QTableView {{
     background: transparent; color: {p.text}; border: none; outline: none; gridline-color: transparent;
     selection-background-color: {accent_soft}; selection-color: {p.text};
 }}
-QTableView::item {{ padding: 0 8px; border: none; border-bottom: 1px solid {p.border}; }}
+QTableView::item {{ padding: 0 8px; border: none; border-bottom: 1px solid {rgba(p.border, 0.65)}; }}
 QTableView::item:hover {{ background: {p.hover}; }}
 QTableView::item:selected {{ background: {accent_soft}; color: {p.text}; }}
 /* en las secciones sin caja, el texto de la primera columna arranca justo donde el titulo (sin los 8 px de la celda) */

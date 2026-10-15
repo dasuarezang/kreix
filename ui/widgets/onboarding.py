@@ -6,7 +6,7 @@ from PySide6.QtGui import QColor, QLinearGradient, QPainter, QPen, QRadialGradie
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from ui import theme
-from ui.widgets.cards import StripeMark
+from ui.widgets.cards import StripeMark, flatten
 from ui.widgets.panels import Panel
 from ui.widgets.sky import SkyWidget
 from core.i18n import tr, N_
@@ -114,7 +114,6 @@ class Onboarding(QWidget):
     @staticmethod
     def _step(number: int, heading: str, body: str) -> QFrame:
         card = QFrame()
-        card.setObjectName("Card")
         badge = QLabel(str(number))
         badge.setObjectName("StepBadge")
         badge.setFixedSize(26, 26)
@@ -130,12 +129,12 @@ class Onboarding(QWidget):
         top.addWidget(badge)
         top.addWidget(name, 1)
         lay = QVBoxLayout(card)
-        lay.setContentsMargins(20, 18, 20, 18)
         lay.setSpacing(10)
+        flatten(card, lay, (0, 0, 0, 0))              # los pasos no se tocan: filo de marca y texto, sin caja
         lay.addLayout(top)
         lay.addWidget(desc)
         lay.addStretch(1)
-        card.setMinimumHeight(150)
+        card.setMinimumHeight(140)
         card.desc_label = desc
         return card
 
@@ -325,15 +324,14 @@ class EmptyState(QWidget):
         show.setAlignment(Qt.AlignmentFlag.AlignCenter)
         show.setWordWrap(True)
         card = QFrame()
-        card.setObjectName("Card")
         heading = QLabel(tr("QUÉ NECESITAS"))
         heading.setObjectName("CardTitle")
         need = QLabel(needs)
         need.setObjectName("Muted")
         need.setWordWrap(True)
         lay = QVBoxLayout(card)
-        lay.setContentsMargins(24, 18, 24, 18)
         lay.setSpacing(6)
+        flatten(card, lay, (0, 0, 0, 0))
         lay.addWidget(heading)
         lay.addWidget(need)
         card.setMaximumWidth(560)

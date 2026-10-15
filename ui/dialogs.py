@@ -14,6 +14,7 @@ from ui.popups import Combo
 from ui.system_language import system_language  # noqa: F401  (se reexporta)
 from ui.format import category_label
 from ui.widgets.brand_dialog import BrandDialog
+from ui.widgets.cards import BrandRule
 from ui.widgets.interests import InterestPicker
 from ui.widgets.language_picker import LanguagePicker
 from core.greeting import MAX_NAME, clean_name
@@ -108,10 +109,11 @@ class WelcomeDialog(BrandDialog):
         outer.addWidget(self._title)
         outer.addWidget(self._intro)
         card = QFrame()
-        card.setObjectName("Card")
+        card.setObjectName("Section")
         col = QVBoxLayout(card)
-        col.setContentsMargins(26, 22, 26, 22)
+        col.setContentsMargins(0, 0, 0, 0)
         col.setSpacing(10)
+        col.addWidget(BrandRule())
         outer.addWidget(card)
         col.addWidget(self._ask_language)
         col.addWidget(self.languages)

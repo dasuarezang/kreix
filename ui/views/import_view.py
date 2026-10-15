@@ -18,6 +18,7 @@ from ui.feedback import Feedback, snapshot_of, tell
 from ui.format import fmt_date
 from ui.widgets.cards import PageHeader, repolish
 from ui.widgets.dropzone import DropZone
+from ui.widgets.section_card import GroupCard
 from core.i18n import tr, N_
 
 
@@ -31,7 +32,7 @@ def _clear(layout: QVBoxLayout) -> None:
 class ResultRow(QFrame):
     def __init__(self, report: FileReport) -> None:
         super().__init__()
-        self.setObjectName("Card")
+        self.setObjectName("ListRow")
         if not report.ok:
             state, label = "error", tr("Error")
         elif report.warnings:
@@ -62,7 +63,7 @@ class ResultRow(QFrame):
         top.addStretch(1)
         top.addWidget(pill)
         col = QVBoxLayout(self)
-        col.setContentsMargins(26, 20, 26, 20)
+        col.setContentsMargins(0, 18, 0, 18)
         col.setSpacing(6)
         col.addLayout(top)
         col.addWidget(sub)
@@ -90,7 +91,7 @@ class PreviewRow(QFrame):
 
     def __init__(self, preview: FilePreview) -> None:
         super().__init__()
-        self.setObjectName("Card")
+        self.setObjectName("ListRow")
         if not preview.ok:
             state, label = "error", tr("No se puede importar")
         elif not preview.changes_data:
@@ -123,7 +124,7 @@ class PreviewRow(QFrame):
         top.addStretch(1)
         top.addWidget(pill)
         col = QVBoxLayout(self)
-        col.setContentsMargins(26, 20, 26, 20)
+        col.setContentsMargins(0, 18, 0, 18)
         col.setSpacing(6)
         col.addLayout(top)
         for i, text in enumerate(lines):
@@ -158,6 +159,7 @@ class ImportView(QWidget):
 
         self.as_of = QDateEdit(QDate.currentDate())
         self.as_of.setCalendarPopup(True)
+        self.as_of.setMinimumWidth(150)
         self.as_of.setDisplayFormat("dd/MM/yyyy")
         self.as_of.setAccessibleName(tr("Fecha de la cartera"))
         as_of_label = QLabel(tr("Fecha de la cartera"))
@@ -165,6 +167,7 @@ class ImportView(QWidget):
         as_of_hint = QLabel(tr("El extracto de cartera de MyInvestor no incluye fecha: indica a qué día corresponde."))
         as_of_hint.setObjectName("Small")
         as_of_row = QHBoxLayout()
+        as_of_row.setContentsMargins(0, 0, 0, 0)
         as_of_col = QVBoxLayout()
         as_of_col.setSpacing(2)
         as_of_col.addWidget(as_of_label)
@@ -181,6 +184,7 @@ class ImportView(QWidget):
         account_hint = QLabel(tr("A qué cuenta bancaria pertenecen los extractos de Imagin que importes."))
         account_hint.setObjectName("Small")
         account_row = QHBoxLayout()
+        account_row.setContentsMargins(0, 0, 0, 0)
         account_col = QVBoxLayout()
         account_col.setSpacing(2)
         account_col.addWidget(account_label)
@@ -204,9 +208,15 @@ class ImportView(QWidget):
         fund_row = QHBoxLayout()
         fund_row.addLayout(fund_col, 1)
         fund_row.addWidget(self.fund_combo)
-        self._fund_box = QWidget()
-        self._fund_box.setLayout(fund_row)
         fund_row.setContentsMargins(0, 0, 0, 0)
+        settings = GroupCard()                  # los tres ajustes de destino, en una sola tarjeta con filas
+        for row in (account_row, as_of_row):
+            holder = QWidget()
+            holder.setLayout(row)
+            settings.add_setting(holder)
+        fund_holder = QWidget()
+        fund_holder.setLayout(fund_row)
+        self._fund_box = settings.add_setting(fund_holder)
         self._fund_box.hide()                 # solo cuando Kreix ya conoce algun fondo (set_funds)
 
         self._results = QVBoxLayout()
@@ -249,9 +259,7 @@ class ImportView(QWidget):
         col.setSpacing(26)
         col.addWidget(header)
         col.addWidget(self.dropzone)
-        col.addLayout(account_row)
-        col.addLayout(as_of_row)
-        col.addWidget(self._fund_box)
+        col.addWidget(settings)
         col.addSpacing(6)
         col.addWidget(self._preview_box)
         col.addWidget(results_title)

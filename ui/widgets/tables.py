@@ -17,7 +17,7 @@ from ui import fonts, theme
 SORT_ROLE = Qt.ItemDataRole.UserRole
 LEFT = Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
 RIGHT = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-ROW_HEIGHT = 38
+ROW_HEIGHT = 42
 HEADER_HEIGHT = 38
 RESIZE_REFIT_MS = 45      # al redimensionar, el alto de las filas con texto largo se reajusta como mucho cada tanto
 SAMPLE_ROWS = 800        # filas que se miden para el ancho de las columnas

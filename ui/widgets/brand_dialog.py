@@ -5,6 +5,7 @@ from PySide6.QtGui import QColor, QPainter, QRadialGradient
 from PySide6.QtWidgets import QDialog, QFrame, QLabel, QVBoxLayout, QWidget
 
 from ui import theme
+from ui.widgets.cards import BrandRule
 
 
 class BrandDialog(QDialog):
@@ -39,10 +40,11 @@ class BrandDialog(QDialog):
             self.intro_label.setObjectName("Muted")
             self.intro_label.setWordWrap(True)
             outer.addWidget(self.intro_label)
-        card = QFrame()
-        card.setObjectName("Card")
+        card = QFrame()                              # el cuadro ya es una superficie: dentro, sin otra caja, solo el filo de marca
+        card.setObjectName("Section")
         inner = QVBoxLayout(card)
-        inner.setContentsMargins(26, 24, 26, 22)
+        inner.setContentsMargins(0, 0, 0, 0)
         inner.setSpacing(12)
+        inner.addWidget(BrandRule())
         outer.addWidget(card)
         return inner

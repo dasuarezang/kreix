@@ -38,19 +38,22 @@ class DropZone(QFrame):
         hint = QLabel(tr("CSV o Excel de Imagin y MyInvestor, con o sin extensión; también el histórico de precios de un fondo. Y un archivo .kreix exportado desde otro Kreix."))
         hint.setObjectName("Muted")
         hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        hint.setWordWrap(True)
         button = QPushButton(tr("Seleccionar archivos"))
         button.setObjectName("Primary")
         button.setCursor(Qt.CursorShape.PointingHandCursor)
         button.clicked.connect(self.browse)
 
         layout = QVBoxLayout(self)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.setContentsMargins(64, 20, 64, 20)     # el texto largo se parte en lineas de lectura comoda, sin ensanchar la pagina
         layout.setSpacing(10)
+        layout.addStretch(1)
         layout.addWidget(logo, 0, Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self._title)
         layout.addWidget(hint)
         layout.addSpacing(6)
         layout.addWidget(button, 0, Qt.AlignmentFlag.AlignCenter)
+        layout.addStretch(1)
         self.setAccessibleName(tr("Zona de importación"))
         self.setAccessibleDescription(tr("Arrastra archivos CSV o Excel, o usa el botón Seleccionar archivos"))
 

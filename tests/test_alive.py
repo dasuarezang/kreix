@@ -183,17 +183,15 @@ def test_it_only_dims_a_little_and_does_not_touch_the_theme(window):
     sky = window.dashboard.sky
     sky_rect = sky.rect().translated(sky.mapTo(window, sky.rect().topLeft())).adjusted(-30, -30, 30, 30)
 
-    def brightness(image: QImage) -> float:
-        total = 0
-        for x in range(240, image.width(), 53):
-            for y in range(sky_rect.bottom() + 10, image.height(), 41):      # por debajo de la cabecera: se mide la luz de la pantalla, no el saludo ni el propio cielo
-                if sky_rect.contains(x, y):
-                    continue
-                c = image.pixelColor(x, y)
-                total += c.red() + c.green() + c.blue()
-        return total
+    def brightness(image: QImage, spots: list[tuple[int, int]]) -> int:
+        return sum(image.pixelColor(x, y).red() + image.pixelColor(x, y).green() + image.pixelColor(x, y).blue() for x, y in spots)
 
-    assert 0.88 < brightness(night) / brightness(noon) < 1.0                   # se nota un poco, no mas de un ~7 %
+    spots = [(x, y)                      # los mismos puntos claros (texto, botones) a las dos horas: el fondo oscuro es mas oscuro que el propio tinte nocturno
+             for x in range(240, noon.width(), 17) for y in range(max(sky_rect.bottom() + 10, noon.height() * 6 // 10), noon.height(), 7)
+             if not sky_rect.contains(x, y)
+             and sum((noon.pixelColor(x, y).red(), noon.pixelColor(x, y).green(), noon.pixelColor(x, y).blue())) > 300]
+    assert len(spots) > 20
+    assert 0.88 < brightness(night, spots) / brightness(noon, spots) < 1.0     # se nota un poco, no mas de un ~7 %
 
 
 def test_ambient_setting_is_saved_and_the_clock_tick_updates_everything(window):
