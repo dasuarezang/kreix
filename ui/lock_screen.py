@@ -1,16 +1,24 @@
-"""Pantalla de bloqueo: pide la Contrasena Maestra antes de abrir (o crear) el almacen cifrado."""
+"""Pantalla de bloqueo: pide la Contrasena Maestra antes de abrir (o crear) el almacen cifrado.
+
+Es la primera cara de Kreix, asi que lleva su marca: el logotipo, las cuatro franjas de la K y el mismo fondo con
+resplandor que la ventana principal. Al acertar la contrasena la pantalla no se cierra a ciegas: se queda con un
+"Abriendo Kreix..." mientras la ventana principal se prepara y se cierra solo cuando esta lista (sin parpadeos).
+"""
 from __future__ import annotations
 
 from collections.abc import Callable
 from enum import Enum
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QGuiApplication
-from PySide6.QtWidgets import QDialog, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtGui import QColor, QGuiApplication, QPainter, QRadialGradient
+from PySide6.QtWidgets import (
+    QApplication, QDialog, QFrame, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QVBoxLayout, QWidget,
+)
 
 from core.i18n import tr
 from data.vault import MIN_PASSWORD
-from ui import assets
+from ui import assets, theme
+from ui.widgets.cards import StripeMark
 
 
 class LockMode(Enum):
@@ -24,16 +32,27 @@ Attempt = Callable[[str], str | None]
 
 
 class LockDialog(QDialog):
-    def __init__(self, mode: LockMode, attempt: Attempt, parent: QWidget | None = None) -> None:
+    def __init__(self, mode: LockMode, attempt: Attempt, parent: QWidget | None = None,
+                 finish: Callable[[], None] | None = None) -> None:
+        """`finish` se ejecuta con la pantalla aun a la vista, una vez aceptada la contrasena (aqui se prepara la ventana)."""
         super().__init__(parent)
         self._mode = mode
         self._attempt = attempt
+        self._finish = finish
         self.reset_requested = False          # el usuario eligio borrar los datos y empezar de cero
         self.setWindowTitle("Kreix")
         self.setWindowIcon(assets.app_icon())
-        self.setMinimumWidth(460)
+        self.setFixedWidth(520)
         self.setModal(True)
         creating = mode is not LockMode.UNLOCK
+
+        brand = QLabel()
+        brand.setPixmap(assets.wordmark(theme.current(), 46))
+        brand.setAccessibleName("Kreix")
+        head = QHBoxLayout()
+        head.addWidget(brand)
+        head.addStretch(1)
+        head.addWidget(StripeMark(78, 40), 0, Qt.AlignmentFlag.AlignTop)
 
         title = QLabel(tr("Crea tu contraseña maestra") if creating else tr("Kreix está bloqueado"))
         title.setObjectName("H1")
@@ -50,11 +69,15 @@ class LockDialog(QDialog):
         self.confirm.setEchoMode(QLineEdit.EchoMode.Password)
         self.confirm.setPlaceholderText(tr("Repite la contraseña"))
         self.confirm.setAccessibleName(tr("Repite la contraseña"))
-        self.confirm.setVisible(creating)
+        if not creating:
+            self.confirm.hide()              # nunca setVisible(True) sin padre: abriria una ventana suelta
         self.error = QLabel()
         self.error.setObjectName("LockError")
         self.error.setWordWrap(True)
         self.error.hide()
+        self.status = QLabel(tr("Abriendo Kreix…"))
+        self.status.setObjectName("Muted")
+        self.status.hide()
 
         self.ok = QPushButton(tr("Crear y abrir") if creating else tr("Desbloquear"))
         self.ok.setObjectName("Primary")
@@ -68,7 +91,8 @@ class LockDialog(QDialog):
         self.forgot = QPushButton(tr("He olvidado la contraseña"))
         self.forgot.setObjectName("LinkButton")
         self.forgot.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.forgot.setVisible(mode is LockMode.UNLOCK)
+        if mode is not LockMode.UNLOCK:
+            self.forgot.hide()
         self.forgot.clicked.connect(self._forgot)
 
         row = QHBoxLayout()
@@ -76,18 +100,48 @@ class LockDialog(QDialog):
         row.addStretch(1)
         row.addWidget(self.quit)
         row.addWidget(self.ok)
+
+        card = QFrame()
+        card.setObjectName("Card")
+        form = QVBoxLayout(card)
+        form.setContentsMargins(28, 26, 28, 22)
+        form.setSpacing(12)
+        form.addWidget(title)
+        form.addWidget(intro)
+        form.addSpacing(4)
+        form.addWidget(self.password)
+        form.addWidget(self.confirm)
+        form.addWidget(self.error)
+        form.addWidget(self.status)
+        form.addSpacing(4)
+        form.addLayout(row)
+
+        footer = QLabel(tr("Todo se queda en este equipo, cifrado. Kreix no envía nada a ningún servidor."))
+        footer.setObjectName("Small")
+        footer.setWordWrap(True)
+        footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
         col = QVBoxLayout(self)
-        col.setContentsMargins(34, 30, 34, 26)
-        col.setSpacing(12)
-        col.addWidget(title)
-        col.addWidget(intro)
-        col.addSpacing(6)
-        col.addWidget(self.password)
-        col.addWidget(self.confirm)
-        col.addWidget(self.error)
-        col.addSpacing(6)
-        col.addLayout(row)
+        col.setContentsMargins(34, 30, 34, 24)
+        col.setSpacing(22)
+        col.addLayout(head)
+        col.addWidget(card)
+        col.addWidget(footer)
         self.password.setFocus()
+
+    # ------------------------------------------------------------------ marca: mismo fondo que la ventana principal
+    def paintEvent(self, _event) -> None:
+        pal = theme.current()
+        painter = QPainter(self)
+        painter.fillRect(self.rect(), QColor(pal.bg))
+        gradient = QRadialGradient(self.width() * 0.95, -self.height() * 0.05, max(self.width(), self.height()) * 0.95)
+        start = QColor(pal.glow)
+        start.setAlpha(pal.glow_alpha + 20)
+        end = QColor(pal.glow)
+        end.setAlpha(0)
+        gradient.setColorAt(0.0, start)
+        gradient.setColorAt(1.0, end)
+        painter.fillRect(self.rect(), gradient)
 
     def _intro_text(self) -> str:
         if self._mode is LockMode.UNLOCK:
@@ -115,6 +169,15 @@ class LockDialog(QDialog):
         self.password.selectAll()
         self.password.setFocus()
 
+    def _busy(self, busy: bool) -> None:
+        """Mientras se descifra y se prepara la ventana, la pantalla no cambia: solo se congela y avisa."""
+        for widget in (self.password, self.confirm, self.ok, self.quit, self.forgot):
+            widget.setEnabled(not busy)
+        self.status.setVisible(busy)
+        if busy:
+            self.error.hide()
+            QApplication.processEvents()
+
     def _submit(self) -> None:
         text = self.password.text()
         if self._mode is not LockMode.UNLOCK:
@@ -124,16 +187,16 @@ class LockDialog(QDialog):
                 return self._show_error(tr("Las contraseñas no coinciden."))
         elif not text:
             return self._show_error(tr("Escribe la contraseña maestra."))
-        self.ok.setEnabled(False)
+        self._busy(True)
         QGuiApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)       # derivar la clave tarda una fracción de segundo
         try:
             message = self._attempt(text)
+            if message is None and self._finish is not None:
+                self._finish()                                              # con la pantalla aun a la vista
         finally:
             QGuiApplication.restoreOverrideCursor()
-            self.ok.setEnabled(True)
         if message is None:
-            self.password.clear()
-            self.confirm.clear()
             self.accept()
         else:
+            self._busy(False)
             self._show_error(message)

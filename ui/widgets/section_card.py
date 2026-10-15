@@ -51,7 +51,8 @@ class SectionCard(QFrame):
         self.description_label = QLabel(description)
         self.description_label.setObjectName("Small")
         self.description_label.setWordWrap(True)
-        self.description_label.setVisible(bool(description))
+        if not description:
+            self.description_label.hide()   # no setVisible(True) sin padre: abriria una ventana suelta
         head.addWidget(self.description_label)
 
         self._body = QVBoxLayout()

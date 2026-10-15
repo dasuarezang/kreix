@@ -172,7 +172,7 @@ QPushButton#Primary:hover {{ background: {p.accent_hover}; }}
 QPushButton#Primary:disabled {{ background: {p.surface_alt}; color: {p.muted}; }}
 QPushButton#Arrow {{ padding: 6px 12px; font-size: 16px; }}
 QLabel#LockError {{ color: {p.red}; font-family: {medium}; }}
-QPushButton#LinkButton {{ background: transparent; color: {p.muted}; border: none; padding: 8px 4px; text-decoration: underline; }}
+QPushButton#LinkButton {{ background: transparent; color: {p.muted}; border: none; padding: 8px 10px 8px 2px; min-width: 170px; text-decoration: underline; }}
 QPushButton#LinkButton:hover {{ color: {p.red}; }}
 QPushButton#BackButton {{
     background: transparent; color: {p.muted}; padding: 6px 14px 6px 8px; border-radius: 10px;
@@ -263,18 +263,24 @@ QFrame#DropZone[dragging="true"] {{ background: {accent_soft}; border: 2px dashe
 QFrame#DropZone QLabel {{ background: transparent; }}
 
 /* ---------------------------------------------------------------- entradas */
+QLineEdit {{ lineedit-password-character: 8226; }}
 QComboBox, QLineEdit, QDateEdit, QDoubleSpinBox {{
     background: {p.surface_alt}; color: {p.text}; border: 1px solid {p.surface_alt};
     border-radius: 14px; padding: 9px 16px; min-height: 20px; font-family: {body};
 }}
 QComboBox:hover, QLineEdit:hover, QDateEdit:hover, QDoubleSpinBox:hover {{ border-color: {p.border}; }}
 QComboBox:focus, QLineEdit:focus, QDateEdit:focus, QDoubleSpinBox:focus {{ border: 2px solid {p.accent}; padding: 7px 13px; }}
+QComboBox {{ combobox-popup: 0; }}
 QComboBox::drop-down, QDateEdit::drop-down {{ border: none; width: 28px; }}
 QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {{ width: 0; border: none; }}
+QComboBox QFrame {{ background: {p.surface}; border: none; }}
 QComboBox QAbstractItemView {{
-    background: {p.surface}; color: {p.text}; border: 1px solid {p.border}; border-radius: 10px;
-    selection-background-color: {p.accent}; selection-color: {p.on_accent}; outline: none; padding: 4px;
+    background: {p.surface}; color: {p.text}; border: 1px solid {p.border}; border-radius: 0;
+    selection-background-color: transparent; selection-color: {p.text}; outline: none; padding: 8px;
 }}
+QComboBox QAbstractItemView::item {{ min-height: 26px; padding: 6px 14px; margin: 2px 0; border-radius: 10px; }}
+QComboBox QAbstractItemView::item:hover {{ background: {p.hover}; color: {p.text}; }}
+QComboBox QAbstractItemView::item:selected {{ background: {accent_soft}; color: {p.text}; }}
 QCalendarWidget QWidget {{ background: {p.surface}; color: {p.text}; }}
 QCalendarWidget QAbstractItemView {{ selection-background-color: {p.accent}; selection-color: {p.on_accent}; }}
 QMenu, QComboBox QAbstractItemView, QMessageBox, QInputDialog, QCalendarWidget {{ font-family: {medium}; font-size: 13px; }}

@@ -628,4 +628,6 @@ TEXTS: dict[str, str] = {
     'Evolución de cada fondo': 'Evolució de cada fons',
     'Valor de cada fondo al cierre de cada mes, según tus extractos. Entre extractos es una estimación.': 'Valor de cada fons al tancament de cada mes, segons els teus extractes. Entre extractes és una estimació.',
     'Importa tus operaciones y tu cartera para ver cada fondo': 'Importa les teves operacions i la teva cartera per veure cada fons',
+    'Abriendo Kreix…': 'Obrint Kreix…',
+    'Todo se queda en este equipo, cifrado. Kreix no envía nada a ningún servidor.': 'Tot es queda en aquest equip, xifrat. Kreix no envia res a cap servidor.',
 }

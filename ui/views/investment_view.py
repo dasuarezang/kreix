@@ -40,15 +40,15 @@ class InvestmentView(QWidget):
 
         self._stack = QStackedLayout()
         self._interested = True
-        self._stack.addWidget(self._build_empty())
-        self._stack.addWidget(self._build_content())
+        self._stack.addWidget(self._owned(self._build_empty()))
+        self._stack.addWidget(self._owned(self._build_content()))
         self.off_state = InterestOffState(
             tr("Las inversiones están desactivadas"),
             tr("Dijiste que no te interesaba gestionar tus inversiones. Si has cambiado de idea, actívalas y verás aquí el valor "
             "de tu cartera, lo que has aportado, tu plusvalía y tu rentabilidad."),
             tr("Activar inversiones"))
         self.off_state.activate_requested.connect(self.interest_requested)
-        self._stack.addWidget(self.off_state)
+        self._stack.addWidget(self._owned(self.off_state))
 
         self.header = PageHeader(tr("Inversiones"), eyebrow=tr("Tu cartera"))
         self.period = PeriodBar()
@@ -62,6 +62,12 @@ class InvestmentView(QWidget):
         root.addLayout(bar)
         root.addLayout(self._stack, 1)
         self.period.changed.connect(lambda _m: self.reload())
+
+    def _owned(self, widget: QWidget) -> QWidget:
+        """Le da a la pagina como padre antes de meterla en la pila: sin padre, la pila la abriria como ventana suelta
+        (un parpadeo al arrancar)."""
+        widget.setParent(self)
+        return widget
 
     # ------------------------------------------------------------------ construccion
     def _build_empty(self) -> QWidget:

@@ -69,21 +69,27 @@ class AccountsView(QWidget):
 
         self._stack = QStackedLayout()
         self._interested = True
-        self._stack.addWidget(self._build_empty())
-        self._stack.addWidget(self._build_content())
+        self._stack.addWidget(self._owned(self._build_empty()))
+        self._stack.addWidget(self._owned(self._build_content()))
         self.off_state = InterestOffState(
             tr("Las cuentas bancarias están desactivadas"),
             tr("Dijiste que no te interesaba gestionar tus cuentas. Si has cambiado de idea, actívalas y verás aquí tu saldo, "
             "tus ingresos y gastos, tus presupuestos y todos tus movimientos."),
             tr("Activar cuentas bancarias"))
         self.off_state.activate_requested.connect(self.interest_requested)
-        self._stack.addWidget(self.off_state)
+        self._stack.addWidget(self._owned(self.off_state))
 
         root = QVBoxLayout(self)
         root.setContentsMargins(48, 40, 48, 0)
         root.setSpacing(22)
         root.addLayout(self._build_header())
         root.addLayout(self._stack, 1)
+
+    def _owned(self, widget: QWidget) -> QWidget:
+        """Le da a la pagina como padre antes de meterla en la pila: sin padre, la pila la abriria como ventana suelta
+        (un parpadeo al arrancar)."""
+        widget.setParent(self)
+        return widget
 
     # ------------------------------------------------------------------ construccion
     def _build_header(self) -> QVBoxLayout:

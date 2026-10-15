@@ -77,8 +77,12 @@ class StripeMark(QWidget):
         slant, bar, gap = h * 0.50, h * 0.185, h * 0.165
         block = slant + 4 * bar + 3 * gap
         left = (self.width() - block) / 2 if self._centered else self.width() - block
+        yellow, red = QColor(pal.accent), QColor(pal.red)
         for i, alpha in enumerate((255, 190, 120, 60)):
-            c = QColor(pal.accent)
+            t = i / 3                                       # de amarillo (la primera barra) a rojo (la ultima)
+            c = QColor(round(yellow.red() + (red.red() - yellow.red()) * t),
+                       round(yellow.green() + (red.green() - yellow.green()) * t),
+                       round(yellow.blue() + (red.blue() - yellow.blue()) * t))
             c.setAlpha(alpha)
             painter.setBrush(c)
             x = left + i * (bar + gap)
@@ -102,12 +106,14 @@ class PageHeader(QWidget):
         self._eyebrow = QLabel(eyebrow.upper())
         self._eyebrow.setObjectName("Eyebrow")
         track(self._eyebrow, 1.6)
-        self._eyebrow.setVisible(bool(eyebrow))
+        if not eyebrow:
+            self._eyebrow.hide()   # no setVisible(True) sin padre: abriria una ventana suelta
         self.title = QLabel(title)
         self.title.setObjectName("H1")
         self._subtitle = QLabel(subtitle)
         self._subtitle.setObjectName("Muted")
-        self._subtitle.setVisible(bool(subtitle))
+        if not subtitle:
+            self._subtitle.hide()   # no setVisible(True) sin padre: abriria una ventana suelta
         column = QVBoxLayout()
         self._column = column
         column.setSpacing(2)

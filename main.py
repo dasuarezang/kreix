@@ -44,9 +44,12 @@ def build_window(db_url: str | None = None, db_label: str | None = None, engine=
     return MainWindow(services, db_label or str(default_db_path()))
 
 
-def unlock_store(path: Path, legacy: Path, parent=None) -> SecureStore | None:
+def unlock_store(path: Path, legacy: Path, parent=None, on_open=None) -> SecureStore | None:
     """Pantalla de bloqueo: abre el almacen cifrado (o lo crea, cifrando de paso los datos sin cifrar de versiones
-    anteriores). Devuelve None si el usuario sale sin entrar."""
+    anteriores). Devuelve None si el usuario sale sin entrar.
+
+    `on_open(store)` se llama cuando la contrasena es correcta y con la pantalla de bloqueo todavia a la vista: ahi se
+    prepara y muestra la ventana principal, asi la entrada es continua, sin huecos ni parpadeos."""
     opened: list[SecureStore] = []
 
     def unlock(password: str) -> str | None:
@@ -78,11 +81,12 @@ def unlock_store(path: Path, legacy: Path, parent=None) -> SecureStore | None:
     else:
         mode, attempt = (LockMode.MIGRATE if legacy.is_file() else LockMode.CREATE), create
     i18n.set_language(system_language())                   # el idioma elegido esta dentro de los datos cifrados: aun no se conoce
-    dialog = LockDialog(mode, attempt, parent)
+    finish = (lambda: on_open(opened[0])) if on_open else None
+    dialog = LockDialog(mode, attempt, parent, finish)
     dialog.exec()
     if dialog.reset_requested:                              # "He olvidado la contraseña": se borra todo y se empieza de cero
         erase_vault(path)
-        dialog = LockDialog(LockMode.CREATE, create, parent)
+        dialog = LockDialog(LockMode.CREATE, create, parent, finish)
         dialog.exec()
     return opened[0] if opened else None
 
@@ -99,23 +103,27 @@ def main(argv: list[str] | None = None) -> int:
     app.setWindowIcon(assets.app_icon())
     app.setStyleSheet(theme.stylesheet(theme.DARK))        # la pantalla de bloqueo ya sale con el estilo de la app
     db = args.db or os.environ.get("KREIX_DB")
-    store = None
-    if db:                                                  # solo pruebas/desarrollo: base alternativa sin cifrar
-        window = build_window(f"sqlite:///{db}", db)
-    else:
-        store = unlock_store(default_vault_path(), legacy_db_path())
-        if store is None:
-            return 0
-        window = build_window(engine=store.engine, db_label=str(store.path))
-        autosave = QTimer(window)                           # guarda cifrado poco despues de cada cambio
-        autosave.setInterval(2000)
-        autosave.timeout.connect(store.flush)
-        autosave.start()
-        app.aboutToQuit.connect(store.flush)                # y al cerrar
-    window.detect_language = True                           # la primera vez se propone el idioma del sistema
-    app.kreix_window = window
-    window.show()
-    window._later(400, window.start_up)                     # tras pintar la ventana: nombre y novedades
+
+    def launch(store: SecureStore | None) -> None:
+        """Construye y muestra la ventana principal (con la pantalla de bloqueo todavia delante, si la hay)."""
+        if store is None:                                   # solo pruebas/desarrollo: base alternativa sin cifrar
+            window = build_window(f"sqlite:///{db}", db)
+        else:
+            window = build_window(engine=store.engine, db_label=str(store.path))
+            autosave = QTimer(window)                       # guarda cifrado poco despues de cada cambio
+            autosave.setInterval(2000)
+            autosave.timeout.connect(store.flush)
+            autosave.start()
+            app.aboutToQuit.connect(store.flush)            # y al cerrar
+        window.detect_language = True                       # la primera vez se propone el idioma del sistema
+        app.kreix_window = window
+        window.show()
+        window._later(400, window.start_up)                 # tras pintar la ventana: nombre y novedades
+
+    if db:
+        launch(None)
+    elif unlock_store(default_vault_path(), legacy_db_path(), on_open=launch) is None:
+        return 0
     return app.exec()
 
 

@@ -59,7 +59,7 @@ class SwitchToggle(QAbstractButton):
         if self.hasFocus():
             painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.setPen(QPen(QColor(p.accent), 2))
-            painter.drawRoundedRect(QRectF(-1, -1, self.WIDTH + 2, self.HEIGHT + 2), 14, 14)
+            painter.drawRoundedRect(QRectF(1, 1, self.WIDTH - 2, self.HEIGHT - 2), 12, 12)
 
 
 class ThemeToggle(QAbstractButton):
@@ -67,7 +67,7 @@ class ThemeToggle(QAbstractButton):
 
     Marcado == modo oscuro. No lleva texto visible; el nombre accesible lo describe."""
 
-    WIDTH, HEIGHT = 92, 40
+    WIDTH, HEIGHT = 96, 44
 
     def __init__(self, dark: bool = True, parent=None) -> None:
         super().__init__(parent)
@@ -107,11 +107,15 @@ class ThemeToggle(QAbstractButton):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         h, w = self.HEIGHT, self.WIDTH
+        # La pildora se dibuja un poco metida: el aro de foco queda DENTRO del widget (fuera se recortaba).
+        inset = 3
+        body = QRectF(inset + 0.5, inset + 0.5, w - 2 * inset - 1, h - 2 * inset - 1)
         painter.setPen(QPen(QColor(p.border), 1))
         painter.setBrush(QColor(p.surface_alt))
-        painter.drawRoundedRect(QRectF(0.5, 0.5, w - 1, h - 1), h / 2, h / 2)
+        painter.drawRoundedRect(body, body.height() / 2, body.height() / 2)
 
-        pad, knob = 4, h - 8
+        pad = inset + 4
+        knob = h - 2 * pad
         x = pad + (w - 2 * pad - knob) * self._pos
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(QColor(p.accent))
@@ -125,4 +129,4 @@ class ThemeToggle(QAbstractButton):
         if self.hasFocus():
             painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.setPen(QPen(QColor(p.accent), 2))
-            painter.drawRoundedRect(QRectF(-1, -1, w + 2, h + 2), h / 2 + 1, h / 2 + 1)
+            painter.drawRoundedRect(QRectF(1, 1, w - 2, h - 2), (h - 2) / 2, (h - 2) / 2)
