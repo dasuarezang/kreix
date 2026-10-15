@@ -91,6 +91,19 @@ class SecureStore:
         init_db(engine)                          # migra el esquema si el archivo es de una version anterior
         return cls(path, vault, engine)
 
+    # ------------------------------------------------------------------ contrasena
+    def change_password(self, old: str, new: str) -> None:
+        """Cambia la contrasena maestra. Comprueba la actual (lanza `WrongPasswordError`), vuelve a cifrar con una
+        clave y una sal nuevas y borra la copia `.bak`, que seguiria abriendose con la contrasena vieja."""
+        Vault.unseal(self.path.read_bytes(), old)
+        self._vault = Vault(new, iterations=self._vault.iterations)
+        self.save()
+        _erase(self.path, (".bak",))
+
+    def seal_export(self, plain: bytes) -> bytes:
+        """Cifra el contenido de una exportacion con la contrasena maestra (se abre con ella en cualquier equipo)."""
+        return self._vault.seal(plain)
+
     # ------------------------------------------------------------------ guardar
     def save(self) -> None:
         self._vault.write(self.path, serialize(self.engine))

@@ -20,6 +20,7 @@ from services.dashboard_service import DashboardService
 from services.category_service import CategoryService
 from services.data_service import DataService
 from services.demo_service import DemoService
+from services.goals_service import GoalsService
 from services.import_service import ImportService
 from services.investment_service import InvestmentService
 from services.settings_service import SettingsService
@@ -27,6 +28,7 @@ from services.transfer_service import TransferService
 from ui import assets, fonts, theme
 from ui.dialogs import system_language
 from ui.lock_screen import LockDialog, LockMode
+from ui.popups import PopupStyler
 from ui.main_window import MainWindow, Services
 
 
@@ -39,7 +41,7 @@ def build_window(db_url: str | None = None, db_label: str | None = None, engine=
     services = Services(
         import_service, DashboardService(factory), SettingsService(factory), DataService(factory),
         AccountsService(factory), InvestmentService(factory), TransferService(engine, factory),
-        CategoryService(factory), DemoService(import_service),
+        CategoryService(factory), DemoService(import_service), GoalsService(factory),
     )
     return MainWindow(services, db_label or str(default_db_path()))
 
@@ -101,6 +103,8 @@ def main(argv: list[str] | None = None) -> int:
     fonts.setup_application(app)
     app.setApplicationName("Kreix")
     app.setWindowIcon(assets.app_icon())
+    app.kreix_popups = PopupStyler(app)                    # paneles emergentes con esquinas redondeadas de verdad
+    app.installEventFilter(app.kreix_popups)
     app.setStyleSheet(theme.stylesheet(theme.DARK))        # la pantalla de bloqueo ya sale con el estilo de la app
     db = args.db or os.environ.get("KREIX_DB")
 
@@ -115,6 +119,7 @@ def main(argv: list[str] | None = None) -> int:
             autosave.timeout.connect(store.flush)
             autosave.start()
             app.aboutToQuit.connect(store.flush)            # y al cerrar
+        window.attach_store(store)                          # activa en Ajustes el cambio de contrasena
         window.detect_language = True                       # la primera vez se propone el idioma del sistema
         app.kreix_window = window
         window.show()

@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QSizePolicy, QVBoxLay
 
 from ui import fonts, theme
 from ui.widgets.charts import Sparkline
+from ui.widgets.help_link import InfoButton
 from core.i18n import tr
 
 
@@ -24,7 +25,6 @@ def track(label: QLabel, spacing: float) -> QLabel:
     font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, spacing)
     label.setFont(font)
     return label
-
 
 class ElidedLabel(QLabel):
     """Etiqueta de una linea para cifras: si no cabe, primero reduce el cuerpo (hasta un 60 %) y,
@@ -187,10 +187,20 @@ class StatCard(QFrame):
         pad = (30, 20, 30, 20) if compact else (30, 26, 30, 26)
         col.setContentsMargins(*pad)
         col.setSpacing(8)
-        for w in (self._title, self._value, self._sub):
+        self._title_row = QHBoxLayout()
+        self._title_row.setSpacing(8)
+        self._title_row.addWidget(self._title)
+        self._title_row.addStretch(1)
+        col.addLayout(self._title_row)
+        for w in (self._value, self._sub):
             col.addWidget(w)
         col.addStretch(1)                       # el contenido se alinea arriba aunque falte la linea de contexto
         self.setAccessibleName(title)
+
+    def set_help(self, term: str) -> "StatCard":
+        """Pone junto al titulo un «?» que abre en la Ayuda la explicacion de esta cifra (`term`: termino del glosario)."""
+        self._title_row.addWidget(InfoButton(term))
+        return self
 
     def set_title(self, title: str) -> None:
         self._title.setText(title.upper())

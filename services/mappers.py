@@ -4,8 +4,8 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.entities import OperationDraft, PositionSnapshot, TransactionDraft
-from data.models import Account, Investment, InvestmentOperation, Transaction, Valuation
+from core.entities import OperationDraft, PositionSnapshot, PricePointDraft, TransactionDraft
+from data.models import Account, Investment, InvestmentOperation, PricePoint, Transaction, Valuation
 
 
 def load_transactions(session: Session) -> list[TransactionDraft]:
@@ -61,3 +61,8 @@ def load_snapshots(session: Session) -> list[PositionSnapshot]:
         )
         for v, inv in rows
     ]
+
+
+def load_prices(session: Session) -> list[PricePointDraft]:
+    rows = session.execute(select(PricePoint.isin, PricePoint.as_of, PricePoint.unit_price).order_by(PricePoint.isin, PricePoint.as_of))
+    return [PricePointDraft(isin, day, price) for isin, day, price in rows]

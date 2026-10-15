@@ -14,13 +14,14 @@ from core.entities import FileKind
 from core.enums import AccountKind, Bank
 from data.database import session_scope
 from data.hashing import scoped_hash
-from data.models import Investment, InvestmentOperation, Transaction, Valuation
+from data.models import Investment, InvestmentOperation, PricePoint, Transaction, Valuation
 from data.repositories import (
     InsertStats,
     get_or_create_account,
     list_accounts,
     list_rules,
     recategorize,
+    save_price_points,
     insert_operations,
     insert_transactions,
     upsert_valuations,
@@ -36,6 +37,7 @@ KIND_LABELS = {
     FileKind.IMAGIN_STATEMENT: N_("Extracto de Imagin"),
     FileKind.MYINVESTOR_OPERATIONS: N_("Operaciones de MyInvestor"),
     FileKind.MYINVESTOR_PORTFOLIO: N_("Cartera de MyInvestor"),
+    FileKind.PRICE_HISTORY: N_("Histórico de precios"),
 }
 ACCOUNT_NAMES = {Bank.IMAGIN: "Imagin", Bank.MYINVESTOR: "MyInvestor"}
 
@@ -114,26 +116,34 @@ class ImportService:
     def __init__(self, factory: sessionmaker[Session]) -> None:
         self._factory = factory
 
+    def funds(self) -> list[tuple[str, str]]:
+        """(ISIN, nombre) de los fondos que ya conoce Kreix: a cual pertenece un historico de precios sin ISIN."""
+        with session_scope(self._factory) as s:
+            return [(i.isin, i.name) for i in s.scalars(select(Investment).order_by(Investment.name))]
+
     def import_files(
-        self, paths: Iterable[str | Path], portfolio_as_of: date | None = None, account_id: int | None = None
+        self, paths: Iterable[str | Path], portfolio_as_of: date | None = None, account_id: int | None = None,
+        fund_isin: str | None = None,
     ) -> ImportReport:
         """`account_id` es la cuenta destino de los extractos de Imagin; si se omite, la primera
         cuenta (o una llamada 'Imagin' si aun no hay ninguna)."""
         report = ImportReport()
         for path in map(Path, paths):
-            report.files.append(self._import_one(path, portfolio_as_of, account_id))
+            report.files.append(self._import_one(path, portfolio_as_of, account_id, fund_isin))
         report.reconciliation_warnings = self.reconciliation_warnings()
         return report
 
     def preview(
-        self, paths: Iterable[str | Path], portfolio_as_of: date | None = None, account_id: int | None = None
+        self, paths: Iterable[str | Path], portfolio_as_of: date | None = None, account_id: int | None = None,
+        fund_isin: str | None = None,
     ) -> list[FilePreview]:
         """Lee los archivos y cuenta que es nuevo y que ya estaba, sin guardar nada ni crear cuentas."""
-        return [self._preview_one(Path(p), portfolio_as_of, account_id) for p in paths]
+        return [self._preview_one(Path(p), portfolio_as_of, account_id, fund_isin) for p in paths]
 
-    def _preview_one(self, path: Path, portfolio_as_of: date | None, account_id: int | None) -> FilePreview:
+    def _preview_one(self, path: Path, portfolio_as_of: date | None, account_id: int | None,
+                     fund_isin: str | None = None) -> FilePreview:
         try:
-            parsed = parse_file(path, portfolio_as_of)
+            parsed = parse_file(path, portfolio_as_of, fund_isin)
         except (ParseError, OSError, ValueError) as exc:
             return FilePreview(path.name, error=str(exc))
         out = FilePreview(path.name, parsed.kind, warnings=list(parsed.warnings))
@@ -157,6 +167,16 @@ class ImportService:
                 dates = [d.trade_date for d in parsed.operations]
                 unique = {scoped_hash(acc.id, d.tx_hash) if acc else d.tx_hash for d in parsed.operations}
                 out.new = len(unique - known)
+            elif parsed.kind is FileKind.PRICE_HISTORY:
+                wanted = {(p.isin, p.as_of): p.unit_price for p in parsed.prices}
+                out.rows = len(wanted)
+                dates = [d for _, d in wanted]
+                known = {(p.isin, p.as_of): p.unit_price for p in s.scalars(
+                    select(PricePoint).where(PricePoint.isin.in_({i for i, _ in wanted})))}
+                out.new = sum(1 for k in wanted if k not in known)
+                out.updated = sum(1 for k, v in wanted.items() if k in known and known[k] != v)
+                if not s.scalar(select(Investment.id).where(Investment.isin.in_({i for i, _ in wanted}))):
+                    out.warnings.append(tr("Este fondo aún no está en tu cartera: los precios se guardan y se usarán cuando lo esté."))
             else:
                 out.rows = len(parsed.positions)
                 dates = [p.as_of for p in parsed.positions]
@@ -180,9 +200,10 @@ class ImportService:
             found.update(session.scalars(select(column).where(column.in_(listed[i:i + 500]))))
         return found
 
-    def _import_one(self, path: Path, portfolio_as_of: date | None, account_id: int | None) -> FileReport:
+    def _import_one(self, path: Path, portfolio_as_of: date | None, account_id: int | None,
+                    fund_isin: str | None = None) -> FileReport:
         try:
-            parsed = parse_file(path, portfolio_as_of)
+            parsed = parse_file(path, portfolio_as_of, fund_isin)
         except (ParseError, OSError, ValueError) as exc:
             return FileReport(path.name, error=str(exc))
         stats = InsertStats()
@@ -199,6 +220,9 @@ class ImportService:
                     s, Bank.MYINVESTOR, AccountKind.INVESTMENT, ACCOUNT_NAMES[Bank.MYINVESTOR]
                 )
                 stats = insert_operations(s, acc.id, parsed.operations)
+            elif parsed.kind is FileKind.PRICE_HISTORY:
+                new, updated = save_price_points(s, [(p.isin, p.as_of, p.unit_price) for p in parsed.prices])
+                stats = InsertStats(inserted=new, updated=updated, skipped=len(parsed.prices) - new - updated)
             else:
                 stats = upsert_valuations(s, parsed.positions)
         return FileReport(

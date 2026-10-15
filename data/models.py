@@ -188,6 +188,29 @@ class Budget(Base):
     amount: Mapped[Decimal] = mapped_column(Decimal6)
 
 
+class Goal(Base):
+    """Meta de ahorro: un objetivo con nombre, lo ahorrado hasta ahora (lo apunta el usuario) y una fecha opcional."""
+
+    __tablename__ = "goals"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(80))
+    target: Mapped[Decimal] = mapped_column(Decimal6)
+    saved: Mapped[Decimal] = mapped_column(Decimal6, default=Decimal(0))
+    deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class PricePoint(Base):
+    """Valor liquidativo de un fondo en un dia, importado de un historico de precios (CSV)."""
+
+    __tablename__ = "price_points"
+
+    isin: Mapped[str] = mapped_column(String(12), primary_key=True)
+    as_of: Mapped[date] = mapped_column(Date, primary_key=True)
+    unit_price: Mapped[Decimal] = mapped_column(Decimal6)
+
+
 class Setting(Base):
     """Preferencias de la app (tema, ultima carpeta de importacion...)."""
 

@@ -5,7 +5,7 @@ from datetime import date
 from pathlib import Path
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QFileDialog, QFrame, QHBoxLayout, QLabel, QPushButton, QScrollArea, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QCheckBox, QFileDialog, QFrame, QHBoxLayout, QLabel, QPushButton, QScrollArea, QVBoxLayout, QWidget
 
 from services.transfer_service import EXTENSION, DataSummary, TransferError, TransferService
 from ui.widgets.cards import PageHeader, repolish
@@ -26,6 +26,7 @@ class ExportView(QWidget):
         super().__init__(parent)
         self.setObjectName("Page")
         self._service = service
+        self._seal = None                  # funcion de cifrado del almacen; None = sin cifrado disponible
 
         header = PageHeader(tr("Exportar"), eyebrow=tr("Copia de seguridad"),
                             subtitle=tr("Guarda todos tus datos en un único archivo para hacer una copia o llevarlos a otro ordenador."))
@@ -46,10 +47,20 @@ class ExportView(QWidget):
         action_row.addWidget(self.button)
         action_row.addWidget(self._status, 1)
 
-        what = self._card(tr("Qué se exporta"), self._contents, self._note(
-            tr("Cuentas, movimientos, categorías, operaciones, cartera y ajustes. Todo tal cual está ahora.")), action_row)
+        self.encrypt = QCheckBox(tr("Cifrar el archivo con mi contraseña maestra"))
+        self.encrypt.setChecked(True)
+        self.encrypt.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.encrypt.toggled.connect(self._update_warning)
+        self.encrypt_note = self._note(
+            tr("Para abrirlo, en este u otro ordenador, hará falta la contraseña maestra que tienes ahora."))
+        self.encrypt.hide()                # solo se ofrece cuando hay almacen cifrado (set_sealer)
+        self.encrypt_note.hide()
 
-        warning = QFrame()
+        what = self._card(tr("Qué se exporta"), self._contents, self._note(
+            tr("Cuentas, movimientos, categorías, operaciones, cartera y ajustes. Todo tal cual está ahora.")),
+            self.encrypt, self.encrypt_note, action_row)
+
+        self.warning = warning = QFrame()
         warning.setObjectName("Banner")
         warn_lay = QVBoxLayout(warning)
         warn_lay.setContentsMargins(18, 14, 18, 14)
@@ -84,6 +95,20 @@ class ExportView(QWidget):
         outer.setContentsMargins(0, 0, 0, 0)
         outer.addWidget(scroll)
         self.refresh()
+
+    # ------------------------------------------------------------------ cifrado
+    def set_sealer(self, seal) -> None:
+        """`seal` cifra los bytes con la contrasena maestra; None si los datos no estan en un almacen cifrado."""
+        self._seal = seal
+        self.encrypt.setVisible(seal is not None)
+        self.encrypt_note.setVisible(seal is not None)
+        self._update_warning()
+
+    def encrypting(self) -> bool:
+        return self._seal is not None and self.encrypt.isChecked()
+
+    def _update_warning(self) -> None:
+        self.warning.setVisible(not self.encrypting())     # el aviso de "no cifrado" solo cuando de verdad no lo esta
 
     # ------------------------------------------------------------------ piezas
     @staticmethod
@@ -165,7 +190,7 @@ class ExportView(QWidget):
 
     def export_to(self, path: str) -> bool:
         try:
-            self._service.export_to(path)
+            self._service.export_to(path, self._seal if self.encrypting() else None)
         except (TransferError, OSError) as exc:
             self._set_status(tr("No se pudo exportar: {exc}").format(exc=exc), "error")
             return False

@@ -10,14 +10,15 @@ from collections.abc import Callable
 from enum import Enum
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QGuiApplication, QPainter, QRadialGradient
+from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import (
-    QApplication, QDialog, QFrame, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QVBoxLayout, QWidget,
+    QApplication, QFrame, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QVBoxLayout, QWidget,
 )
 
 from core.i18n import tr
 from data.vault import MIN_PASSWORD
 from ui import assets, theme
+from ui.widgets.brand_dialog import BrandDialog
 from ui.widgets.cards import StripeMark
 
 
@@ -31,7 +32,7 @@ class LockMode(Enum):
 Attempt = Callable[[str], str | None]
 
 
-class LockDialog(QDialog):
+class LockDialog(BrandDialog):
     def __init__(self, mode: LockMode, attempt: Attempt, parent: QWidget | None = None,
                  finish: Callable[[], None] | None = None) -> None:
         """`finish` se ejecuta con la pantalla aun a la vista, una vez aceptada la contrasena (aqui se prepara la ventana)."""
@@ -128,20 +129,6 @@ class LockDialog(QDialog):
         col.addWidget(card)
         col.addWidget(footer)
         self.password.setFocus()
-
-    # ------------------------------------------------------------------ marca: mismo fondo que la ventana principal
-    def paintEvent(self, _event) -> None:
-        pal = theme.current()
-        painter = QPainter(self)
-        painter.fillRect(self.rect(), QColor(pal.bg))
-        gradient = QRadialGradient(self.width() * 0.95, -self.height() * 0.05, max(self.width(), self.height()) * 0.95)
-        start = QColor(pal.glow)
-        start.setAlpha(pal.glow_alpha + 20)
-        end = QColor(pal.glow)
-        end.setAlpha(0)
-        gradient.setColorAt(0.0, start)
-        gradient.setColorAt(1.0, end)
-        painter.fillRect(self.rect(), gradient)
 
     def _intro_text(self) -> str:
         if self._mode is LockMode.UNLOCK:

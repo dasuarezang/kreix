@@ -22,7 +22,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Iterable, Sequence
 
-from core.entities import OperationDraft, PositionSnapshot, TransactionDraft
+from core.entities import OperationDraft, PositionSnapshot, PricePointDraft, TransactionDraft
 from core.enums import OperationType, TxCategory
 from core.periods import month_end, month_start, next_month as _next_month  # noqa: F401 (reexportados)
 
@@ -295,11 +295,12 @@ def xirr(flows: Iterable[tuple[date, Decimal]]) -> float | None:
 
 
 def estimated_value(
-    operations: Iterable[OperationDraft], snapshots: Iterable[PositionSnapshot], on: date
+    operations: Iterable[OperationDraft], snapshots: Iterable[PositionSnapshot], on: date,
+    prices: Iterable[PricePointDraft] = (),
 ) -> Decimal:
     """Valor estimado de la cartera un dia concreto (participaciones segun las operaciones,
-    precio interpolado entre los valores liquidativos conocidos)."""
-    return _Portfolio(operations, snapshots).value(on, include_day=True)
+    precio interpolado entre los valores liquidativos conocidos, incluido un historico de precios si lo hay)."""
+    return _Portfolio(operations, snapshots, prices).value(on, include_day=True)
 
 
 def portfolio_cashflows(
@@ -324,9 +325,12 @@ class _Portfolio:
     estima el precio de cada fondo interpolando entre los valores liquidativos
     conocidos (los de las propias operaciones y los de las fotos de cartera)."""
 
-    def __init__(self, operations: Iterable[OperationDraft], snapshots: Iterable[PositionSnapshot]) -> None:
+    def __init__(self, operations: Iterable[OperationDraft], snapshots: Iterable[PositionSnapshot],
+                 history: Iterable[PricePointDraft] = ()) -> None:
         self.ops = sorted((o for o in operations if o.op_type in _TRADES and o.units > 0), key=lambda o: o.trade_date)
         prices: dict[str, dict[date, Decimal]] = defaultdict(dict)
+        for h in history:                                   # primero el historico: las operaciones y las fotos mandan sobre el
+            prices[h.isin][h.as_of] = h.unit_price
         for o in self.ops:
             if o.unit_price is not None:
                 prices[o.isin][o.trade_date] = o.unit_price
@@ -375,6 +379,7 @@ def twr(
     snapshots: Iterable[PositionSnapshot] = (),
     end: date | None = None,
     start: date | None = None,
+    prices: Iterable[PricePointDraft] = (),
 ) -> float | None:
     """Rentabilidad ponderada en el tiempo (time-weighted return).
 
@@ -383,7 +388,7 @@ def twr(
     Sin `start` es la acumulada desde la primera compra; con `start`, la del periodo
     (start, end]. Devuelve None si en ese periodo no habia capital invertido."""
     snapshots = list(snapshots)
-    pf = _Portfolio(operations, snapshots)
+    pf = _Portfolio(operations, snapshots, prices)
     if not pf.ops:
         return None
     if end is None:
@@ -435,8 +440,9 @@ def wealth_evolution(
     operations: Sequence[OperationDraft],
     snapshots: Sequence[PositionSnapshot],
     dates: Sequence[date],
+    prices: Iterable[PricePointDraft] = (),
 ) -> list[WealthPoint]:
-    pf = _Portfolio(operations, snapshots)
+    pf = _Portfolio(operations, snapshots, prices)
     trades = [o for o in operations if o.op_type in _TRADES]
     series = [(sorted(days), days) for days in _closing_balances(transactions).values()]
     points: list[WealthPoint] = []

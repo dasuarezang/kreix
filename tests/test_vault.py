@@ -184,3 +184,39 @@ def test_legacy_database_in_wal_mode_as_the_real_app_leaves_it_is_migrated(tmp_p
     assert store is not None and not legacy.exists()
     with store.engine.connect() as conn:
         assert conn.exec_driver_sql("SELECT value FROM settings WHERE key='probe'").scalar() == "DatoWal"
+
+
+def test_change_master_password_reencrypts_and_drops_the_old_backup(tmp_path):
+    store = _store(tmp_path)
+    with store.engine.begin() as conn:
+        conn.exec_driver_sql("INSERT INTO settings(key, value) VALUES ('probe', 'Dato')")
+    store.save()
+    with pytest.raises(WrongPasswordError):
+        store.change_password("no-es-esta-1", "clave-nueva-1")
+    store.change_password("clave-larga-1", "clave-nueva-1")
+    assert not store.path.with_name(store.path.name + ".bak").exists()
+    with pytest.raises(WrongPasswordError):
+        SecureStore.open(store.path, "clave-larga-1")
+    reopened = SecureStore.open(store.path, "clave-nueva-1")
+    with reopened.engine.connect() as conn:
+        assert conn.exec_driver_sql("SELECT value FROM settings WHERE key='probe'").scalar() == "Dato"
+
+
+def test_settings_offers_the_password_change_only_with_an_encrypted_store(window):
+    assert window.settings_view.security_card.isHidden()                       # base de pruebas: sin cifrar
+    window.attach_store(type("S", (), {"seal_export": staticmethod(lambda b: b)})())
+    assert not window.settings_view.security_card.isHidden()
+    window.attach_store(None)
+    assert window.settings_view.security_card.isHidden()
+
+
+def test_change_password_dialog_validates_before_applying(qapp):
+    from ui.password_dialog import ChangePasswordDialog
+    calls = []
+    dlg = ChangePasswordDialog(lambda o, n: calls.append((o, n)) or None)
+    dlg.current.setText("clave-larga-1"); dlg.new.setText("corta"); dlg.again.setText("corta"); dlg._submit()
+    assert not calls and not dlg.error.isHidden()
+    dlg.new.setText("clave-nueva-1"); dlg.again.setText("otra-distinta1"); dlg._submit()
+    assert not calls
+    dlg.again.setText("clave-nueva-1"); dlg._submit()
+    assert calls == [("clave-larga-1", "clave-nueva-1")] and dlg.result() == 1

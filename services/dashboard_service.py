@@ -13,9 +13,10 @@ from core.budget import BudgetLine, budget_lines
 from core.metrics import AllocationSlice, FlowOptions, MonthlyFlow, WealthPoint
 from core.recurring import Recurring, detect_recurring
 from data.database import session_scope
-from data.repositories import get_budgets, last_import_date
+from core.goals import Goal
+from data.repositories import get_budgets, last_import_date, list_goals
 from etl.reconcile import reconcile_portfolio
-from services.mappers import load_operations, load_snapshots, load_transactions
+from services.mappers import load_operations, load_prices, load_snapshots, load_transactions
 
 FLOW_MONTHS = 12
 UPCOMING_DAYS = 35       # pagos recurrentes que se esperan en este plazo desde el ultimo dia con datos
@@ -41,6 +42,8 @@ class DashboardData:
     upcoming: list[Recurring] = field(default_factory=list)       # proximos pagos recurrentes, el mas cercano primero
     budgets: list[BudgetLine] = field(default_factory=list)       # todos los presupuestos frente al gasto del ultimo mes, del mas gastado al menos
     has_budgets: bool = False
+    net_worth_change: Decimal | None = None   # frente al cierre del mes anterior (None si aun no hay dos meses de datos)
+    goals: list[Goal] = field(default_factory=list)               # metas de ahorro
     last_update: date | None = None      # cuando se actualizaron los datos por ultima vez
     has_transactions: bool = False
     has_operations: bool = False
@@ -54,8 +57,10 @@ class DashboardService:
     def load(self, options: FlowOptions = FlowOptions()) -> DashboardData:
         with session_scope(self._factory) as s:
             txs, ops, snaps = load_transactions(s), load_operations(s), load_snapshots(s)
+            prices = load_prices(s)
             budgets = get_budgets(s)
             imported = last_import_date(s)
+            goals = [Goal(g.id, g.name, g.target, g.saved, g.deadline) for g in list_goals(s)]
         if not (txs or ops or snaps):
             return DashboardData()
 
@@ -67,12 +72,13 @@ class DashboardService:
             has_operations=bool(ops),
             has_portfolio=bool(snaps),
             has_budgets=bool(budgets),
+            goals=goals,
             cash=cash,
             portfolio_value=metrics.portfolio_value(latest),
             net_worth=metrics.net_worth(cash, latest),
             simple_return=metrics.simple_return(latest),
             xirr=metrics.portfolio_xirr(ops, snaps) if ops else None,
-            twr=metrics.twr(ops, snaps) if ops else None,
+            twr=metrics.twr(ops, snaps, prices=prices) if ops else None,
             allocation=metrics.asset_allocation(cash, latest),
             warnings=reconcile_portfolio(latest, ops) if latest else [],
         )
@@ -98,5 +104,7 @@ class DashboardService:
             data.budgets = budget_lines(budgets, expense_breakdown(this_month, options))
 
         points = [t.booking_date for t in txs] + [o.trade_date for o in ops] + [p.as_of for p in snaps]
-        data.wealth = metrics.wealth_evolution(txs, ops, snaps, metrics.month_ends(min(points), max(points)))
+        data.wealth = metrics.wealth_evolution(txs, ops, snaps, metrics.month_ends(min(points), max(points)), prices)
+        if len(data.wealth) >= 2:
+            data.net_worth_change = data.wealth[-1].net_worth - data.wealth[-2].net_worth
         return data

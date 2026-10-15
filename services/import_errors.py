@@ -22,6 +22,10 @@ HINTS: tuple[tuple[str, str, str], ...] = (
      N_("Descarga el extracto otra vez sin editarlo. Las fechas deben tener formato día/mes/año.")),
     (N_("importe no valido"), N_("Hay un importe que no entiendo."),
      N_("Descarga el extracto otra vez sin editarlo; no cambies los números ni añadas texto en esas columnas.")),
+    (N_("no indica a qué fondo pertenece"), N_("Este histórico de precios no dice a qué fondo corresponde."),
+     N_("Elige el fondo en «Fondo del histórico», en esta misma página, y vuelve a soltar el archivo.")),
+    (N_("ningún precio"), N_("No he encontrado precios en el archivo."),
+     N_("Comprueba que tiene una columna de fecha y otra de precio (valor liquidativo, cierre...) y que no está vacío.")),
     (N_("cuenta de destino"), N_("La cuenta elegida ya no existe."), N_("Elige otra cuenta de destino y vuelve a importar.")),
 )
 GENERIC = (N_("No he podido leer este archivo."),

@@ -35,7 +35,7 @@ class DropZone(QFrame):
         self._title = QLabel(tr("Arrastra aquí tus extractos"))
         self._title.setObjectName("H1")
         self._title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        hint = QLabel(tr("CSV o Excel de Imagin y MyInvestor, con o sin extensión. También un archivo .kreix exportado desde otro Kreix."))
+        hint = QLabel(tr("CSV o Excel de Imagin y MyInvestor, con o sin extensión; también el histórico de precios de un fondo. Y un archivo .kreix exportado desde otro Kreix."))
         hint.setObjectName("Muted")
         hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
         button = QPushButton(tr("Seleccionar archivos"))

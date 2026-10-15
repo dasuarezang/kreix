@@ -24,6 +24,7 @@ from ui.dialogs import BudgetDialog, RuleDialog
 from ui.feedback import Feedback, snapshot_of, tell
 from ui.headlines import balance_headline, category_headline, monthly_headline
 from ui.format import category_label, fmt_date, fmt_eur, fmt_pct, month_long, month_short
+from ui.widgets.account_picker import AccountPicker
 from ui.widgets.cards import ChartCard, PageHeader, StatBand, StatCard
 from ui.widgets.charts_period import BalanceChart, CategoryBarsChart, IncomeExpenseChart
 from ui.widgets.onboarding import EmptyState, InterestOffState
@@ -94,9 +95,7 @@ class AccountsView(QWidget):
     # ------------------------------------------------------------------ construccion
     def _build_header(self) -> QVBoxLayout:
         self.header = PageHeader(tr("Cuentas"), eyebrow=tr("Tus cuentas"))
-        self.account_combo = QComboBox()
-        self.account_combo.setMinimumWidth(230)
-        self.account_combo.setAccessibleName(tr("Cuenta"))
+        self.account_picker = AccountPicker()
         self.manage = QPushButton(tr("Gestionar cuentas"))
         menu = QMenu(self.manage)
         self.act_add = menu.addAction(tr("Añadir cuenta…"))
@@ -106,7 +105,7 @@ class AccountsView(QWidget):
         self.act_add.triggered.connect(self.prompt_add)
         self.act_rename.triggered.connect(self.prompt_rename)
         self.act_delete.triggered.connect(self.prompt_delete)
-        self.header.add_right(self.account_combo)
+        self.header.add_right(self.account_picker)
         self.header.add_right(self.manage)
 
         self.period = PeriodBar()
@@ -117,7 +116,7 @@ class AccountsView(QWidget):
         bar.addWidget(self.period)
         bar.addStretch(1)
         col.addLayout(bar)
-        self.account_combo.currentIndexChanged.connect(lambda _i: self.reload())
+        self.account_picker.changed.connect(self.reload)
         self.period.changed.connect(lambda _m: self.reload())
         return col
 
@@ -139,10 +138,10 @@ class AccountsView(QWidget):
         root.setContentsMargins(0, 0, 0, 44)
         root.setSpacing(28)
 
-        self.card_balance = StatCard(tr("Saldo"), band=True)
-        self.card_income = StatCard(tr("Ingresos"), band=True)
-        self.card_expenses = StatCard(tr("Gastos"), band=True)
-        self.card_rate = StatCard(tr("Tasa de ahorro"), band=True)
+        self.card_balance = StatCard(tr("Saldo"), band=True).set_help("Saldo")
+        self.card_income = StatCard(tr("Ingresos"), band=True).set_help("Ingresos")
+        self.card_expenses = StatCard(tr("Gastos"), band=True).set_help("Gastos")
+        self.card_rate = StatCard(tr("Tasa de ahorro"), band=True).set_help("Tasa de ahorro")
         self.mini_moves = StatCard(tr("Movimientos"), compact=True, band=True)
         self.mini_largest = StatCard(tr("Mayor gasto"), compact=True, band=True)
         self.mini_category = StatCard(tr("Categoría principal"), compact=True, band=True)
@@ -244,8 +243,7 @@ class AccountsView(QWidget):
 
     # ------------------------------------------------------------------ datos
     def selected_account_ids(self) -> list[int] | None:
-        data = self.account_combo.currentData()
-        return None if data is None else [data]
+        return self.account_picker.selected_ids()
 
     def set_interested(self, on: bool) -> None:
         """Con el interes desactivado la pestana solo ofrece activarlo (y no calcula nada)."""
@@ -274,16 +272,10 @@ class AccountsView(QWidget):
     def _fill_account_combo(self) -> None:
         accounts = self._service.accounts()
         self._names = {a.id: a.name for a in accounts}
-        keep = self.account_combo.currentData()
-        self.account_combo.blockSignals(True)
-        self.account_combo.clear()
-        self.account_combo.addItem(tr("Todas las cuentas"), None)
-        for a in accounts:
-            self.account_combo.addItem(a.name, a.id)
-        index = self.account_combo.findData(keep) if keep is not None else 0
-        self.account_combo.setCurrentIndex(max(index, 0))
-        self.account_combo.blockSignals(False)
-        single = self.account_combo.currentData() is not None
+        self.account_picker.blockSignals(True)               # solo se reconstruyen las casillas: reload ya esta en marcha
+        self.account_picker.set_accounts([(a.id, a.name) for a in accounts])
+        self.account_picker.blockSignals(False)
+        single = self.account_picker.single_id() is not None
         self.act_rename.setEnabled(single)
         self.act_delete.setEnabled(single)
         self.table.setColumnHidden(1, single or len(accounts) < 2)      # la columna Cuenta solo aporta con varias
@@ -355,8 +347,7 @@ class AccountsView(QWidget):
         self._apply_filter()
 
     def _describe(self, d: AccountsViewData) -> str:
-        n = len(d.selected)
-        names = trn("{n} cuenta", "{n} cuentas", n).format(n=n) if self.account_combo.currentData() is None else self.account_combo.currentText()
+        names = self.account_picker.description()
         return f"{month_long(d.period.start).capitalize()}  ·  {names}" if d.period.start else names
 
     def _fill_category_filter(self, movements: list[TransactionDraft]) -> None:
@@ -510,14 +501,14 @@ class AccountsView(QWidget):
             QMessageBox.warning(self, tr("No se pudo añadir la cuenta"), str(exc))
             return False
         self._fill_account_combo()
-        self.account_combo.setCurrentIndex(self.account_combo.findData(info.id))
+        self.account_picker.select_only(info.id)
         self.accounts_changed.emit()
         tell(self.feedback, tr("Cuenta «{name}» añadida. Elígela al importar tus extractos.").format(name=info.name))
         return True
 
     def rename_selected(self, name: str) -> bool:
         ids = self.selected_account_ids()
-        if not ids:
+        if not ids or len(ids) != 1:
             return False
         try:
             self._service.rename(ids[0], name)
@@ -529,12 +520,12 @@ class AccountsView(QWidget):
 
     def delete_selected(self) -> bool:
         ids = self.selected_account_ids()
-        if not ids:
+        if not ids or len(ids) != 1:
             return False
-        name = self.account_combo.currentText()
+        name = self.account_picker.single_name()
         snapshot = snapshot_of(self.feedback)
         self._service.delete(ids[0])
-        self.account_combo.setCurrentIndex(0)
+        self.account_picker.select_all()
         self.accounts_changed.emit()
         tell(self.feedback, tr("Cuenta «{name}» eliminada.").format(name=name), snapshot)
         return True
@@ -545,19 +536,19 @@ class AccountsView(QWidget):
             self.add_account_named(name)
 
     def prompt_rename(self) -> None:
-        if not self.selected_account_ids():
+        if self.account_picker.single_id() is None:
             return
         name, ok = QInputDialog.getText(self, tr("Renombrar cuenta"), tr("Nuevo nombre:"), QLineEdit.EchoMode.Normal,
-                                        self.account_combo.currentText())
+                                        self.account_picker.single_name())
         if ok and name.strip():
             self.rename_selected(name)
 
     def prompt_delete(self) -> None:
-        if not self.selected_account_ids():
+        if self.account_picker.single_id() is None:
             return
         answer = QMessageBox.question(
             self, tr("Eliminar cuenta"),
-            tr("Se eliminará la cuenta «{currentText}» y todos sus movimientos.\nEsta acción no se puede deshacer.\n\n¿Quieres continuar?").format(currentText=self.account_combo.currentText()),
+            tr("Se eliminará la cuenta «{currentText}» y todos sus movimientos.\nEsta acción no se puede deshacer.\n\n¿Quieres continuar?").format(currentText=self.account_picker.single_name()),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
             QMessageBox.StandardButton.Cancel,
         )

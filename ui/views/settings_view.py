@@ -115,6 +115,7 @@ class SettingsView(QWidget):
     name_changed = Signal(str)          # el usuario ha guardado su nombre (vacio = quitarlo)
     interests_changed = Signal(bool, bool)   # (cuentas, inversiones)
     language_changed = Signal(str)           # "es" | "ca" | "en"
+    change_password_requested = Signal()
 
     def __init__(self, settings: AppSettings, db_path: str, categories: CategoryService | None = None, parent=None) -> None:
         super().__init__(parent)
@@ -205,6 +206,20 @@ class SettingsView(QWidget):
         reset_row.setContentsMargins(0, 6, 0, 0)
         data = self._card(tr("Tus datos"), path, privacy, reset_box, rows=True)
 
+        self.password_button = QPushButton(tr("Cambiar contraseña maestra…"))
+        self.password_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.password_button.clicked.connect(self.change_password_requested)
+        password_row = QHBoxLayout()
+        password_row.addWidget(self.password_button)
+        password_row.addStretch(1)
+        password_box = QWidget()
+        password_box.setLayout(password_row)
+        password_row.setContentsMargins(0, 0, 0, 0)
+        self.security_card = self._card(
+            tr("Seguridad"), password_box,
+            description=tr("Tus datos están cifrados con tu contraseña maestra. Puedes cambiarla cuando quieras."))
+        self.security_card.hide()               # solo se ofrece cuando hay almacen cifrado (se activa con set_security)
+
         self.whats_new_button = QPushButton(tr("Ver las novedades"))
         self.whats_new_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.whats_new_button.clicked.connect(self.whats_new_requested)
@@ -231,6 +246,7 @@ class SettingsView(QWidget):
         if self.rules is not None:
             col.addWidget(rules_card)
         col.addWidget(GroupHeading(tr("Datos y aplicación")))
+        col.addWidget(self.security_card)
         col.addWidget(data)
         col.addWidget(about)
         col.addStretch(1)
@@ -299,6 +315,10 @@ class SettingsView(QWidget):
     def feedback(self, value: Feedback | None) -> None:
         if self.rules is not None:
             self.rules.feedback = value
+
+    def set_security(self, available: bool) -> None:
+        """Muestra la tarjeta de seguridad solo si los datos estan en un almacen cifrado."""
+        self.security_card.setVisible(available)
 
     def reload_rules(self) -> None:
         if self.rules is not None:

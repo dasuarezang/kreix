@@ -11,12 +11,14 @@ from PySide6.QtWidgets import (
 
 from services.dashboard_service import DashboardData
 from ui.format import fmt_date, fmt_datetime_long, fmt_eur, fmt_pct
+from ui.views.accounts_view import signed_eur
 from core.greeting import greeting
 from ui.headlines import allocation_headline, flow_headline, wealth_headline
 from ui.widgets.cards import ChartCard, HeroCard, PageHeader, StatCard
 from ui.widgets.charts import DonutChart, FlowChart, WealthChart
 from ui.widgets.onboarding import Onboarding, SetupPanel
 from ui.widgets.budget_carousel import BudgetCarousel
+from ui.widgets.goals_panel import GoalsPanel
 from ui.widgets.panels import UpcomingPanel
 from ui.widgets.sky import SkyWidget
 from ui.widgets.ambient import hour_of
@@ -29,6 +31,7 @@ class DashboardView(QWidget):
     navigate_requested = Signal(str)      # "import" | "accounts": acceso directo desde los primeros pasos
     setup_dismissed = Signal()
     category_clicked = Signal(object)     # desde un presupuesto de Inicio: ver esos movimientos en Cuentas
+    goals_requested = Signal()            # abrir la gestion de metas de ahorro
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -81,9 +84,9 @@ class DashboardView(QWidget):
         banner_row.addWidget(fix)
         root.addWidget(self._banner)
 
-        self.card_net = HeroCard(tr("Patrimonio neto"))
-        self.card_return = StatCard(tr("Rendimiento global"))
-        self.card_savings = StatCard(tr("Tasa de ahorro del mes"))
+        self.card_net = HeroCard(tr("Patrimonio neto")).set_help("Patrimonio neto")
+        self.card_return = StatCard(tr("Rendimiento global")).set_help("Rentabilidad global")
+        self.card_savings = StatCard(tr("Tasa de ahorro del mes")).set_help("Tasa de ahorro")
         side = QVBoxLayout()
         side.setSpacing(28)
         side.addWidget(self.card_return, 1)
@@ -107,6 +110,9 @@ class DashboardView(QWidget):
         attention.addWidget(self.budgets, 5)
         root.addLayout(attention)
         self.budgets.category_clicked.connect(self.category_clicked)
+        self.goals = GoalsPanel()
+        self.goals.manage_requested.connect(self.goals_requested)
+        root.addWidget(self.goals)
 
         self.donut, self.flow, self.wealth = DonutChart(), FlowChart(), WealthChart()
         row = QHBoxLayout()
@@ -147,6 +153,9 @@ class DashboardView(QWidget):
             chips.append((tr("TIR {xirr} anual").format(xirr=fmt_pct(d.xirr)), ""))
         if not self._interests[1]:
             chips = []                              # el rendimiento y la TIR son de las inversiones
+        if d.net_worth_change is not None and d.net_worth_change != 0:
+            chips.insert(0, (tr("{amount} frente al mes pasado").format(amount=signed_eur(d.net_worth_change)),
+                             "negative" if d.net_worth_change < 0 else "positive"))
         net.set_chips(chips)
         net.trend.set_values([float(w.net_worth) for w in d.wealth])
         total = float(d.net_worth) or 1.0
@@ -193,6 +202,7 @@ class DashboardView(QWidget):
         self.setup.setVisible(not self._setup_hidden and not all(done for _, done, _ in steps))
         self.upcoming.set_items(d.upcoming)
         self.budgets.set_state(d.budgets, d.has_budgets)
+        self.goals.set_goals(d.goals, self.clock().date())
         self.allocation_card.set_headline(allocation_headline(d.cash, d.portfolio_value, d.net_worth))
         self.flow_card.set_headline(flow_headline(d.flows))
         self.wealth_card.set_headline(wealth_headline(d.wealth))
@@ -211,6 +221,7 @@ class DashboardView(QWidget):
         self.flow_card.setVisible(accounts)
         self.upcoming.setVisible(accounts)
         self.budgets.setVisible(accounts)
+        self.goals.setVisible(accounts)
 
     def set_user_name(self, name: str) -> None:
         self._user_name = name

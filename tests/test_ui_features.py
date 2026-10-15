@@ -159,3 +159,22 @@ def test_summary_shows_upcoming_payments_and_all_the_budgets(loaded):
     loaded.refresh()
     assert [(l.category, l.state) for l in d.budgets.lines] == [(TxCategory.GROCERIES, "ok")]     # uno solo: sin flechas ni puntos
     assert d.budgets.dots.isHidden() and d.budgets._controls.isHidden()
+
+
+def test_info_buttons_open_their_help_entry(window):
+    from ui.widgets.help_link import InfoButton
+    buttons = window.dashboard.findChildren(InfoButton) + window.accounts_view.findChildren(InfoButton) + window.investment_view.findChildren(InfoButton)
+    assert {b.term for b in buttons} >= {"Patrimonio neto", "Tasa de ahorro", "Saldo", "Valor de la cartera", "Plusvalía y minusvalía"}
+    next(b for b in buttons if b.term == "Patrimonio neto").click()
+    assert window.stack.currentIndex() == window.HELP and "Patrimonio neto" in window.help_view.entry_terms()
+    from core import i18n
+    from ui.help_content import ENTRIES, localized_term
+    assert all(localized_term(e.term) for e in ENTRIES) and all(b.term in {e.term for e in ENTRIES} for b in buttons)
+
+
+def test_home_shows_the_net_worth_change_against_last_month(window):
+    window.start_demo()
+    data = window._svc.dashboard.load()
+    assert data.net_worth_change == data.wealth[-1].net_worth - data.wealth[-2].net_worth
+    chips = [c.text() for c in window.dashboard.card_net._chip_widgets]
+    assert any("frente al mes pasado" in t for t in chips)

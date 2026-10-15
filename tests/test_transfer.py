@@ -196,3 +196,35 @@ def test_restoring_an_older_schema_migrates_it(tmp_path, source):
     with engine.connect() as c:
         from sqlalchemy import text
         assert c.execute(text("PRAGMA user_version")).scalar() == SCHEMA_VERSION
+
+
+def test_encrypted_export_needs_the_master_password_to_open(tmp_path, source):
+    from data.vault import Vault
+    _, _, src_svc = source
+    vault = Vault("clave-larga-1", iterations=1000)
+    file = tmp_path / "cifrado.kreix"
+    summary = src_svc.export_to(file, vault.seal)
+    raw = file.read_bytes()
+    assert raw.startswith(b"KRX1") and b"PK\x03\x04" not in raw[:64] and b"Personal" not in raw
+    assert ts.is_encrypted(file) and not ts.is_encrypted(tmp_path / "nope.kreix")
+
+    _, _, dest_svc = make_instance(tmp_path, "destino")
+    with pytest.raises(ts.PasswordRequired):
+        dest_svc.inspect(file)
+    with pytest.raises(ts.WrongImportPassword):
+        dest_svc.inspect(file, "otra-clave-xx")
+    assert dest_svc.inspect(file, "clave-larga-1").summary == summary
+    assert dest_svc.restore(file, "clave-larga-1") == summary                  # y un export normal sigue sin contrasena
+    plain = tmp_path / "claro.kreix"
+    src_svc.export_to(plain)
+    assert not ts.is_encrypted(plain) and dest_svc.inspect(plain).summary == summary
+
+
+def test_export_view_offers_encryption_only_with_an_encrypted_store(window):
+    view = window.export_view
+    assert view.encrypt.isHidden() and not view.warning.isHidden()             # sin almacen cifrado: aviso de siempre
+    window.attach_store(type("S", (), {"seal_export": staticmethod(lambda b: b"KRX1" + b)})())
+    assert not view.encrypt.isHidden() and view.warning.isHidden()             # cifrado por defecto: sin aviso
+    view.encrypt.setChecked(False)
+    assert not view.warning.isHidden()
+    window.attach_store(None)

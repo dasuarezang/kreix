@@ -5,7 +5,7 @@ from sqlalchemy import delete
 from sqlalchemy.orm import Session, sessionmaker
 
 from data.database import session_scope
-from data.models import Account, Investment
+from data.models import Account, Investment, PricePoint
 
 
 class DataService:
@@ -19,3 +19,4 @@ class DataService:
             # los movimientos, operaciones y valoraciones caen en cascada con su cuenta/fondo
             s.execute(delete(Account))
             s.execute(delete(Investment))
+            s.execute(delete(PricePoint))                 # el historico de precios tambien son datos importados

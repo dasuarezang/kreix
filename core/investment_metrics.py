@@ -7,7 +7,7 @@ from decimal import Decimal
 from typing import Iterable, Sequence
 
 from core import metrics
-from core.entities import OperationDraft, PositionSnapshot
+from core.entities import OperationDraft, PositionSnapshot, PricePointDraft
 from core.enums import OperationType
 from core.metrics import AllocationSlice
 from core.periods import Period, month_start, next_month, previous_month_end
@@ -57,7 +57,8 @@ def _net_contributions(ops: Iterable[OperationDraft], period: Period) -> Decimal
 
 
 def summarize_investment(
-    operations: Sequence[OperationDraft], snapshots: Sequence[PositionSnapshot], period: Period
+    operations: Sequence[OperationDraft], snapshots: Sequence[PositionSnapshot], period: Period,
+    prices: Sequence[PricePointDraft] = (),
 ) -> InvestmentSummary:
     trades = [o for o in operations if o.op_type in _TRADES]
     latest = metrics.latest_positions(snapshots)
@@ -93,24 +94,24 @@ def summarize_investment(
         if latest:
             value = metrics.portfolio_value(latest)
         elif last_data:
-            value = metrics.estimated_value(operations, snapshots, last_data)
+            value = metrics.estimated_value(operations, snapshots, last_data, prices)
         else:
             value = ZERO
         gain = value - sum((p.invested for p in latest), ZERO) if latest else None
         return InvestmentSummary(
             value=value, gain=gain, simple_return=metrics.simple_return(latest) if latest else None,
-            period_gain=None, twr=metrics.twr(operations, snapshots) if trades else None,
+            period_gain=None, twr=metrics.twr(operations, snapshots, prices=prices) if trades else None,
             xirr=metrics.portfolio_xirr(operations, snapshots) if trades and latest else None, **base,
         )
 
     assert period.start is not None and period.end is not None
     end = min(period.end, last_data) if last_data else period.end
     start_day = previous_month_end(period.start)
-    value_end = metrics.estimated_value(operations, snapshots, end)
-    value_start = metrics.estimated_value(operations, snapshots, start_day)
+    value_end = metrics.estimated_value(operations, snapshots, end, prices)
+    value_start = metrics.estimated_value(operations, snapshots, start_day, prices)
     return InvestmentSummary(
         value=value_end, gain=None, simple_return=None,
         period_gain=value_end - value_start - contributions_period,
-        twr=metrics.twr(operations, snapshots, end=end, start=start_day) if trades else None,
+        twr=metrics.twr(operations, snapshots, end=end, start=start_day, prices=prices) if trades else None,
         xirr=None, **base,
     )

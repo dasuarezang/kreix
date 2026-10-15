@@ -16,6 +16,7 @@ class FileKind(str, Enum):
     IMAGIN_STATEMENT = "imagin_extracto"
     MYINVESTOR_OPERATIONS = "myinvestor_operaciones"
     MYINVESTOR_PORTFOLIO = "myinvestor_cartera"
+    PRICE_HISTORY = "historico_precios"
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,6 +63,15 @@ class PositionSnapshot:
     as_of: date
 
 
+@dataclass(frozen=True, slots=True)
+class PricePointDraft:
+    """Valor liquidativo de un fondo en un dia (de un historico de precios en CSV o Excel)."""
+
+    isin: str
+    as_of: date
+    unit_price: Decimal
+
+
 @dataclass(slots=True)
 class ParseResult:
     kind: FileKind
@@ -69,4 +79,5 @@ class ParseResult:
     transactions: list[TransactionDraft] = field(default_factory=list)
     operations: list[OperationDraft] = field(default_factory=list)
     positions: list[PositionSnapshot] = field(default_factory=list)
+    prices: list[PricePointDraft] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)  # nada se descarta en silencio

@@ -66,6 +66,28 @@ def set_current(palette: Palette) -> None:
     _current = palette
 
 
+def arrow_url(color: str) -> str:
+    """Ruta de un PNG con una flecha hacia abajo del color dado (la hoja de estilos solo acepta archivos). Vacio si no hay GUI."""
+    import tempfile
+    from pathlib import Path
+
+    try:
+        from PySide6.QtGui import QGuiApplication, QTransform
+
+        if QGuiApplication.instance() is None:
+            return ""
+        from ui import icons
+
+        folder = Path(tempfile.gettempdir()) / "kreix-ui"
+        folder.mkdir(exist_ok=True)
+        path = folder / f"down-{color.lstrip('#')}.png"
+        if not path.exists():
+            icons.pixmap("chevron", color, 24, 2.2).transformed(QTransform().rotate(90)).save(str(path))
+        return path.as_posix()
+    except Exception:                                        # sin flecha la app sigue funcionando
+        return ""
+
+
 def rgba(color: str, alpha: float) -> str:
     """'#RRGGBB' + opacidad 0-1 -> 'rgba(r, g, b, a)' para la hoja de estilos (rellenos translucidos)."""
     r, g, b = int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
@@ -79,6 +101,8 @@ def stylesheet(p: Palette) -> str:
     # regular (etiquetas, en gris) o medium (titulos y controles).
     bold = medium
     green_soft, red_soft, accent_soft = rgba(p.green, 0.13), rgba(p.red, 0.17), rgba(p.accent, 0.16)
+    arrow = arrow_url(p.muted)
+    arrow_rule = f"image: url({arrow}); width: 12px; height: 12px;" if arrow else ""
     return f"""
 QWidget {{ color: {p.text}; }}
 QMainWindow, QWidget#Root {{ background: {p.bg}; }}
@@ -264,6 +288,11 @@ QFrame#DropZone QLabel {{ background: transparent; }}
 
 /* ---------------------------------------------------------------- entradas */
 QLineEdit {{ lineedit-password-character: 8226; }}
+QPushButton#AccountPicker {{ text-align: left; padding: 9px 40px 9px 16px; }}
+QMenu QCheckBox#PickerBox {{ padding: 9px 22px 9px 14px; spacing: 12px; background: transparent; color: {p.text}; font-family: {medium}; font-size: 13px; }}
+QMenu QCheckBox#PickerBox:hover {{ background: {p.hover}; border-radius: 10px; }}
+QMenu QCheckBox#PickerBox::indicator {{ width: 18px; height: 18px; border-radius: 6px; border: 1px solid {p.muted}; background: {p.surface}; }}
+QMenu QCheckBox#PickerBox::indicator:checked {{ background: {p.accent}; border: 1px solid {p.accent}; }}
 QComboBox, QLineEdit, QDateEdit, QDoubleSpinBox {{
     background: {p.surface_alt}; color: {p.text}; border: 1px solid {p.surface_alt};
     border-radius: 14px; padding: 9px 16px; min-height: 20px; font-family: {body};
@@ -271,11 +300,23 @@ QComboBox, QLineEdit, QDateEdit, QDoubleSpinBox {{
 QComboBox:hover, QLineEdit:hover, QDateEdit:hover, QDoubleSpinBox:hover {{ border-color: {p.border}; }}
 QComboBox:focus, QLineEdit:focus, QDateEdit:focus, QDoubleSpinBox:focus {{ border: 2px solid {p.accent}; padding: 7px 13px; }}
 QComboBox {{ combobox-popup: 0; }}
-QComboBox::drop-down, QDateEdit::drop-down {{ border: none; width: 28px; }}
+QComboBox::drop-down, QDateEdit::drop-down {{ border: none; width: 30px; }}
+QComboBox::down-arrow {{ {arrow_rule} }}
+QPushButton::menu-indicator {{ {arrow_rule} subcontrol-origin: padding; subcontrol-position: right center; right: 14px; }}
+QCheckBox {{ spacing: 10px; background: transparent; }}
+QCheckBox::indicator {{ width: 18px; height: 18px; border-radius: 6px; border: 1px solid {p.muted}; background: {p.surface}; }}
+QCheckBox::indicator:checked {{ background: {p.accent}; border: 1px solid {p.accent}; }}
+QCheckBox::indicator:hover {{ border-color: {p.accent}; }}
+QPushButton#InfoButton {{
+    background: transparent; color: {p.muted}; border: 1px solid {p.muted}; border-radius: 10px; padding: 0;
+    min-width: 20px; max-width: 20px; min-height: 20px; max-height: 20px; font-family: {medium}; font-size: 11px;
+}}
+QPushButton#InfoButton:hover {{ background: {p.accent}; border-color: {p.accent}; color: {p.on_accent}; }}
 QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {{ width: 0; border: none; }}
-QComboBox QFrame {{ background: {p.surface}; border: none; }}
+QComboBoxPrivateContainer {{ background: transparent; border: none; }}
+QComboBox QFrame {{ background: transparent; border: none; }}
 QComboBox QAbstractItemView {{
-    background: {p.surface}; color: {p.text}; border: 1px solid {p.border}; border-radius: 0;
+    background: {p.surface}; color: {p.text}; border: 1px solid {p.border}; border-radius: 16px;
     selection-background-color: transparent; selection-color: {p.text}; outline: none; padding: 8px;
 }}
 QComboBox QAbstractItemView::item {{ min-height: 26px; padding: 6px 14px; margin: 2px 0; border-radius: 10px; }}

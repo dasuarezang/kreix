@@ -109,15 +109,15 @@ def test_several_accounts_selection_and_management(window, two_months):
 
     imp.account_combo.setCurrentIndex(1)                                      # destino: Compartida
     imp.import_paths([str(two_months)])                                       # mismo extracto, otra cuenta: no es duplicado
-    v.account_combo.setCurrentIndex(0)
+    v.account_picker.select_all()
     assert v.table.proxy.rowCount() == 6 and not v.table.isColumnHidden(1)    # columna Cuenta visible con varias
     assert v.card_balance._value.text() == fmt_eur(Decimal("180"))            # 90 + 90, cada cuenta con su saldo
     assert {v.table.cell_texts(r)[1] for r in range(6)} == {"Imagin", "Compartida"}
 
-    v.account_combo.setCurrentIndex(2)                                        # solo "Compartida"
+    v.account_picker.select_only(imp.account_combo.itemData(1))               # solo "Compartida"
     assert v.table.proxy.rowCount() == 3 and v.table.isColumnHidden(1)
     assert v.rename_selected("Piso")
-    assert v.account_combo.currentText() == "Piso"
+    assert v.account_picker.single_name() == "Piso"
     assert v.delete_selected()
     assert [imp.account_combo.itemText(i) for i in range(imp.account_combo.count())] == ["Imagin"]
     assert v.table.proxy.rowCount() == 3
@@ -184,3 +184,22 @@ def test_refresh_only_reloads_the_visible_page_and_the_rest_on_entering(window, 
     assert calls == ["accounts", "accounts"]             # la visible se recarga de inmediato
     window.navigate(window.INVESTMENT)
     assert calls[-1] == "investment"
+
+
+def test_account_picker_combines_several_accounts(window, two_months):
+    v = window.accounts_view
+    window.import_view.import_paths([str(two_months)])
+    assert v.add_account_named("Compartida") and v.add_account_named("Piso")
+    ids = [i for i, _ in v.account_picker._accounts]
+    picker = v.account_picker
+    picker.select_all()
+    assert picker.selected_ids() is None and picker.label_text() == "Todas las cuentas"
+    picker.select(ids[:2])                                                    # una combinacion de dos de tres
+    assert picker.selected_ids() == sorted(ids[:2]) and picker.label_text() == "2 de 3 cuentas"
+    assert picker.single_id() is None and not v.act_rename.isEnabled()        # renombrar y borrar piden una sola
+    picker.select(ids)                                                        # marcarlas todas equivale a "Todas"
+    assert picker.selected_ids() is None
+    picker.select_only(ids[0])
+    assert picker.single_id() == ids[0] and v.act_rename.isEnabled() and v.table.isColumnHidden(1)
+    picker._boxes[ids[1]].setChecked(True)                                    # sumar otra desde la casilla
+    assert picker.selected_ids() == sorted(ids[:2]) and not v.table.isColumnHidden(1)

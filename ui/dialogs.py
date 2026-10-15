@@ -5,12 +5,13 @@ from decimal import Decimal
 
 from PySide6.QtCore import QLocale, Qt
 from PySide6.QtWidgets import (
-    QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout, QLabel, QLineEdit, QVBoxLayout, QWidget,
+    QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout, QFrame, QLabel, QLineEdit, QVBoxLayout, QWidget,
 )
 
 from core.budget import BUDGETABLE
 from core.enums import TxCategory
 from ui.format import category_label
+from ui.widgets.brand_dialog import BrandDialog
 from ui.widgets.interests import InterestPicker
 from ui.widgets.language_picker import LanguagePicker
 from core.greeting import MAX_NAME, clean_name
@@ -40,17 +41,13 @@ def _buttons(dialog: QDialog, ok_text: str) -> QDialogButtonBox:
     return box
 
 
-class RuleDialog(QDialog):
+class RuleDialog(BrandDialog):
     """Nueva regla: los conceptos que contengan la palabra clave pasan a la categoria elegida."""
 
     def __init__(self, keyword: str = "", category: TxCategory | None = None, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle(tr("Nueva regla de categoría"))
-        self.setMinimumWidth(440)
-        intro = QLabel(tr("Todos los movimientos cuyo concepto contenga esta palabra irán a la categoría elegida, "
-                       "también los que importes en el futuro. Los que hayas clasificado tú a mano no se tocan."))
-        intro.setObjectName("Muted")
-        intro.setWordWrap(True)
+        self.setMinimumWidth(480)
         self.keyword = QLineEdit(keyword)
         self.keyword.setPlaceholderText(tr("p. ej. MERCADONA"))
         self.keyword.setAccessibleName(tr("Palabra clave"))
@@ -61,10 +58,9 @@ class RuleDialog(QDialog):
         form.addRow(tr("Si el concepto contiene"), self.keyword)
         form.addRow(tr("Va a la categoría"), self.category)
         self._buttons = _buttons(self, tr("Guardar regla"))
-        col = QVBoxLayout(self)
-        col.setContentsMargins(24, 22, 24, 20)
-        col.setSpacing(14)
-        col.addWidget(intro)
+        col = self.frame(tr("Nueva regla de categoría"),
+                         tr("Todos los movimientos cuyo concepto contenga esta palabra irán a la categoría elegida, "
+                            "también los que importes en el futuro. Los que hayas clasificado tú a mano no se tocan."))
         col.addLayout(form)
         col.addWidget(self._buttons)
         self.keyword.textChanged.connect(self._validate)
@@ -77,7 +73,7 @@ class RuleDialog(QDialog):
         return self.keyword.text().strip(), self.category.currentData()
 
 
-class WelcomeDialog(QDialog):
+class WelcomeDialog(BrandDialog):
     """Primera vez: idioma, como llamar al usuario y que quiere gestionar (cuentas, inversiones o ambas).
     El idioma se cambia al instante dentro del propio cuadro. Se puede omitir ("Ahora no") y cambiar todo en Ajustes."""
 
@@ -104,12 +100,17 @@ class WelcomeDialog(QDialog):
         self._ask_interest.setObjectName("H2")
         self.interests = InterestPicker(*interests)
         self._buttons = _buttons(self, "")
-        col = QVBoxLayout(self)
-        col.setContentsMargins(28, 26, 28, 22)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(30, 28, 30, 26)
+        outer.setSpacing(14)
+        outer.addWidget(self._title)
+        outer.addWidget(self._intro)
+        card = QFrame()
+        card.setObjectName("Card")
+        col = QVBoxLayout(card)
+        col.setContentsMargins(26, 22, 26, 22)
         col.setSpacing(10)
-        col.addWidget(self._title)
-        col.addWidget(self._intro)
-        col.addSpacing(6)
+        outer.addWidget(card)
         col.addWidget(self._ask_language)
         col.addWidget(self.languages)
         col.addSpacing(8)
@@ -159,16 +160,13 @@ def system_language() -> str:
     return i18n.normalize_language(QLocale.system().name()[:2].lower())
 
 
-class BudgetDialog(QDialog):
+class BudgetDialog(BrandDialog):
     """Un tope mensual por categoria. Un importe a cero significa que esa categoria no tiene presupuesto."""
 
     def __init__(self, budgets: dict[TxCategory, Decimal], parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle(tr("Presupuestos mensuales"))
-        self.setMinimumWidth(420)
-        intro = QLabel(tr("Cuánto quieres gastar como máximo al mes en cada categoría. Deja a 0 las que no quieras vigilar."))
-        intro.setObjectName("Muted")
-        intro.setWordWrap(True)
+        self.setMinimumWidth(480)
         form = QFormLayout()
         form.setSpacing(8)
         self.spins: dict[TxCategory, QDoubleSpinBox] = {}
@@ -183,10 +181,8 @@ class BudgetDialog(QDialog):
             spin.setAccessibleName(tr("Presupuesto de {cat}").format(cat=category_label(cat)))
             self.spins[cat] = spin
             form.addRow(category_label(cat), spin)
-        col = QVBoxLayout(self)
-        col.setContentsMargins(24, 22, 24, 20)
-        col.setSpacing(14)
-        col.addWidget(intro)
+        col = self.frame(tr("Presupuestos mensuales"),
+                         tr("Cuánto quieres gastar como máximo al mes en cada categoría. Deja a 0 las que no quieras vigilar."))
         col.addLayout(form)
         col.addWidget(_buttons(self, tr("Guardar")))
 

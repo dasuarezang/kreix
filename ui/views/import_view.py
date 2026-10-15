@@ -187,6 +187,27 @@ class ImportView(QWidget):
         account_row.addLayout(account_col, 1)
         account_row.addWidget(self.account_combo)
 
+        self.fund_combo = QComboBox()
+        self.fund_combo.setMinimumWidth(230)
+        self.fund_combo.setAccessibleName(tr("Fondo del histórico"))
+        self.fund_combo.addItem(tr("Detectarlo por el archivo"), None)
+        fund_label = QLabel(tr("Fondo del histórico"))
+        fund_label.setObjectName("H2")
+        fund_hint = QLabel(tr("Si importas el histórico de precios de un fondo y el archivo no lleva su ISIN, indica a qué fondo pertenece."))
+        fund_hint.setObjectName("Small")
+        fund_hint.setWordWrap(True)
+        fund_col = QVBoxLayout()
+        fund_col.setSpacing(2)
+        fund_col.addWidget(fund_label)
+        fund_col.addWidget(fund_hint)
+        fund_row = QHBoxLayout()
+        fund_row.addLayout(fund_col, 1)
+        fund_row.addWidget(self.fund_combo)
+        self._fund_box = QWidget()
+        self._fund_box.setLayout(fund_row)
+        fund_row.setContentsMargins(0, 0, 0, 0)
+        self._fund_box.hide()                 # solo cuando Kreix ya conoce algun fondo (set_funds)
+
         self._results = QVBoxLayout()
         self._results.setSpacing(10)
         self._preview = QVBoxLayout()
@@ -229,6 +250,7 @@ class ImportView(QWidget):
         col.addWidget(self.dropzone)
         col.addLayout(account_row)
         col.addLayout(as_of_row)
+        col.addWidget(self._fund_box)
         col.addSpacing(6)
         col.addWidget(self._preview_box)
         col.addWidget(results_title)
@@ -256,6 +278,19 @@ class ImportView(QWidget):
             self.account_combo.addItem(tr("Imagin (se creará al importar)"), None)
         self.account_combo.blockSignals(False)
 
+    def set_funds(self, funds: list[tuple[str, str]]) -> None:
+        """Los fondos conocidos, para decir a cual pertenece un historico de precios que no trae el ISIN."""
+        keep = self.fund_combo.currentData()
+        self.fund_combo.blockSignals(True)
+        self.fund_combo.clear()
+        self.fund_combo.addItem(tr("Detectarlo por el archivo"), None)
+        for isin, name in funds:
+            self.fund_combo.addItem(name, isin)
+        index = self.fund_combo.findData(keep) if keep is not None else 0
+        self.fund_combo.setCurrentIndex(max(index, 0))
+        self.fund_combo.blockSignals(False)
+        self._fund_box.setVisible(bool(funds))
+
     def portfolio_date(self) -> date:
         qd = self.as_of.date()
         return date(qd.year(), qd.month(), qd.day())
@@ -268,7 +303,8 @@ class ImportView(QWidget):
             self.restore_requested.emit(backups[0])
             if not paths:
                 return
-        previews = self._service.preview(paths, self.portfolio_date(), self.account_combo.currentData())
+        previews = self._service.preview(paths, self.portfolio_date(), self.account_combo.currentData(),
+                                         self.fund_combo.currentData())
         _clear(self._preview)
         for preview in previews:
             self._preview.addWidget(PreviewRow(preview))
@@ -305,7 +341,8 @@ class ImportView(QWidget):
         if self.before_import is not None:
             self.before_import()
         snapshot = snapshot_of(self.feedback)
-        report = self._service.import_files(paths, self.portfolio_date(), self.account_combo.currentData())
+        report = self._service.import_files(paths, self.portfolio_date(), self.account_combo.currentData(),
+                                            self.fund_combo.currentData())
         self.show_report(report)
         if report.total_changed:
             self.imported.emit()

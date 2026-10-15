@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import QPointF, QRectF, QSize, Qt, Signal
-from PySide6.QtGui import QColor, QPainter, QPen
+from PySide6.QtGui import QColor, QLinearGradient, QPainter, QPen, QRadialGradient
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from ui import theme
@@ -212,6 +212,7 @@ class SetupPanel(Panel):
                 lay.addWidget(go)
             self._rows.addWidget(row)
         done_count = sum(1 for _, done, _ in steps if done)
+        self._rows.insertWidget(0, StepsBar(done_count, len(steps)))
         self.subtitle.setText(tr("{done_count} de {steps} hechos").format(done_count=done_count, steps=len(steps)))
 
 
@@ -225,9 +226,7 @@ class InterestOffState(QWidget):
         self.setObjectName("Page")
         from ui import assets
 
-        logo = QLabel()
-        logo.setPixmap(assets.mark(72))
-        logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        logo = BrandHalo()
         self.title_label = QLabel(title)
         self.title_label.setObjectName("H1")
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -247,12 +246,64 @@ class InterestOffState(QWidget):
         col = QVBoxLayout(self)
         col.setAlignment(Qt.AlignmentFlag.AlignCenter)
         col.setSpacing(12)
-        col.addWidget(logo)
+        col.addWidget(logo, 0, Qt.AlignmentFlag.AlignCenter)
+        col.addWidget(StripeMark(112, 40, centered=True), 0, Qt.AlignmentFlag.AlignCenter)
         col.addWidget(self.title_label)
         col.addWidget(body, 0, Qt.AlignmentFlag.AlignCenter)
         col.addSpacing(6)
         col.addWidget(self.button, 0, Qt.AlignmentFlag.AlignCenter)
         col.addWidget(note)
+
+
+class BrandHalo(QWidget):
+    """El icono de Kreix sobre un resplandor amarillo suave: la cara de las paginas vacias."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        from ui import assets
+
+        self.setFixedSize(190, 130)
+        self._mark = assets.mark(72)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+
+    def paintEvent(self, _event) -> None:
+        pal = theme.current()
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        glow = QRadialGradient(self.width() / 2, self.height() / 2, self.height() / 2)    # circular: sin bordes rectos
+        inner, outer = QColor(pal.accent), QColor(pal.accent)
+        inner.setAlpha(70)
+        outer.setAlpha(0)
+        glow.setColorAt(0.0, inner)
+        glow.setColorAt(1.0, outer)
+        painter.fillRect(self.rect(), glow)
+        x = (self.width() - self._mark.width() / self._mark.devicePixelRatio()) / 2
+        y = (self.height() - self._mark.height() / self._mark.devicePixelRatio()) / 2
+        painter.drawPixmap(int(x), int(y), self._mark)
+
+
+class StepsBar(QWidget):
+    """Barra fina con lo que llevas hecho de los primeros pasos (va del amarillo al rojo de la marca)."""
+
+    def __init__(self, done: int, total: int) -> None:
+        super().__init__()
+        self._done, self._total = done, max(total, 1)
+        self.setFixedHeight(8)
+
+    def paintEvent(self, _event) -> None:
+        pal = theme.current()
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor(pal.border))
+        painter.drawRoundedRect(QRectF(0, 2, self.width(), 5), 2.5, 2.5)
+        width = self.width() * self._done / self._total
+        if width > 0:
+            fill = QLinearGradient(0, 0, self.width(), 0)
+            fill.setColorAt(0.0, QColor(pal.accent))
+            fill.setColorAt(1.0, QColor(pal.red))
+            painter.setBrush(fill)
+            painter.drawRoundedRect(QRectF(0, 2, max(width, 6), 5), 2.5, 2.5)
 
 
 class EmptyState(QWidget):
@@ -265,9 +316,7 @@ class EmptyState(QWidget):
         self.setObjectName("Page")
         from ui import assets
 
-        logo = QLabel()
-        logo.setPixmap(assets.mark(72))
-        logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        logo = BrandHalo()
         self.title_label = QLabel(title)
         self.title_label.setObjectName("H1")
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -295,7 +344,8 @@ class EmptyState(QWidget):
         col = QVBoxLayout(self)
         col.setAlignment(Qt.AlignmentFlag.AlignCenter)
         col.setSpacing(12)
-        col.addWidget(logo)
+        col.addWidget(logo, 0, Qt.AlignmentFlag.AlignCenter)
+        col.addWidget(StripeMark(112, 40, centered=True), 0, Qt.AlignmentFlag.AlignCenter)
         col.addWidget(self.title_label)
         col.addWidget(show)
         col.addSpacing(6)

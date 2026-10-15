@@ -564,6 +564,14 @@ def localized_entries() -> tuple[HelpEntry, ...]:
     return tuple(out)
 
 
+def localized_term(term: str) -> str:
+    """El nombre de un termino del glosario (clave en castellano) en el idioma activo, para buscarlo en la Ayuda."""
+    for original, shown in zip(ENTRIES, localized_entries()):
+        if original.term == term:
+            return shown.term
+    return term
+
+
 def _help_texts(language: str) -> dict[str, dict]:
     import importlib
 

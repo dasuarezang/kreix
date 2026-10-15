@@ -51,6 +51,10 @@ class Vault:
         self._iterations = iterations
         self._fernet = Fernet(derive_key(password, self._salt, iterations))
 
+    @property
+    def iterations(self) -> int:
+        return self._iterations
+
     # ------------------------------------------------------------------ bytes <-> bytes
     def seal(self, plain: bytes) -> bytes:
         return MAGIC + struct.pack(">I", self._iterations) + self._salt + self._fernet.encrypt(plain)

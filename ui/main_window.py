@@ -7,27 +7,31 @@ from datetime import datetime
 from PySide6.QtCore import QEasingCurve, QPropertyAnimation, QSize, Qt, QTimer
 from PySide6.QtGui import QColor, QKeySequence, QPainter, QRadialGradient, QShortcut
 from PySide6.QtWidgets import (
-    QApplication, QButtonGroup, QFrame, QGraphicsOpacityEffect, QHBoxLayout, QLabel, QMainWindow, QMessageBox,
+    QApplication, QButtonGroup, QFrame, QGraphicsOpacityEffect, QHBoxLayout, QInputDialog, QLabel, QLineEdit, QMainWindow, QMessageBox,
     QPushButton, QStackedWidget, QVBoxLayout, QWidget,
 )
 
 from services.accounts_service import AccountsService
 from services.dashboard_service import DashboardService
+from services.goals_service import GoalsService
 from services.category_service import CategoryService
 from services.data_service import DataService
 from services.demo_service import DemoService
 from services.import_service import ImportService
 from services.investment_service import InvestmentService
 from services.settings_service import AppSettings, SettingsService
-from services.transfer_service import TransferError, TransferService
+from services.transfer_service import PasswordRequired, TransferError, TransferService, WrongImportPassword
 from ui import assets, icons, theme
 from core import i18n
 from core.greeting import clean_name
 from ui.command_palette import Command, CommandPalette
 from ui.dialogs import WelcomeDialog, system_language
+from data.vault import WrongPasswordError
+from ui.password_dialog import ChangePasswordDialog
+from ui.goals_dialog import GoalsDialog
 from ui.feedback import Feedback, snapshot_of, tell
 from ui.format import category_label, fmt_date, fmt_eur
-from ui.help_content import localized_entries
+from ui.help_content import localized_entries, localized_term
 from ui.views.accounts_view import AccountsView
 from ui.views.dashboard_view import DashboardView
 from ui.views.export_view import ExportView
@@ -80,6 +84,7 @@ class Services:
     transfer: TransferService
     categories: CategoryService
     demo: DemoService
+    goals: GoalsService
 
 
 class MainWindow(QMainWindow):
@@ -100,6 +105,7 @@ class MainWindow(QMainWindow):
         i18n.set_language(self._settings.language)         # antes de crear ningun texto: todo sale en este idioma
         self._db_path = db_path
         self.rebuilding = False
+        self.secure_store = None
         self.detect_language = False        # True (lo activa main): la primera vez se propone el idioma del sistema
         self.setWindowTitle("Kreix")
         self.setWindowIcon(assets.app_icon())
@@ -137,6 +143,8 @@ class MainWindow(QMainWindow):
         self.settings_view.name_changed.connect(self._apply_user_name)
         self.settings_view.interests_changed.connect(self._on_interests_picked)
         self.settings_view.language_changed.connect(self._on_language_picked)
+        self.dashboard.goals_requested.connect(self.open_goals)
+        self.settings_view.change_password_requested.connect(self.change_password)
         self.accounts_view.interest_requested.connect(lambda: self._activate_interest("accounts"))
         self.investment_view.interest_requested.connect(lambda: self._activate_interest("investments"))
         self.settings_view.reset_requested.connect(self.confirm_reset)
@@ -303,6 +311,7 @@ class MainWindow(QMainWindow):
                     tr("tema aspecto color noche día"), tr("Acciones")),
             Command(tr("Buscar en mis movimientos"), "Ctrl+F", self.focus_search, tr("concepto pagos gastos")),
             Command(tr("Cambiar mi nombre"), tr("Ajustes"), self._edit_name, tr("usuario saludo perfil")),
+            Command(tr("Gestionar mis metas de ahorro"), tr("Inicio"), self.open_goals, tr("objetivo ahorrar vacaciones meta")),
             Command(tr("Cambiar lo que me interesa"), tr("Ajustes"), self._edit_interests,
                     tr("cuentas inversiones gestionar activar desactivar intereses")),
             Command(tr("Definir presupuestos mensuales"), tr("Cuentas"), self._edit_budgets, tr("tope límite gastar categoría")),
@@ -333,6 +342,10 @@ class MainWindow(QMainWindow):
     def _show_movement(self, description: str) -> None:
         self.navigate(self.ACCOUNTS)
         self.accounts_view.search_for(description)
+
+    def open_help_term(self, term: str) -> None:
+        """Desde un «?»: la explicacion de ese termino (dado en castellano) en el idioma activo."""
+        self._open_help(localized_term(term))
 
     def _open_help(self, term: str) -> None:
         self.navigate(self.HELP)
@@ -375,6 +388,7 @@ class MainWindow(QMainWindow):
         entrar en ella (asi importar o cambiar un ajuste no recalcula tres paginas a la vez)."""
         self._stale = set(self.DATA_PAGES)
         self.import_view.set_accounts(self._svc.accounts.accounts())
+        self.import_view.set_funds(self._svc.importer.funds())
         self.export_view.refresh()
         self.settings_view.reload_rules()
         self._load_if_stale(self.stack.currentIndex())
@@ -519,12 +533,46 @@ class MainWindow(QMainWindow):
         else:
             self._svc.settings.save_state(page=self.stack.currentIndex())
 
+    def open_goals(self) -> None:
+        """Gestion de las metas de ahorro; lo que cambie se puede deshacer desde el aviso."""
+        snapshot = snapshot_of(self.feedback)
+        dialog = GoalsDialog(self._svc.goals, self)
+        dialog.exec()
+        if dialog.did_change:
+            self._stale.add(self.SUMMARY)                       # Inicio se recalcula al verlo (o ya, si esta a la vista)
+            if self.stack.currentIndex() == self.SUMMARY:
+                self._load_if_stale(self.SUMMARY)
+            tell(self.feedback, tr("Metas de ahorro actualizadas."), snapshot)
+        elif snapshot is not None:
+            self.feedback.remove(snapshot)
+
+    def attach_store(self, store) -> None:
+        """Guarda la referencia al almacen cifrado (None si se usa una base de pruebas sin cifrar)."""
+        self.secure_store = store
+        self.settings_view.set_security(store is not None)
+        self.export_view.set_sealer(store.seal_export if store is not None else None)
+
+    def change_password(self) -> None:
+        if self.secure_store is None:
+            return
+
+        def apply(old: str, new: str) -> str | None:
+            try:
+                self.secure_store.change_password(old, new)
+            except WrongPasswordError:
+                return tr("La contraseña actual no es correcta.")
+            return None
+
+        if ChangePasswordDialog(apply, self).exec():
+            tell(self.feedback, tr("Contraseña maestra cambiada."))
+
     def rebuild(self) -> "MainWindow":
         """Sustituye esta ventana por otra igual construida en el idioma activo: mismos datos, misma pagina y tamano."""
         self._persist_state()
         new = MainWindow(self._svc, self._db_path)
         new.eager = self.eager
         new.detect_language = self.detect_language
+        new.attach_store(self.secure_store)
         new.clock = self.clock
         new.dashboard.clock = lambda: new.clock()
         new.resize(self.size())
@@ -642,11 +690,22 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------ traspaso de datos
     def restore_from(self, path: str) -> bool:
         """Restaura los datos de un archivo .kreix (reemplaza los actuales, previa confirmacion)."""
-        try:
-            info = self._svc.transfer.inspect(path)
-        except TransferError as exc:
-            QMessageBox.warning(self, tr("No se puede importar el archivo"), str(exc))
-            return False
+        password = None
+        while True:
+            try:
+                info = self._svc.transfer.inspect(path, password)
+                break
+            except (PasswordRequired, WrongImportPassword) as exc:      # archivo cifrado: se pide su contrasena
+                if isinstance(exc, WrongImportPassword):
+                    QMessageBox.warning(self, tr("No se puede importar el archivo"), str(exc))
+                password, ok = QInputDialog.getText(
+                    self, tr("Archivo cifrado"), tr("Escribe la contraseña maestra con la que se exportó este archivo:"),
+                    QLineEdit.EchoMode.Password)
+                if not ok:
+                    return False
+            except TransferError as exc:
+                QMessageBox.warning(self, tr("No se puede importar el archivo"), str(exc))
+                return False
         if not self._svc.transfer.summary().is_empty:
             s = info.summary
             answer = QMessageBox.question(
@@ -659,7 +718,7 @@ class MainWindow(QMainWindow):
                 return False
         snapshot = snapshot_of(self.feedback)
         try:
-            self._svc.transfer.restore(path)
+            self._svc.transfer.restore(path, password)
         except TransferError as exc:
             QMessageBox.warning(self, tr("No se pudo importar el archivo"), str(exc))
             return False

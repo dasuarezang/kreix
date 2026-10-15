@@ -11,6 +11,7 @@ lectura, se comprueba su integridad y se rechaza si trae disparadores o vistas.
 """
 from __future__ import annotations
 
+import io
 import json
 import os
 import shutil
@@ -26,7 +27,7 @@ from pathlib import Path
 from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from data.vault import SessionSeal
+from data.vault import MAGIC, CorruptVaultError, SessionSeal, Vault, WrongPasswordError
 from data.database import SCHEMA_VERSION, init_db, session_scope
 from data.models import Account, Investment, InvestmentOperation, Transaction, Valuation
 from core.i18n import tr
@@ -43,6 +44,22 @@ APP_VERSION = "0.2.0"
 
 class TransferError(ValueError):
     """El archivo no es un export valido de Kreix (o no se puede usar)."""
+
+
+class PasswordRequired(TransferError):
+    """El archivo esta cifrado: hay que pedir la contrasena maestra con la que se exporto."""
+
+
+class WrongImportPassword(TransferError):
+    """La contrasena no abre el archivo."""
+
+
+def is_encrypted(path: str | Path) -> bool:
+    try:
+        with open(path, "rb") as f:
+            return f.read(len(MAGIC)) == MAGIC
+    except OSError:
+        return False
 
 
 @dataclass(frozen=True, slots=True)
@@ -122,7 +139,8 @@ class TransferService:
                                count(Investment), count(Valuation))
 
     # ------------------------------------------------------------------ exportar
-    def export_to(self, path: str | Path) -> DataSummary:
+    def export_to(self, path: str | Path, seal=None) -> DataSummary:
+        """`seal`: funcion que cifra los bytes (la del almacen cifrado). Sin ella el archivo queda en claro."""
         target = Path(path)
         if target.suffix.lower() != EXTENSION:
             target = target.with_name(target.name + EXTENSION)
@@ -142,9 +160,11 @@ class TransferService:
             "counts": asdict(summary),
         }
         partial = target.with_name(target.name + ".part")
-        with zipfile.ZipFile(partial, "w", zipfile.ZIP_DEFLATED) as zf:
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
             zf.writestr(MANIFEST_ENTRY, json.dumps(manifest, indent=2))
             zf.writestr(DB_ENTRY, image)
+        partial.write_bytes(seal(buffer.getvalue()) if seal is not None else buffer.getvalue())
         os.replace(partial, target)                              # el archivo final aparece completo o no aparece
         return summary
 
@@ -171,9 +191,21 @@ class TransferService:
 
     # ------------------------------------------------------------------ leer un archivo
     @contextmanager
-    def _opened(self, path: str | Path) -> Iterator[tuple[dict, Path, DataSummary]]:
-        source = Path(path)
-        if not source.is_file() or not zipfile.is_zipfile(source):
+    def _opened(self, path: str | Path, password: str | None = None) -> Iterator[tuple[dict, Path, DataSummary]]:
+        source: Path | io.BytesIO = Path(path)
+        if not source.is_file():
+            raise TransferError(tr("Este archivo no es una exportación de Kreix."))
+        if is_encrypted(source):
+            if not password:
+                raise PasswordRequired(tr("El archivo está cifrado: hace falta la contraseña maestra con la que se exportó."))
+            try:
+                _vault, plain = Vault.unseal(source.read_bytes(), password)
+            except WrongPasswordError as exc:
+                raise WrongImportPassword(tr("La contraseña no es correcta.")) from exc
+            except CorruptVaultError as exc:
+                raise TransferError(tr("El archivo está dañado.")) from exc
+            source = io.BytesIO(plain)
+        if not zipfile.is_zipfile(source):
             raise TransferError(tr("Este archivo no es una exportación de Kreix."))
         workdir = Path(tempfile.mkdtemp(prefix="kreix-import-"))
         try:
@@ -205,14 +237,14 @@ class TransferService:
         finally:
             shutil.rmtree(workdir, ignore_errors=True)
 
-    def inspect(self, path: str | Path) -> BackupInfo:
-        with self._opened(path) as (manifest, _db, summary):
+    def inspect(self, path: str | Path, password: str | None = None) -> BackupInfo:
+        with self._opened(path, password) as (manifest, _db, summary):
             return BackupInfo(str(manifest.get("exported_at", "")), str(manifest.get("app_version", "")), summary)
 
     # ------------------------------------------------------------------ restaurar
-    def restore(self, path: str | Path) -> DataSummary:
+    def restore(self, path: str | Path, password: str | None = None) -> DataSummary:
         """Reemplaza TODOS los datos actuales por los del archivo."""
-        with self._opened(path) as (_manifest, db_path, summary):
+        with self._opened(path, password) as (_manifest, db_path, summary):
             src = sqlite3.connect(f"file:{db_path.as_posix()}?mode=ro", uri=True)
             try:
                 with closing(self._engine.raw_connection()) as raw:

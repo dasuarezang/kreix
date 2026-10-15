@@ -17,7 +17,9 @@ from core.categorizer import Categorizer, normalize
 from core.entities import OperationDraft, PositionSnapshot, TransactionDraft
 from core.enums import AccountKind, Bank, TxCategory
 from data.hashing import scoped_hash
-from data.models import Account, Budget, CategoryRule, Investment, InvestmentOperation, Transaction, Valuation
+from data.models import (
+    Account, Budget, CategoryRule, Goal, Investment, InvestmentOperation, PricePoint, Transaction, Valuation,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -264,3 +266,54 @@ def set_budgets(session: Session, budgets: dict[TxCategory, Decimal]) -> None:
         if amount > 0:
             session.add(Budget(category=category, amount=amount))
     session.flush()
+
+
+# ------------------------------------------------------------------ metas de ahorro
+def list_goals(session: Session) -> list[Goal]:
+    return list(session.scalars(select(Goal).order_by(Goal.created_at, Goal.id)))
+
+
+def save_goal(session: Session, name: str, target: Decimal, saved: Decimal, deadline: date | None,
+              goal_id: int | None = None) -> int:
+    goal = session.get(Goal, goal_id) if goal_id is not None else None
+    if goal is None:
+        goal = Goal(name=name, target=target, saved=saved, deadline=deadline)
+        session.add(goal)
+    else:
+        goal.name, goal.target, goal.saved, goal.deadline = name, target, saved, deadline
+    session.flush()
+    return goal.id
+
+
+def add_to_goal(session: Session, goal_id: int, amount: Decimal) -> None:
+    goal = session.get(Goal, goal_id)
+    if goal is not None:
+        goal.saved = max(Decimal(0), goal.saved + amount)
+        session.flush()
+
+
+def delete_goal(session: Session, goal_id: int) -> None:
+    session.execute(delete(Goal).where(Goal.id == goal_id))
+
+
+# ------------------------------------------------------------------ historico de precios
+def save_price_points(session: Session, rows: list[tuple[str, date, Decimal]]) -> tuple[int, int]:
+    """Guarda los precios; si ya habia uno ese dia para ese fondo lo actualiza. Devuelve (nuevos, actualizados)."""
+    wanted = {(isin, as_of): price for isin, as_of, price in rows}          # si un dia viene repetido, manda el ultimo
+    existing = {(p.isin, p.as_of): p for p in session.scalars(
+        select(PricePoint).where(PricePoint.isin.in_({isin for isin, _ in wanted})))}
+    new = updated = 0
+    for (isin, as_of), price in wanted.items():
+        point = existing.get((isin, as_of))
+        if point is None:
+            session.add(PricePoint(isin=isin, as_of=as_of, unit_price=price))
+            new += 1
+        elif point.unit_price != price:
+            point.unit_price = price
+            updated += 1
+    session.flush()
+    return new, updated
+
+
+def list_price_points(session: Session) -> list[PricePoint]:
+    return list(session.scalars(select(PricePoint).order_by(PricePoint.isin, PricePoint.as_of)))

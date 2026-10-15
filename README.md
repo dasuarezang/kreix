@@ -27,7 +27,8 @@
 - **Comparación con el mes anterior** en ingresos y gastos.
 - **Calcula las métricas que importan:** patrimonio neto, rendimiento global, tasa de ahorro, TIR y TWR.
 - **Una pestaña para tus cuentas y otra para tu inversión**, cada una con sus métricas, sus gráficos y todos sus movimientos, para un mes concreto o para todo el historial (ver más abajo).
-- **Varias cuentas bancarias:** añade, renombra o elimina cuentas, y mira una sola o todas a la vez.
+- **Varias cuentas bancarias:** añade, renombra o elimina cuentas, y mira una sola, una combinación de varias (casillas) o todas a la vez.
+- **Metas de ahorro:** ponte objetivos (por ejemplo «1.000 € para vacaciones»), apunta lo que vas guardando y ve el avance en Inicio, con lo que faltaría apartar cada mes si le pones fecha.
 - **Avisa de lo que no cuadra** en vez de importar en silencio: saldos con huecos, cartera que no coincide con las operaciones, importes incoherentes.
 - **Datos cifrados con contraseña maestra:** al abrir Kreix se pide una contraseña y tus datos solo se descifran en memoria; en disco hay únicamente un archivo `.krx` cifrado (ver *Seguridad*).
 - **Evolución de cada fondo:** en Inversiones, una gráfica con el valor de cada fondo al cierre de cada mes, o de uno solo frente a lo aportado, calculada con tus propios extractos (nada sale del equipo).
@@ -45,8 +46,8 @@ Arriba a la izquierda están las tres vistas de tus datos; abajo, en forma de p�
 | **Cuentas** | Todo lo de tus cuentas bancarias: saldo, ingresos, gastos, tasa de ahorro, gasto medio, mayor gasto y categoría principal; gastos por categoría, evolución del saldo, ingresos y gastos por mes; presupuestos, pagos recurrentes y la tabla de movimientos. |
 | **Inversiones** | Todo lo de tu cartera: valor, aportado, plusvalía, rentabilidad (TWR y TIR), distribución por fondo, aportado frente a valor, evolución de cada fondo, posiciones actuales y operaciones. |
 | **Datos > Importar** | Arrastra extractos y elige a qué cuenta pertenecen. También restaura un archivo `.kreix`. |
-| **Datos > Exportar** | Guarda todos tus datos en un único archivo `.kreix` para hacer una copia o llevarlos a otro ordenador. |
-| **Ajustes** | Organizados en tarjetas por tema: tu nombre, idioma y lo que te interesa; ambiente y cálculo del ahorro; reglas de categorías; tus datos (ubicación, borrar todo) y novedades. |
+| **Datos > Exportar** | Guarda todos tus datos en un único archivo `.kreix`, cifrado con tu contraseña maestra si quieres, para hacer una copia o llevarlos a otro ordenador. |
+| **Ajustes** | Organizados en tarjetas por tema: tu nombre, idioma y lo que te interesa; ambiente y cálculo del ahorro; reglas de categorías; seguridad (cambiar la contraseña maestra); tus datos (ubicación, borrar todo) y novedades. |
 | **Ayuda** | Qué significa cada cifra y cada gráfico, explicado sin tecnicismos y con ejemplos. |
 
 Atajos: `Ctrl+1` a `Ctrl+7` cambian de página en el orden de la tabla (Importar y Exportar, que viven bajo *Datos*, son `Ctrl+4` y `Ctrl+5`), `Ctrl+K` busca en todo, `Ctrl+T` alterna el modo claro y oscuro, `Ctrl+F` va al buscador de movimientos y `F5` recalcula la página.
@@ -74,9 +75,17 @@ Atajos: `Ctrl+1` a `Ctrl+7` cambian de página en el orden de la tabla (Importar
 
 **Evolución de cada fondo.** En Inversiones, la tarjeta *Evolución de cada fondo* dibuja una línea por fondo con su valor al cierre de cada mes (o, si eliges uno, su valor frente a lo aportado). Solo usa los extractos que ya importaste. El valor de un cierre de mes es una **estimación**: Kreix reconstruye las participaciones que tenías con tus operaciones y las multiplica por un precio interpolado entre los valores liquidativos que sí conoce (los de cada operación y los de cada extracto de cartera). Cuantos más extractos de cartera importes, más fiel es la curva.
 
+**Metas de ahorro.** En Inicio, el panel *Metas de ahorro* muestra una barra por meta. *Gestionar metas* permite crear, editar, eliminar y *apuntar ahorro* (Kreix no mueve dinero: solo lleva la cuenta). Con fecha, dice cuánto habría que apartar al mes para llegar a tiempo. También se abre con `Ctrl+K`.
+
+**Varias cuentas a la vez.** El selector de Cuentas tiene una casilla por cuenta: marca las que quieras combinar y todo el apartado (saldo, gastos, presupuestos, gráficos y movimientos) se recalcula con ellas. Marcarlas todas equivale a *Todas las cuentas*. Renombrar y eliminar piden una sola cuenta.
+
+**Histórico de precios.** En *Importar* puedes soltar el histórico de precios de un fondo que hayas descargado tú (de tu banco, Morningstar, Yahoo o Investing; CSV o Excel con una columna de fecha y otra de precio: valor liquidativo, cierre...). Kreix lo reconoce por las cabeceras, lee números en formato español o inglés y toma el ISIN de una columna, del nombre del archivo o del selector *Fondo del histórico*. Con él, la gráfica de cada fondo pasa de un punto al mes a puntos de días reales; el valor de hoy no cambia (sigue mandando tu último extracto). Nada sale de tu equipo.
+
+**Detalles que ayudan.** Junto a las cifras principales (patrimonio, rendimiento, tasa de ahorro, saldo, ingresos, gastos, valor de la cartera...) hay un «?» que abre su explicación en la Ayuda. Bajo el patrimonio de Inicio, una etiqueta dice cuánto ha subido o bajado frente al cierre del mes anterior. Los desplegables y menús tienen esquinas redondeadas y flecha, las páginas vacías llevan el icono de Kreix con un resplandor y las franjas de marca, los primeros pasos tienen barra de avance, y todos los cuadros de diálogo comparten el mismo fondo, título y tarjeta.
+
 **Ayuda.** Un menú de seis temas (Tu dinero de un vistazo, Tus cuentas bancarias, Tus inversiones, Rentabilidad, Avisos y Usar Kreix); cada botón abre su sección y una flecha vuelve al menú. Es un glosario para quien no sabe de finanzas: patrimonio neto, tasa de ahorro, valor liquidativo, plusvalía, TWR, TIR y el resto de términos que muestra Kreix. Cada término es una tarjeta con su explicación sencilla y, debajo, filas separadas con cómo lo calcula Kreix, un ejemplo, un aviso (*Ojo*) y un consejo (*Qué hacer*). Buscar "tir" encuentra la TIR, pero no "invertir".
 
-**Exportar y mover tus datos.** *Exportar* crea un archivo `.kreix` (un ZIP con una copia consistente de la base de datos y una ficha con la versión y los totales). Para llevarlo a otro ordenador, instala Kreix allí, ve a *Importar* y arrastra el archivo: los datos quedan idénticos a los de origen (cuentas, movimientos, categorías, operaciones, cartera y ajustes, incluida la protección anti-duplicados). Importar un `.kreix` **reemplaza** los datos que hubiera en ese ordenador, y pide confirmación si ya había datos. Un archivo recibido se trata como no fiable: solo se aceptan sus dos entradas, se comprueba la integridad de la base de datos y se rechaza si trae disparadores o vistas, si es de una versión más reciente o si es demasiado grande. **El archivo no está cifrado**: contiene tu información financiera, guárdalo en un sitio seguro. (Al exportar no se escribe ningún archivo temporal en claro; el archivo `.kreix` es la única copia legible.)
+**Exportar y mover tus datos.** *Exportar* crea un archivo `.kreix` (un ZIP con una copia consistente de la base de datos y una ficha con la versión y los totales). Para llevarlo a otro ordenador, instala Kreix allí, ve a *Importar* y arrastra el archivo: los datos quedan idénticos a los de origen (cuentas, movimientos, categorías, operaciones, cartera y ajustes, incluida la protección anti-duplicados). Importar un `.kreix` **reemplaza** los datos que hubiera en ese ordenador, y pide confirmación si ya había datos. Un archivo recibido se trata como no fiable: solo se aceptan sus dos entradas, se comprueba la integridad de la base de datos y se rechaza si trae disparadores o vistas, si es de una versión más reciente o si es demasiado grande. **Si no lo cifras, el archivo no está cifrado**: contiene tu información financiera, guárdalo en un sitio seguro. (Al exportar no se escribe ningún archivo temporal en claro; el archivo `.kreix` es la única copia legible.)
 
 <p align="center">
   <img src="docs/screenshots/cuentas-oscuro.png" alt="Pestaña Cuentas" width="49%">
@@ -114,6 +123,7 @@ Atajos: `Ctrl+1` a `Ctrl+7` cambian de página en el orden de la tabla (Importar
 | Imagin | Extracto de movimientos (CSV o Excel) | `Concepto; Fecha; Importe; Saldo` |
 | MyInvestor | Operaciones (CSV o Excel) | `Fecha Operación; ...; ISIN; Tipo Operación; Participaciones; ...` |
 | MyInvestor | Cartera (CSV o Excel) | `Producto; ISIN; Participaciones Totales; ...; Valor Liquidativo Actual` |
+| Cualquiera | Histórico de precios de un fondo (CSV o Excel) | una columna `Fecha`/`Date` y otra de precio (`Valor liquidativo`, `Cierre`/`Close`, `Precio`/`Price`...), y opcionalmente `ISIN` |
 
 - Admite CSV con `;`, `,` o tabulador, en UTF-8 o Windows-1252, y Excel con títulos antes de la tabla.
 - **No importa la extensión:** archivos como `extractImagin` (sin extensión) o `.csv.txt` funcionan igual, porque el tipo se detecta por las cabeceras.
@@ -156,8 +166,10 @@ Tus datos nunca se guardan en claro. La primera vez que abres Kreix creas una **
 - **En memoria:** al desbloquear, la base de datos se descifra directamente a la RAM, sin archivos temporales en claro. Kreix guarda el archivo `kreix.krx` cifrado unos segundos después de cada cambio y al cerrar (con escritura atómica y una copia `kreix.krx.bak`, también cifrada).
 - **Copias de Deshacer:** se cifran con una clave aleatoria que solo existe en memoria durante la sesión.
 - **Si vienes de una versión anterior:** la primera vez Kreix te pide crear la contraseña, cifra tu base `kreix.db`, comprueba que se abre y entonces la sobrescribe y borra.
+- **Cambiar la contraseña:** *Ajustes > Seguridad* la cambia comprobando la actual; los datos se vuelven a cifrar con una clave y una sal nuevas y se borra la copia `.bak` antigua.
+- **Exportar cifrado:** en *Exportar*, la casilla *Cifrar el archivo con mi contraseña maestra* (activa por defecto) guarda el `.kreix` cifrado con la misma clave; al importarlo, en este u otro ordenador, Kreix pide la contraseña con la que se exportó.
 - **Si olvidas la contraseña:** no hay forma de recuperar los datos. En la pantalla de bloqueo, **He olvidado la contraseña** borra el archivo cifrado (tras pedir confirmación) para empezar de cero con una contraseña nueva e importar de nuevo tus extractos.
-- **Lo que no se cifra:** el archivo `.kreix` que exportas, y el archivo que importas mientras se valida. Trátalos como datos sensibles.
+- **Lo que no se cifra:** un `.kreix` exportado sin marcar la casilla de cifrado, y el archivo que importas mientras se valida. Trátalos como datos sensibles.
 
 ## Cómo se calculan las cifras
 
@@ -227,12 +239,8 @@ Los tests de interfaz usan Qt sin pantalla (`QT_QPA_PLATFORM=offscreen`) y simul
 ## Hoja de ruta
 
 - Migraciones de base de datos con Alembic.
-- Cifrado opcional del archivo `.kreix` exportado y cambio de contraseña maestra desde Ajustes.
-- Elegir varias cuentas a la vez (combinar solo algunas) en la pestaña Cuentas.
-- Importar un CSV de histórico de precios para curvas diarias de cada fondo, sin salir a internet.
 - Empaquetado como ejecutable (`.exe` / `.app`).
 - Más idiomas (el catálogo de traducciones está en `core/locales/` y la ayuda en `ui/help_texts/`).
-- Iconos «?» junto a cada cifra que abran su explicación en la Ayuda.
 
 ## Privacidad
 
