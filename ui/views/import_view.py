@@ -41,6 +41,8 @@ class ResultRow(QFrame):
         name.setObjectName("H2")
         if report.ok:
             detail = f"{report.kind_label}  ·  {report.inserted} nuevos"
+            if report.updated:
+                detail += f"  ·  {report.updated} actualizados"
             if report.skipped:
                 detail += f"  ·  {report.skipped} ya existían"
         else:
@@ -167,7 +169,7 @@ class ImportView(QWidget):
                 return None
         report = self._service.import_files(paths, self.portfolio_date(), self.account_combo.currentData())
         self.show_report(report)
-        if report.total_inserted:
+        if report.total_changed:
             self.imported.emit()
         return report
 

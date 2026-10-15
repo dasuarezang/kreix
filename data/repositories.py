@@ -22,9 +22,12 @@ from data.models import Account, Investment, InvestmentOperation, Transaction, V
 class InsertStats:
     inserted: int = 0
     skipped: int = 0
+    updated: int = 0
 
     def __add__(self, other: InsertStats) -> InsertStats:
-        return InsertStats(self.inserted + other.inserted, self.skipped + other.skipped)
+        return InsertStats(
+            self.inserted + other.inserted, self.skipped + other.skipped, self.updated + other.updated
+        )
 
 
 def get_or_create_account(session: Session, bank: Bank, kind: AccountKind, name: str) -> Account:
@@ -92,23 +95,29 @@ def insert_operations(session: Session, account_id: int, drafts: list[OperationD
     return stats
 
 
-def upsert_valuations(session: Session, positions: list[PositionSnapshot]) -> int:
-    """Una valoracion por fondo y fecha; reimportar la misma fecha la actualiza."""
+def upsert_valuations(session: Session, positions: list[PositionSnapshot]) -> InsertStats:
+    """Una valoracion por fondo y fecha; reimportar la misma fecha la actualiza.
+
+    Cuenta como nueva la que no existia, como actualizada la que cambia algun dato y como
+    omitida la que ya estaba igual."""
+    stats = InsertStats()
     for p in positions:
         inv = get_or_create_investment(session, p.isin, p.product_name)
-        stmt = insert(Valuation).values(
-            investment_id=inv.id, as_of=p.as_of, unit_price=p.unit_price, units=p.units, invested=p.invested
+        current = session.scalar(
+            select(Valuation).where(Valuation.investment_id == inv.id, Valuation.as_of == p.as_of)
         )
-        stmt = stmt.on_conflict_do_update(
-            index_elements=["investment_id", "as_of"],
-            set_={
-                "unit_price": stmt.excluded.unit_price,
-                "units": stmt.excluded.units,
-                "invested": stmt.excluded.invested,
-            },
-        )
-        session.execute(stmt)
-    return len(positions)
+        if current is None:
+            session.add(
+                Valuation(investment_id=inv.id, as_of=p.as_of, unit_price=p.unit_price, units=p.units, invested=p.invested)
+            )
+            stats += InsertStats(inserted=1)
+        elif (current.unit_price, current.units, current.invested) != (p.unit_price, p.units, p.invested):
+            current.unit_price, current.units, current.invested = p.unit_price, p.units, p.invested
+            stats += InsertStats(updated=1)
+        else:
+            stats += InsertStats(skipped=1)
+    session.flush()
+    return stats
 
 
 # ----------------------------------------------------------------- cuentas

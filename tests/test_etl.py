@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
@@ -182,3 +183,18 @@ def test_operations_and_valuations_idempotent(factory):
             stats = insert_operations(s, acc.id, ops.operations)
             upsert_valuations(s, pf.positions)
     assert (stats.inserted, stats.skipped) == (0, 3)
+
+
+def test_reimport_portfolio_counts_updates_not_new(factory):
+    pf = parse_file(FIX / "myinvestor_cartera.csv", portfolio_as_of=date(2026, 10, 14))
+    n = len(pf.positions)
+    with session_scope(factory) as s:
+        first = upsert_valuations(s, pf.positions)
+    with session_scope(factory) as s:
+        same = upsert_valuations(s, pf.positions)
+    changed = [replace(p, units=p.units + 1) for p in pf.positions]
+    with session_scope(factory) as s:
+        third = upsert_valuations(s, changed)
+    assert (first.inserted, first.updated) == (n, 0)
+    assert (same.inserted, same.updated, same.skipped) == (0, 0, n)
+    assert (third.inserted, third.updated) == (0, n)

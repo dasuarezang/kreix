@@ -39,6 +39,7 @@ class FileReport:
     kind: FileKind | None = None
     inserted: int = 0
     skipped: int = 0
+    updated: int = 0
     warnings: list[str] = field(default_factory=list)
     error: str | None = None
 
@@ -59,6 +60,10 @@ class ImportReport:
     @property
     def total_inserted(self) -> int:
         return sum(f.inserted for f in self.files)
+
+    @property
+    def total_changed(self) -> int:
+        return sum(f.inserted + f.updated for f in self.files)
 
 
 class ImportService:
@@ -94,8 +99,10 @@ class ImportService:
                 )
                 stats = insert_operations(s, acc.id, parsed.operations)
             else:
-                stats = InsertStats(inserted=upsert_valuations(s, parsed.positions))
-        return FileReport(path.name, parsed.kind, stats.inserted, stats.skipped, list(parsed.warnings))
+                stats = upsert_valuations(s, parsed.positions)
+        return FileReport(
+            path.name, parsed.kind, stats.inserted, stats.skipped, stats.updated, list(parsed.warnings)
+        )
 
     @staticmethod
     def _checking_account_id(session: Session, account_id: int | None) -> int | None:
