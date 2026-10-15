@@ -96,7 +96,7 @@ class RowsModel(QAbstractTableModel):
             return col.tooltip(item) if col.tooltip else col.text(item)   # el texto completo, por si la celda lo recorta
         if role == Qt.ItemDataRole.ForegroundRole and col.tone:
             p = theme.current()
-            color = {"negative": p.red, "positive": p.green, "muted": p.muted, "accent": p.accent}.get(col.tone(item) or "")
+            color = {"negative": p.red, "positive": p.green_text, "muted": p.muted, "accent": p.accent_text}.get(col.tone(item) or "")
             return QColor(color) if color else None
         return None
 

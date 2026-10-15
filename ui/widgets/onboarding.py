@@ -185,7 +185,7 @@ class SetupPanel(Panel):
         self._rows = QVBoxLayout(body)
         self._rows.setContentsMargins(0, 4, 0, 0)
         self._rows.setSpacing(8)
-        super().__init__(tr("Primeros pasos"), tr("Lo que te falta para tener Kreix al completo"), body, self.hide_button)
+        super().__init__(tr("Primeros pasos"), tr("Lo que te falta para tener Kreix al completo"), body, self.hide_button, raised=True)
         self.hide_button.clicked.connect(self.dismissed)
 
     def set_steps(self, steps: list[tuple[str, bool, str]]) -> None:

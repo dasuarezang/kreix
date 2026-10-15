@@ -195,6 +195,52 @@ def test_stat_band_hero_and_header_build_and_update(qapp):
     assert hero._chip_widgets == []
 
     header = PageHeader("Cuentas", eyebrow="Tus cuentas", subtitle="1 cuenta")
-    assert header.title.text() == "Cuentas" and header._eyebrow.text() == "TUS CUENTAS"
+    assert header.title.text() == "Cuentas" and header._eyebrow.text() == "TUS CUENTAS" and header._eyebrow.isHidden()
     header.set_subtitle("")
     assert not header._subtitle.isVisibleTo(header)
+
+
+# ---------------------------------------------------------------- contraste (WCAG AA: 4,5:1 el texto pequeno)
+def _luminance(hex_color: str) -> float:
+    r, g, b = (int(hex_color[i:i + 2], 16) / 255 for i in (1, 3, 5))
+    lin = lambda c: c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+    return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+
+
+def contrast(a: str, b: str) -> float:
+    hi, lo = sorted((_luminance(a), _luminance(b)), reverse=True)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+@pytest.mark.parametrize("palette", [theme.DARK, theme.LIGHT], ids=["dark", "light"])
+def test_small_text_has_enough_contrast_on_every_surface_it_sits_on(palette):
+    surfaces = {"fondo": palette.bg, "barra": palette.side, "tarjeta": palette.surface, "campo": palette.surface_alt}
+    for name, surface in surfaces.items():
+        assert contrast(palette.text, surface) >= 7, f"texto sobre {name}"
+        assert contrast(palette.muted, surface) >= 4.5, f"texto de apoyo sobre {name}"
+    for name, tint in (("tarjeta", palette.surface), ("aviso", palette.accent_soft)):
+        assert contrast(palette.accent_text, tint) >= 4.5, f"acento (texto) sobre {name}"
+    assert contrast(palette.green_text, palette.surface) >= 4.5 and contrast(palette.red, palette.surface) >= 4.5
+    assert contrast(palette.on_accent, palette.accent) >= 7                                   # texto de los botones amarillos
+    assert contrast(palette.accent, palette.surface) >= 1.5 or palette.name == "light"        # el amarillo claro solo es relleno, nunca texto
+
+
+@pytest.mark.parametrize("palette", [theme.DARK, theme.LIGHT], ids=["dark", "light"])
+def test_form_fields_have_a_visible_edge_and_the_active_nav_item_has_its_own(palette):
+    assert contrast(palette.field_edge, palette.surface) >= 1.8                 # el campo se distingue de la tarjeta
+    assert contrast(palette.accent_edge, palette.accent) >= 1.3                 # el filo del elemento activo se nota sobre el amarillo
+    assert palette.field_edge != palette.border
+
+
+def test_main_pages_use_flat_sections_with_the_brand_rule_and_keep_a_single_hero_card(window):
+    from PySide6.QtWidgets import QFrame
+    from ui.widgets.cards import BrandRule
+
+    window.start_demo()
+    for view in (window.dashboard, window.accounts_view, window.investment_view):
+        names = [f.objectName() for f in view.findChildren(QFrame)]
+        assert names.count("Section") >= 3 and view.findChildren(BrandRule)          # secciones sin caja, con el filo de marca
+    raised = [f for f in window.dashboard.findChildren(QFrame) if f.objectName() in ("Card", "Hero") and f.isVisibleTo(window.dashboard)]
+    assert {f.objectName() for f in raised} <= {"Hero", "Card"} and len(raised) <= 4   # la cifra principal y las dos piezas interactivas
+    sheet = theme.stylesheet(theme.DARK)
+    assert "QFrame#Hero {" in sheet and "border-radius: 34px" in sheet and "QFrame#Card {" in sheet   # radios jerarquicos: la estrella manda

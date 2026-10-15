@@ -28,6 +28,11 @@ def _tone(state: str, pal) -> QColor:
     return QColor({"ok": pal.green, "warn": pal.accent, "over": pal.red}[state])
 
 
+def _tone_text(state: str, pal) -> QColor:
+    """El mismo color como texto pequeno: variante con contraste suficiente sobre la tarjeta."""
+    return QColor({"ok": pal.green_text, "warn": pal.accent_text, "over": pal.red}[state])
+
+
 class SlideView(QWidget):
     """Pinta el presupuesto actual y, durante el cambio, el anterior saliendo y el nuevo entrando."""
 
@@ -120,7 +125,7 @@ class SlideView(QWidget):
         p.drawText(QRectF(0, 0, w * 0.6, 24), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
                    category_label(line.category))
         p.setFont(fonts.qfont(fonts.BODY_MEDIUM, 12))
-        p.setPen(tone)
+        p.setPen(_tone_text(line.state, pal))
         p.drawText(QRectF(w * 0.4, 0, w * 0.6, 24), Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
                    tr(STATE_TEXT[line.state]))
 
@@ -241,7 +246,7 @@ class BudgetCarousel(Panel):
         col.addWidget(self.dots)
         col.addWidget(self._message)
         col.addStretch(1)
-        super().__init__(tr("Presupuestos del mes"), "", body, controls)
+        super().__init__(tr("Presupuestos del mes"), "", body, controls, raised=True)
         self._controls = controls
 
         self._timer = QTimer(self)

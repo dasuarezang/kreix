@@ -26,7 +26,7 @@ from ui.feedback import Feedback, snapshot_of, tell
 from ui.headlines import balance_headline, category_headline, monthly_headline
 from ui.format import category_label, fmt_date, fmt_eur, fmt_pct, month_long, month_short
 from ui.widgets.account_picker import AccountPicker
-from ui.widgets.cards import ChartCard, PageHeader, StatBand, StatCard
+from ui.widgets.cards import flatten, ChartCard, PageHeader, StatBand, StatCard
 from ui.widgets.charts_period import BalanceChart, CategoryBarsChart, IncomeExpenseChart
 from ui.widgets.onboarding import EmptyState, InterestOffState
 from ui.widgets.panels import BudgetPanel, RecurringPanel
@@ -233,10 +233,9 @@ class AccountsView(QWidget):
         bar.addWidget(self.export_button)
 
         card = QFrame()
-        card.setObjectName("Card")
         lay = QVBoxLayout(card)
-        lay.setContentsMargins(34, 30, 34, 24)
         lay.setSpacing(14)
+        flatten(card, lay, (0, 0, 0, 8))
         lay.addLayout(bar)
         lay.addWidget(hint)
         lay.addWidget(self.table)

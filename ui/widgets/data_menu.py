@@ -9,6 +9,8 @@ from __future__ import annotations
 from PySide6.QtCore import QPoint, Qt, QTimer
 from PySide6.QtWidgets import QFrame, QPushButton, QVBoxLayout, QWidget
 
+from ui.widgets.nav_button import KeyboardRing
+
 CLOSE_DELAY_MS = 220          # margen para cruzar del boton al panel sin que se cierre
 GAP = 24                      # separacion entre la barra lateral y el panel
 
@@ -71,7 +73,7 @@ class DataFlyout(QFrame):
             super().keyPressEvent(event)
 
 
-class DataMenuButton(QPushButton):
+class DataMenuButton(KeyboardRing, QPushButton):
     """El boton "Datos": abre el panel al pasar el raton o al pulsarlo."""
 
     def __init__(self, text: str, flyout: DataFlyout) -> None:
@@ -79,6 +81,7 @@ class DataMenuButton(QPushButton):
         self.flyout = flyout
         self.setCheckable(True)                       # se marca cuando la pagina actual es Importar o Exportar
         self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setFocusPolicy(Qt.FocusPolicy.TabFocus)
         self.clicked.connect(self._on_click)
 
     def _on_click(self) -> None:

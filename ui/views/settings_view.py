@@ -18,7 +18,7 @@ from core.greeting import MAX_NAME, clean_name
 from ui.widgets.cards import PageHeader
 from ui.widgets.interests import InterestPicker
 from ui.widgets.language_picker import LanguagePicker
-from ui.widgets.section_card import GroupHeading, SectionCard
+from ui.widgets.section_card import GroupCard, GroupHeading, SectionCard
 from ui.widgets.setting_row import SettingRow
 
 from ui.whats_new import VERSION  # noqa: E402  (la version vive en un solo sitio)
@@ -143,9 +143,6 @@ class SettingsView(QWidget):
         self.p2p.switch.toggled.connect(lambda v: self._update(include_p2p=v))
         self.transfers.switch.toggled.connect(lambda v: self._update(transfers_in_as_income=v))
 
-        calc = self._card(tr("Cálculo del ahorro"), self.p2p, self.transfers)
-        look = self._card(tr("Ambiente"), self.ambient)
-
         name_hint = tr("Kreix te saluda por tu nombre en Inicio. Se guarda con tus datos y viaja con ellos al exportar "
                        "e importar.")
         self.name_edit = QLineEdit(settings.user_name)
@@ -165,71 +162,77 @@ class SettingsView(QWidget):
         name_row.addWidget(self.name_save)
         name_box = QWidget()
         name_box.setLayout(name_row)
-        name_row.setContentsMargins(0, 4, 0, 0)
-        profile = self._card(tr("Tu nombre"), name_box, description=name_hint)
+        name_row.setContentsMargins(0, 0, 0, 0)
 
         interest_hint = tr("Elige qué quieres gestionar. Lo que desactives no desaparece: sus pestañas siguen ahí y "
                            "puedes activarlo cuando quieras, aquí o desde la propia pestaña.")
         self.interests = InterestPicker(settings.interest_accounts, settings.interest_investments)
         self.interests.changed.connect(self.interests_changed)
-        interests_card = self._card(tr("Lo que te interesa"), self.interests, description=interest_hint)
 
         language_hint = tr("Cambia el idioma de toda la aplicación al instante. Se guarda con tus datos.")
         self.language = LanguagePicker(settings.language)
         self.language.changed.connect(self.language_changed)
-        language_card = self._card(tr("Idioma"), self.language, description=language_hint)
+
+        you = GroupCard()                                    # un grupo = una tarjeta; cada ajuste, una fila
+        you.add_field(tr("Tu nombre"), name_hint, name_box)
+        you.add_field(tr("Idioma"), language_hint, self.language)
+        you.add_field(tr("Lo que te interesa"), interest_hint, self.interests)
 
         self.rules = RulesList(categories) if categories is not None else None
+        look = GroupCard()
+        look.add_setting(self.ambient)
+        look.add_setting(self.p2p)
+        look.add_setting(self.transfers)
         if self.rules is not None:
             self.rules.rules_changed.connect(self.rules_changed)
             rules_intro = tr("Las reglas mandan sobre las que trae Kreix: si el concepto de un movimiento contiene "
                              "la palabra clave, va a la categoría que elijas. Los movimientos que clasifiques a mano nunca cambian.")
-            rules_card = self._card(tr("Reglas de categorías"), self.rules, description=rules_intro)
+            look.add_field(tr("Reglas de categorías"), rules_intro, self.rules)
 
         path = QLabel(db_path)
         path.setObjectName("Muted")
         path.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         path.setWordWrap(True)
-        privacy = QLabel(tr("Todo se guarda solo en este equipo. Kreix no envía datos a ningún servidor."))
-        privacy.setObjectName("Small")
-        privacy.setWordWrap(True)
         self.reset_button = QPushButton(tr("Borrar todos los datos"))
         self.reset_button.setObjectName("Danger")
         self.reset_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.reset_button.setToolTip(tr("Elimina movimientos, operaciones y cartera. Los ajustes se conservan."))
         self.reset_button.clicked.connect(self.reset_requested)
+        data_box = QWidget()
+        data_col = QVBoxLayout(data_box)
+        data_col.setContentsMargins(0, 0, 0, 0)
+        data_col.setSpacing(12)
+        data_col.addWidget(path)
         reset_row = QHBoxLayout()
         reset_row.addWidget(self.reset_button)
         reset_row.addStretch(1)
-        reset_box = QWidget()
-        reset_box.setLayout(reset_row)
-        reset_row.setContentsMargins(0, 6, 0, 0)
-        data = self._card(tr("Tus datos"), path, privacy, reset_box, rows=True)
+        data_col.addLayout(reset_row)
 
         self.password_button = QPushButton(tr("Cambiar contraseña maestra…"))
         self.password_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.password_button.clicked.connect(self.change_password_requested)
-        password_row = QHBoxLayout()
+        password_box = QWidget()
+        password_row = QHBoxLayout(password_box)
+        password_row.setContentsMargins(0, 0, 0, 0)
         password_row.addWidget(self.password_button)
         password_row.addStretch(1)
-        password_box = QWidget()
-        password_box.setLayout(password_row)
-        password_row.setContentsMargins(0, 0, 0, 0)
-        self.security_card = self._card(
-            tr("Seguridad"), password_box,
-            description=tr("Tus datos están cifrados con tu contraseña maestra. Puedes cambiarla cuando quieras."))
-        self.security_card.hide()               # solo se ofrece cuando hay almacen cifrado (se activa con set_security)
 
         self.whats_new_button = QPushButton(tr("Ver las novedades"))
         self.whats_new_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.whats_new_button.clicked.connect(self.whats_new_requested)
-        whats_row = QHBoxLayout()
+        whats_box = QWidget()
+        whats_row = QHBoxLayout(whats_box)
+        whats_row.setContentsMargins(0, 0, 0, 0)
         whats_row.addWidget(self.whats_new_button)
         whats_row.addStretch(1)
-        whats_box = QWidget()
-        whats_box.setLayout(whats_row)
-        whats_row.setContentsMargins(0, 4, 0, 0)
-        about = self._card(tr("Acerca de"), QLabel(tr("Kreix {VERSION}").format(VERSION=VERSION)), whats_box)
+
+        app = GroupCard()
+        self.security_card = app.add_field(           # solo se ofrece cuando hay almacen cifrado (set_security)
+            tr("Seguridad"), tr("Tus datos están cifrados con tu contraseña maestra. Puedes cambiarla cuando quieras."),
+            password_box)
+        self.security_card.hide()
+        app.add_field(tr("Tus datos"), tr("Todo se guarda solo en este equipo. Kreix no envía datos a ningún servidor."), data_box)
+        app.add_field(tr("Acerca de"), tr("Kreix {VERSION}").format(VERSION=VERSION), whats_box)
 
         body = QWidget()
         body.setObjectName("Page")
@@ -237,18 +240,11 @@ class SettingsView(QWidget):
         col.setContentsMargins(0, 0, 0, 44)
         col.setSpacing(26)
         col.addWidget(GroupHeading(tr("Tú")))
-        col.addWidget(profile)
-        col.addWidget(language_card)
-        col.addWidget(interests_card)
+        col.addWidget(you)
         col.addWidget(GroupHeading(tr("Aspecto y cálculos")))
         col.addWidget(look)
-        col.addWidget(calc)
-        if self.rules is not None:
-            col.addWidget(rules_card)
         col.addWidget(GroupHeading(tr("Datos y aplicación")))
-        col.addWidget(self.security_card)
-        col.addWidget(data)
-        col.addWidget(about)
+        col.addWidget(app)
         col.addStretch(1)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)

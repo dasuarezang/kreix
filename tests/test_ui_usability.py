@@ -34,11 +34,13 @@ def test_active_nav_button_gets_a_clean_ring_and_no_dotted_focus_rectangle(windo
     window.navigate(window.ACCOUNTS)
     assert window._nav.button(window.ACCOUNTS).isChecked()
     sheet = theme.stylesheet(theme.DARK)
-    assert "QPushButton#NavButton:focus { border: 2px solid" in sheet.replace("{{", "{")
-    assert sheet.count("outline: none") >= 3                         # sin el recuadro punteado en botones y pildoras
+    assert 'QPushButton#NavButton[kbd="true"]:focus, QPushButton#PillButton[kbd="true"]:focus { border: 2px solid' in sheet   # aro de foco (teclado)
+    assert f"border: 2px solid {theme.DARK.accent_edge}" in sheet                                       # y la pagina actual, con su filo
+    assert sheet.count("outline: none") >= 2                         # sin el recuadro punteado en botones y pildoras
     window.show()
     window.navigate(window.SUMMARY)
-    assert window.focusWidget() is window._nav.button(window.SUMMARY)   # el reborde acompana a la pagina activa
+    assert window._nav.button(window.SUMMARY).isChecked()              # la pagina activa va marcada (sin aro de foco permanente)
+    assert all(b.focusPolicy() == Qt.FocusPolicy.TabFocus for b in window._nav.buttons())   # el aro solo con teclado
 
 
 # ---------------------------------------------------------------- avisos y deshacer
@@ -342,3 +344,15 @@ def test_whats_new_is_shown_once_after_an_update_but_never_on_a_first_run(tmp_pa
         assert len(shown) == 2
     finally:
         dispose_windows(legacy)
+
+
+def test_the_nav_focus_ring_only_appears_for_keyboard_focus(window):
+    from PySide6.QtGui import QFocusEvent
+    button = window._nav.button(window.ACCOUNTS)
+    button.focusInEvent(QFocusEvent(QEvent.Type.FocusIn, Qt.FocusReason.ActiveWindowFocusReason))
+    assert not button.property("kbd")                                          # al arrancar o al hacer clic: sin aro
+    button.focusOutEvent(QFocusEvent(QEvent.Type.FocusOut, Qt.FocusReason.OtherFocusReason))
+    button.focusInEvent(QFocusEvent(QEvent.Type.FocusIn, Qt.FocusReason.TabFocusReason))
+    assert button.property("kbd") is True                                      # con Tab: aro visible
+    button.focusOutEvent(QFocusEvent(QEvent.Type.FocusOut, Qt.FocusReason.OtherFocusReason))
+    assert not button.property("kbd")

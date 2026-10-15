@@ -43,6 +43,7 @@ from ui.whats_new import WhatsNewDialog
 from ui.widgets import charts
 from ui.widgets.ambient import AmbientLight, hour_of
 from ui.widgets.data_menu import DataFlyout, DataMenuButton
+from ui.widgets.nav_button import NavButton
 from ui.widgets.switch import ThemeToggle
 from ui.widgets.toast import Toast
 from core.i18n import tr, N_
@@ -93,6 +94,7 @@ class MainWindow(QMainWindow):
     PAGES = (N_("Inicio"), N_("Cuentas"), N_("Inversiones"), N_("Importar"), N_("Exportar"), N_("Ajustes"), N_("Ayuda"))
     SUMMARY, ACCOUNTS, INVESTMENT, IMPORT, EXPORT, SETTINGS, HELP = range(7)
     DATA_PAGES = (SUMMARY, ACCOUNTS, INVESTMENT)
+    TOP_NAV = ((SUMMARY, "home"), (ACCOUNTS, "card"), (INVESTMENT, "trend"))
     PILLS = ((SETTINGS, "gear"), (HELP, "help"))
     DATA_GROUP = ((IMPORT, "upload"), (EXPORT, "download"))             # las dos opciones del submenu "Datos"
 
@@ -204,10 +206,11 @@ class MainWindow(QMainWindow):
 
     # ------------------------------------------------------------------ construccion
     def _nav_button(self, index: int, name: str, object_name: str) -> QPushButton:
-        btn = QPushButton(tr(name))
+        btn = NavButton(tr(name))
         btn.setObjectName(object_name)
         btn.setCheckable(True)
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn.setFocusPolicy(Qt.FocusPolicy.TabFocus)                           # el aro de foco sale al navegar con teclado, no al hacer clic
         btn.setToolTip(tr("{name} (Ctrl+{index})").format(name=tr(name), index=index + 1))
         btn.clicked.connect(lambda _=False, i=index: self.navigate(i))
         self._nav.addButton(btn, index)
@@ -245,9 +248,17 @@ class MainWindow(QMainWindow):
         col.setSpacing(6)
         col.addWidget(self._logo)
         col.addSpacing(22)
-        for index in (self.SUMMARY, self.ACCOUNTS, self.INVESTMENT):          # arriba: las vistas de datos
-            col.addWidget(self._nav_button(index, self.PAGES[index], "NavButton"))
+        self._nav_icons: dict[int, tuple[QPushButton, str]] = {}
+        for index, icon_name in self.TOP_NAV:                                  # arriba: las vistas de datos, con icono como las de abajo
+            button = self._nav_button(index, self.PAGES[index], "NavButton")
+            button.setIconSize(QSize(18, 18))
+            self._nav_icons[index] = (button, icon_name)
+            col.addWidget(button)
         col.addStretch(1)
+        rule = QFrame()
+        rule.setObjectName("SidebarRule")                                      # separa las vistas de datos de las herramientas
+        col.addWidget(rule)
+        col.addSpacing(6)
 
         self._pill_buttons: dict[int, tuple[QPushButton, str]] = {}
         col.addWidget(self._build_data_group())                                # abajo: "Datos" (Importar y Exportar)...
@@ -282,7 +293,6 @@ class MainWindow(QMainWindow):
         self.data_button.set_active(in_data_group)                          # "Datos" se marca en Importar y en Exportar
         button = self._nav.button(index)
         button.setChecked(True)
-        (self.data_button if in_data_group else button).setFocus(Qt.FocusReason.OtherFocusReason)   # el reborde acompana a la pagina
         if index == self.HELP:
             self.help_view.show_hub()          # al entrar en Ayuda siempre se ve el menu de secciones
         elif index == self.EXPORT:
@@ -746,6 +756,8 @@ class MainWindow(QMainWindow):
             app.setStyleSheet(sheet)
         self.centralWidget().update()
         self._logo.setPixmap(assets.wordmark(palette, 46))
+        for button, icon_name in self._nav_icons.values():
+            button.setIcon(icons.button_icon(icon_name, palette))
         self.data_button.setIcon(icons.button_icon("database", palette))
         for item, icon_name in self._fly_items.values():
             item.setIcon(icons.button_icon(icon_name, palette))

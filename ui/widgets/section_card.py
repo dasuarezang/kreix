@@ -74,3 +74,57 @@ class SectionCard(QFrame):
         if self._count:
             self._body.addWidget(divider())
         self.add(widget)
+
+
+class GroupCard(QFrame):
+    """Una sola tarjeta para varios ajustes: cada uno es una fila (titulo, explicacion y su control) y las filas se separan con
+    una linea fina. Menos cajas que una tarjeta por ajuste y mas facil de recorrer."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.setObjectName("GroupCard")
+        self._col = QVBoxLayout(self)
+        self._col.setContentsMargins(0, 0, 0, 0)
+        self._col.setSpacing(0)
+        self._rows = 0
+
+    def _row(self, widget: QWidget) -> QWidget:
+        """Envuelve una fila con su relleno y, salvo la primera, su linea superior (asi, al ocultar la fila se va tambien la linea)."""
+        holder = QWidget()
+        lay = QVBoxLayout(holder)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(0)
+        if self._rows:
+            rule = divider()
+            lay.addWidget(rule)
+        inner = QVBoxLayout()
+        inner.setContentsMargins(32, 22, 32, 22)
+        inner.addWidget(widget)
+        lay.addLayout(inner)
+        self._col.addWidget(holder)
+        self._rows += 1
+        return holder
+
+    def add_setting(self, widget: QWidget) -> QWidget:
+        """Una fila ya hecha (un interruptor con su texto)."""
+        return self._row(widget)
+
+    def add_field(self, title: str, description: str = "", control: QWidget | None = None) -> QWidget:
+        """Una fila con titulo, explicacion y, debajo, su control."""
+        box = QWidget()
+        col = QVBoxLayout(box)
+        col.setContentsMargins(0, 0, 0, 0)
+        col.setSpacing(4)
+        heading = QLabel(title)
+        heading.setObjectName("FieldTitle")
+        col.addWidget(heading)
+        if description:
+            text = QLabel(description)
+            text.setObjectName("Small")
+            text.setWordWrap(True)
+            col.addWidget(text)
+        if control is not None:
+            col.addSpacing(8)
+            col.addWidget(control)
+        box.title_label = heading
+        return self._row(box)

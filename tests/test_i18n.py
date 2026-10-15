@@ -297,7 +297,7 @@ def test_the_rebuilt_window_is_fully_in_the_new_language_and_keeps_data_and_page
         assert [b.text() for b in new._nav.buttons()[:3]] == ["Home", "Accounts", "Investments"]
         assert new.stack.currentIndex() == new.ACCOUNTS and new.accounts_view.table.proxy.rowCount() == 6
         assert new.settings_view.language.language() == "en"
-        assert new.accounts_view.card_balance._title.text() == "BALANCE" and new.toast.text == "Language changed to English."
+        assert new.accounts_view.card_balance._title.text() == "Balance" and new.toast.text == "Language changed to English."
         header = [c.title for c in new.accounts_view.table.model_.columns]
         assert header[:2] == ["DATE", "ACCOUNT"] and "€" in new.accounts_view.card_balance._value.text().replace("\xa0", "")
         new.navigate(new.SUMMARY)

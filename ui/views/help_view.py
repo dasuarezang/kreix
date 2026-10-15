@@ -1,6 +1,8 @@
 """Pagina de Ayuda: un menu de secciones y, dentro de cada una, el glosario de esa seccion."""
 from __future__ import annotations
 
+from functools import partial
+
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QScrollArea, QStackedLayout,
@@ -9,7 +11,7 @@ from PySide6.QtWidgets import (
 
 from ui import icons, theme
 from ui.widgets.cards import PageHeader
-from ui.widgets.section_card import GroupHeading, SectionCard
+from ui.widgets.section_card import GroupCard, GroupHeading, SectionCard, divider
 from ui.help_content import SECTION_INFO, SECTIONS, HelpEntry, grouped, localized_entries, search
 from core.i18n import tr
 
@@ -30,7 +32,7 @@ def _clear(layout) -> None:
 
 
 class IconChip(QLabel):
-    """Icono dentro de un circulo del color de acento. Se repinta al cambiar de tema."""
+    """Icono dentro de un circulo amarillo suave. Se repinta al cambiar de tema."""
 
     def __init__(self, name: str, size: int = 48) -> None:
         super().__init__()
@@ -47,7 +49,7 @@ class IconChip(QLabel):
         self.refresh_theme()
 
     def refresh_theme(self) -> None:
-        self.setPixmap(icons.pixmap(self._name, theme.current().on_accent, ICON_PX, 1.4))
+        self.setPixmap(icons.pixmap(self._name, theme.current().accent_text, ICON_PX, 1.5))
 
 
 class HubCard(QPushButton):
@@ -59,7 +61,7 @@ class HubCard(QPushButton):
         self.section = section
         self.setObjectName("HubCard")
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setMinimumHeight(92)
+        self.setMinimumHeight(84)
         self.setAccessibleName(tr(section))
         self.setToolTip(tr(section))
 
@@ -114,19 +116,17 @@ class HelpView(QWidget):
         self.search.setAccessibleName(tr("Buscar en la ayuda"))
         self.search.textChanged.connect(self._on_query)
 
-        self._grid_holder = QWidget()
-        self._grid_holder.setObjectName("Page")
-        grid = QGridLayout(self._grid_holder)
-        grid.setContentsMargins(0, 0, 0, 0)
-        grid.setSpacing(22)
+        # Los seis temas, en una sola tarjeta con filas separadas (antes, seis tarjetas iguales con un circulo amarillo cada una)
+        self._grid_holder = GroupCard()
         self.cards: list[HubCard] = []
         for i, section in enumerate(SECTIONS):
             card = HubCard(section)
-            card.clicked.connect(lambda _=False, s=section: self.open_section(s))
+            card.clicked.connect(partial(self._open_from_card, section))
             self.cards.append(card)
-            grid.addWidget(card, i // 2, i % 2)
-        grid.setColumnStretch(0, 1)
-        grid.setColumnStretch(1, 1)
+            if i:
+                self._grid_holder._col.addWidget(divider())
+            self._grid_holder._col.addWidget(card)
+        self._grid_holder._col.setContentsMargins(10, 10, 10, 10)
 
         self._results = QVBoxLayout()
         self._results.setSpacing(10)
@@ -209,6 +209,9 @@ class HelpView(QWidget):
         self._section = None
         self._stack.setCurrentIndex(0)
         self._on_query(self.search.text())
+
+    def _open_from_card(self, section: str, _checked: bool = False) -> None:
+        self.open_section(section)
 
     def open_section(self, section: str) -> None:
         entries = entries_of(section)

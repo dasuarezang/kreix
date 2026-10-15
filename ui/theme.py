@@ -26,10 +26,14 @@ class Palette:
     accent_hover: str
     on_accent: str       # texto sobre el amarillo
     accent_soft: str     # amarillo muy suave (fondos de aviso, seleccion)
+    field_edge: str      # el borde de los campos de texto y desplegables (sin el, un campo vacio no se distingue de la tarjeta)
+    accent_edge: str     # el filo del elemento activo de la barra lateral (un tono mas hondo del acento)
+    accent_text: str     # el acento cuando es TEXTO pequeno (en claro, un ocre oscuro: el amarillo de marca no llega a 4,5:1 sobre blanco)
     red: str
     red_soft: str
     green: str
     green_soft: str
+    green_text: str      # el verde cuando es texto pequeno (el de las cifras grandes basta con 3:1; el pequeno pide 4,5:1)
     neutral: str         # tercera serie de los graficos
     hover: str           # fondo al pasar el raton
     grid: str            # lineas de cuadricula de los graficos
@@ -41,14 +45,16 @@ class Palette:
 DARK = Palette(
     name="dark", bg="#101418", side="#0C0F12", surface="#171C22", surface_alt="#1E242B", border="#242B34",
     text="#EFEBE3", muted="#8D97A4", accent="#F5BE1E", accent_hover="#FFCC3D", on_accent="#1A1500",
-    accent_soft="#2A2410", red="#F2464A", red_soft="#34171A", green="#4DB48C", green_soft="#16261F",
+    accent_soft="#2A2410", field_edge="#3C4756", accent_edge="#FFE08A", accent_text="#F5BE1E", red="#F2464A", red_soft="#34171A", green="#4DB48C", green_soft="#16261F",
+    green_text="#4DB48C",
     neutral="#6B7885", hover="#1F252C", grid="#1F262E", glow="#B7584F", glow_alpha=46,
     series=("#F5BE1E", "#F2464A", "#6B7885", "#C48F00", "#F59A9C", "#A5B0BC"),
 )
 LIGHT = Palette(
     name="light", bg="#F6F2EA", side="#EFE9DC", surface="#FFFFFF", surface_alt="#F3EEE3", border="#ECE6D9",
-    text="#22262B", muted="#868C96", accent="#EDB00C", accent_hover="#F7C023", on_accent="#2A2000",
-    accent_soft="#FCF1CB", red="#DC2F36", red_soft="#FCE0E0", green="#3E9C77", green_soft="#E0F1E9",
+    text="#22262B", muted="#626872", accent="#EDB00C", accent_hover="#F7C023", on_accent="#2A2000",
+    accent_soft="#FCF1CB", field_edge="#B9B1A0", accent_edge="#B78A0B", accent_text="#80590A", red="#DC2F36", red_soft="#FCE0E0", green="#3E9C77", green_soft="#E0F1E9",
+    green_text="#2F7D5E",
     neutral="#9098A3", hover="#F6F1E6", grid="#F0EADE", glow="#F5BE1E", glow_alpha=34,
     series=("#EDB00C", "#DC2F36", "#9098A3", "#B07F00", "#E8703F", "#BCC2CB"),
 )
@@ -120,47 +126,47 @@ QLabel#H2 {{ font-family: {medium}; font-size: 15px; }}
 QLabel#Muted {{ color: {p.muted}; }}
 QLabel#DateLine {{ color: {p.text}; font-family: {body}; font-size: 20px; }}
 QLabel#Headline {{ color: {p.text}; font-family: {medium}; font-size: 14px; }}
-QLabel#Small {{ color: {p.muted}; font-size: 12px; }}
+QLabel#Small {{ color: {p.muted}; font-size: 13px; }}
 QLabel#Eyebrow {{ color: {p.accent}; font-family: {body}; font-size: 11px; }}
-QLabel#SectionTitle {{ color: {p.muted}; font-family: {body}; font-size: 11px; }}
+QLabel#SectionTitle {{ color: {p.muted}; font-family: {medium}; font-size: 12px; }}
 QLabel#Small[state="ok"] {{ color: {p.text}; }}
 QLabel#Small[state="error"] {{ color: {p.red}; font-family: {bold}; }}
 
 /* ---------------------------------------------------------------- barra lateral */
 QFrame#Sidebar {{ background: {p.side}; border: none; }}
-QPushButton#NavButton {{
-    text-align: left; padding: 12px 18px; border: 2px solid transparent; border-radius: 14px;
-    color: {p.muted}; background: transparent; font-family: {bold}; font-size: 14px; outline: none;
+/* Un solo vocabulario para toda la navegacion (paginas, Datos, Ajustes, Ayuda y el submenu): en reposo, sin relleno; al pasar,
+   un fondo suave; la pagina actual, el acento con un filo mas hondo. El aro negro queda solo para el foco de teclado. */
+QPushButton#NavButton, QPushButton#PillButton {{
+    text-align: left; padding: 0 16px 0 14px; min-height: 42px; max-height: 42px;
+    border: 2px solid transparent; border-radius: 13px; background: transparent;
+    color: {p.muted}; font-family: {medium}; font-size: 14px; outline: none;
 }}
-QPushButton#NavButton:hover {{ background: {p.hover}; color: {p.text}; }}
-QPushButton#NavButton:checked {{ background: {p.accent}; color: {p.on_accent}; }}
-QPushButton#NavButton:focus {{ border: 2px solid {p.text}; }}
-QPushButton#PillButton {{
-    text-align: left; padding: 0 16px 0 12px; min-height: 40px; max-height: 40px;
-    border: 2px solid transparent; border-radius: 20px; background: {p.surface_alt};
-    color: {p.text}; font-family: {bold}; font-size: 13px; outline: none;
+QPushButton#NavButton:hover, QPushButton#PillButton:hover {{ background: {p.hover}; color: {p.text}; }}
+QPushButton#NavButton:checked, QPushButton#PillButton:checked {{
+    background: {p.accent}; color: {p.on_accent}; border: 2px solid {p.accent_edge};
 }}
-QPushButton#PillButton:hover {{ background: {p.hover}; }}
-QPushButton#PillButton:checked {{ background: {p.accent}; color: {p.on_accent}; }}
-QPushButton#PillButton:focus {{ border: 2px solid {p.text}; }}
-QLabel#SidebarFoot {{ color: {p.muted}; font-size: 11px; }}
+QPushButton#NavButton[kbd="true"]:focus, QPushButton#PillButton[kbd="true"]:focus {{ border: 2px solid {p.text}; }}
+QFrame#SidebarRule {{ background: {p.border}; border: none; min-height: 1px; max-height: 1px; }}
+QLabel#SidebarFoot {{ color: {p.muted}; font-size: 12px; }}
 
 /* ---------------------------------------------------------------- tarjetas */
-QFrame#Card {{ background: {p.surface}; border: 1px solid {p.border}; border-radius: 26px; }}
+QFrame#Card {{ background: {p.surface}; border: 1px solid {p.border}; border-radius: 22px; }}
 QFrame#Card QLabel {{ background: transparent; }}
-QFrame#Hero {{ background: {p.surface}; border: 1px solid {p.border}; border-radius: 30px; }}
+QFrame#Hero {{ background: {p.surface}; border: 1px solid {p.border}; border-radius: 34px; }}
 QFrame#Hero QLabel {{ background: transparent; }}
-QFrame#Band {{ background: {p.surface}; border: 1px solid {p.border}; border-radius: 26px; }}
+QFrame#Band {{ background: transparent; border: none; }}
 QFrame#Band QLabel {{ background: transparent; }}
+QFrame#Section {{ background: transparent; border: none; }}
+QFrame#Section QLabel {{ background: transparent; }}
 QFrame#BandCell {{ background: transparent; border: none; border-radius: 0; }}
 QFrame#BandDivider {{ background: {p.border}; border: none; }}
-QLabel#CardTitle {{ color: {p.muted}; font-family: {body}; font-size: 11px; }}
+QLabel#CardTitle {{ color: {p.muted}; font-family: {medium}; font-size: 13px; }}
 QLabel#CardValue {{ font-family: {display}; font-size: 34px; }}
 QLabel#CardValue[tone="negative"], QLabel#MiniValue[tone="negative"], QLabel#HeroValue[tone="negative"] {{ color: {p.red}; }}
 QLabel#CardValue[tone="positive"], QLabel#MiniValue[tone="positive"] {{ color: {p.green}; }}
 QLabel#HeroValue {{ font-family: {display}; font-size: 52px; }}
 QLabel#MiniValue {{ font-family: {label}; font-size: 22px; }}
-QLabel#CardSub {{ color: {p.muted}; font-size: 12px; }}
+QLabel#CardSub {{ color: {p.muted}; font-size: 13px; }}
 QFrame#AccentBar {{ background: transparent; border: none; }}
 
 /* chips de variacion (+4,4 %) */
@@ -168,9 +174,9 @@ QLabel#Chip {{
     border-radius: 11px; padding: 3px 10px; font-family: {bold}; font-size: 12px;
     background: {p.surface_alt}; color: {p.text};
 }}
-QLabel#Chip[tone="positive"] {{ background: {green_soft}; color: {p.green}; }}
+QLabel#Chip[tone="positive"] {{ background: {green_soft}; color: {p.green_text}; }}
 QLabel#Chip[tone="negative"] {{ background: {red_soft}; color: {p.red}; }}
-QLabel#Chip[tone="accent"] {{ background: {accent_soft}; color: {p.accent}; }}
+QLabel#Chip[tone="accent"] {{ background: {accent_soft}; color: {p.accent_text}; }}
 
 /* ---------------------------------------------------------------- avisos y estados */
 QFrame#Banner {{ background: {accent_soft}; border: 1px solid {rgba(p.accent, 0.45)}; border-radius: 20px; }}
@@ -179,8 +185,8 @@ QLabel#Pill {{
     border-radius: 9px; padding: 3px 12px; font-family: {bold}; font-size: 11px;
     background: {p.surface_alt}; color: {p.text};
 }}
-QLabel#Pill[state="ok"] {{ background: {green_soft}; color: {p.green}; }}
-QLabel#Pill[state="warn"] {{ background: {accent_soft}; color: {p.accent}; }}
+QLabel#Pill[state="ok"] {{ background: {green_soft}; color: {p.green_text}; }}
+QLabel#Pill[state="warn"] {{ background: {accent_soft}; color: {p.accent_text}; }}
 QLabel#Pill[state="error"] {{ background: {red_soft}; color: {p.red}; }}
 
 /* ---------------------------------------------------------------- botones */
@@ -205,24 +211,27 @@ QPushButton#BackButton:hover {{ background: {p.hover}; color: {p.text}; }}
 
 /* menu de ayuda */
 QPushButton#HubCard {{
-    background: {p.surface}; border: 1px solid {p.border}; border-radius: 26px; text-align: left; padding: 0;
+    background: transparent; border: 2px solid transparent; border-radius: 22px; text-align: left; padding: 0;
 }}
-QPushButton#HubCard:hover {{ background: {p.hover}; border-color: {p.accent}; }}
+QPushButton#HubCard:hover {{ background: {p.hover}; }}
 QPushButton#HubCard:focus {{ border: 2px solid {p.accent}; padding: 0; }}
 QLabel#HubTitle {{ font-family: {medium}; font-size: 16px; }}
-QLabel#IconChip {{ background: {p.accent}; border-radius: 30px; }}
+QLabel#IconChip {{ background: {accent_soft}; border-radius: 30px; }}
 QLabel#StepBadge {{
-    background: {p.accent}; color: {p.on_accent}; border-radius: 13px; font-family: {medium}; font-size: 12px;
+    background: {accent_soft}; color: {p.accent_text}; border-radius: 13px; font-family: {medium}; font-size: 12px;
 }}
-QFrame#Card QLabel#StepBadge {{ background: {p.accent}; color: {p.on_accent}; }}
+QFrame#Card QLabel#StepBadge, QFrame#GroupCard QLabel#StepBadge {{ background: {accent_soft}; color: {p.accent_text}; }}
 
 /* ---------------------------------------------------------------- tarjetas tematicas (Ajustes y Ayuda) */
-QFrame#SectionCard {{ background: {p.surface}; border: 1px solid {p.border}; border-radius: 26px; }}
+QFrame#GroupCard {{ background: {p.surface}; border: 1px solid {p.border}; border-radius: 22px; }}
+QFrame#GroupCard QLabel {{ background: transparent; }}
+QLabel#FieldTitle {{ color: {p.text}; font-family: {medium}; font-size: 15px; }}
+QFrame#SectionCard {{ background: {p.surface}; border: 1px solid {p.border}; border-radius: 22px; }}
 QFrame#SectionCard[tone="alert"] {{ border: 1px solid {rgba(p.red, 0.55)}; }}
 QFrame#SectionCard QLabel {{ background: transparent; }}
 QFrame#SectionHead {{
-    background: {p.surface_alt}; border: none; border-bottom: 1px solid {p.border};
-    border-top-left-radius: 25px; border-top-right-radius: 25px;
+    background: transparent; border: none; border-bottom: 1px solid {p.border};
+    border-top-left-radius: 21px; border-top-right-radius: 21px;
 }}
 QFrame#SectionHead[tone="alert"] {{ background: {red_soft}; border-bottom: 1px solid {rgba(p.red, 0.35)}; }}
 QFrame#SectionHead[tone="tip"] {{ background: {accent_soft}; border-bottom: 1px solid {rgba(p.accent, 0.4)}; }}
@@ -231,7 +240,7 @@ QFrame#Divider {{ background: {p.border}; border: none; min-height: 1px; max-hei
 QLabel#GroupTitle {{ color: {p.text}; font-family: {medium}; font-size: 14px; }}
 QLabel#DetailLabel {{ color: {p.muted}; font-family: {medium}; font-size: 12px; }}
 QLabel#DetailLabel[tone="alert"] {{ color: {p.red}; }}
-QLabel#DetailLabel[tone="tip"] {{ color: {p.accent}; }}
+QLabel#DetailLabel[tone="tip"] {{ color: {p.accent_text}; }}
 QPushButton#Danger {{ background: transparent; color: {p.red}; border: 1px solid {rgba(p.red, 0.6)}; }}
 QPushButton#Danger:hover {{ background: {red_soft}; }}
 
@@ -242,8 +251,8 @@ QPushButton#FlyItem {{
     color: {p.text}; background: transparent; font-family: {medium}; font-size: 13px; outline: none;
 }}
 QPushButton#FlyItem:hover {{ background: {p.hover}; }}
-QPushButton#FlyItem:checked {{ background: {p.accent}; color: {p.on_accent}; }}
-QPushButton#FlyItem:focus {{ border: 2px solid {p.text}; }}
+QPushButton#FlyItem:checked {{ background: {p.accent}; color: {p.on_accent}; border: 2px solid {p.accent_edge}; }}
+QPushButton#FlyItem[kbd="true"]:focus {{ border: 2px solid {p.text}; }}
 
 /* ---------------------------------------------------------------- selector de idioma */
 QPushButton#LangButton {{
@@ -294,10 +303,10 @@ QMenu QCheckBox#PickerBox:hover {{ background: {p.hover}; border-radius: 10px; }
 QMenu QCheckBox#PickerBox::indicator {{ width: 18px; height: 18px; border-radius: 6px; border: 1px solid {p.muted}; background: {p.surface}; }}
 QMenu QCheckBox#PickerBox::indicator:checked {{ background: {p.accent}; border: 1px solid {p.accent}; }}
 QComboBox, QLineEdit, QDateEdit, QDoubleSpinBox {{
-    background: {p.surface_alt}; color: {p.text}; border: 1px solid {p.surface_alt};
+    background: {p.surface_alt}; color: {p.text}; border: 1px solid {p.field_edge};
     border-radius: 14px; padding: 9px 16px; min-height: 20px; font-family: {body};
 }}
-QComboBox:hover, QLineEdit:hover, QDateEdit:hover, QDoubleSpinBox:hover {{ border-color: {p.border}; }}
+QComboBox:hover, QLineEdit:hover, QDateEdit:hover, QDoubleSpinBox:hover {{ border-color: {p.muted}; }}
 QComboBox:focus, QLineEdit:focus, QDateEdit:focus, QDoubleSpinBox:focus {{ border: 2px solid {p.accent}; padding: 7px 13px; }}
 QComboBox {{ combobox-popup: 0; }}
 QComboBox::drop-down, QDateEdit::drop-down {{ border: none; width: 30px; }}
@@ -342,9 +351,12 @@ QTableView {{
 QTableView::item {{ padding: 0 8px; border: none; border-bottom: 1px solid {p.border}; }}
 QTableView::item:hover {{ background: {p.hover}; }}
 QTableView::item:selected {{ background: {accent_soft}; color: {p.text}; }}
+/* en las secciones sin caja, el texto de la primera columna arranca justo donde el titulo (sin los 8 px de la celda) */
+QFrame#Section QTableView::item {{ padding: 0 14px 0 0; }}
+QFrame#Section QHeaderView::section {{ padding: 8px 14px 8px 0; }}
 QHeaderView {{ background: transparent; }}
 QHeaderView::section {{
-    background: transparent; color: {p.muted}; font-family: {body}; font-size: 10px;
+    background: transparent; color: {p.muted}; font-family: {medium}; font-size: 11px;
     padding: 8px 8px; border: none; border-bottom: 1px solid {p.border};
 }}
 QHeaderView::section:hover {{ color: {p.text}; }}

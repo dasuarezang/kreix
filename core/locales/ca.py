@@ -387,8 +387,6 @@ TEXTS: dict[str, str] = {
     'Útil si tu dinero llega por traspasos desde otra cuenta. Los traspasos salientes nunca cuentan.': "Útil si els teus diners arriben per traspassos des d'un altre compte. Els traspassos sortints mai compten.",
     'Cielo animado y luz según la hora': "Cel animat i llum segons l'hora",
     'Anima el sol y la luna de Inicio y baja muy ligeramente el brillo por la tarde y por la noche. No cambia el tema.': "Anima el sol i la lluna d'Inici i baixa molt lleugerament la brillantor a la tarda i a la nit. No canvia el tema.",
-    'Cálculo del ahorro': "Càlcul de l'estalvi",
-    'Ambiente': 'Ambient',
     'Kreix te saluda por tu nombre en Inicio. Se guarda con tus datos y viaja con ellos al exportar e importar.': 'Kreix et saluda pel teu nom a Inici. Es desa amb les teves dades i viatja amb elles en exportar i importar.',
     'Elige qué quieres gestionar. Lo que desactives no desaparece: sus pestañas siguen ahí y puedes activarlo cuando quieras, aquí o desde la propia pestaña.': 'Tria què vols gestionar. El que desactivis no desapareix: les seves pestanyes continuen allà i ho pots activar quan vulguis, aquí o des de la pròpia pestanya.',
     'Lo que te interesa': "El que t'interessa",

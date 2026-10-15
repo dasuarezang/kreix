@@ -51,6 +51,7 @@ _SHAPES = {
     "back": '<path d="M19 12H5"/><path d="M11 5l-7 7 7 7"/>',
     "chevron": '<path d="M9 5l7 7-7 7"/>',
     # grupo "Datos": una pila de discos (almacen de tus datos)
+    "home": '<path d="M4 11.2L12 4l8 7.2"/><path d="M6.2 9.8V19h11.6V9.8"/>',
     "database": '<ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M4 5.5v6.5c0 1.7 3.6 3 8 3s8-1.3 8-3V5.5"/>'
                 '<path d="M4 12v6.5c0 1.7 3.6 3 8 3s8-1.3 8-3V12"/>',
 }

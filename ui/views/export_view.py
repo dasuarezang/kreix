@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QCheckBox, QFileDialog, QFrame, QHBoxLayout, QLabe
 
 from services.transfer_service import EXTENSION, DataSummary, TransferError, TransferService
 from ui.widgets.cards import PageHeader, repolish
+from ui.widgets.section_card import GroupCard
 from core.i18n import tr, N_
 
 
@@ -56,9 +57,17 @@ class ExportView(QWidget):
         self.encrypt.hide()                # solo se ofrece cuando hay almacen cifrado (set_sealer)
         self.encrypt_note.hide()
 
-        what = self._card(tr("Qué se exporta"), self._contents, self._note(
-            tr("Cuentas, movimientos, categorías, operaciones, cartera y ajustes. Todo tal cual está ahora.")),
-            self.encrypt, self.encrypt_note, action_row)
+        # Una sola tarjeta con tres filas (que se exporta, aviso de cifrado y como llevarlo), en vez de tres cajas sueltas
+        export_box = QWidget()
+        export_col = QVBoxLayout(export_box)
+        export_col.setContentsMargins(0, 0, 0, 0)
+        export_col.setSpacing(12)
+        for w in (self._contents, self.encrypt, self.encrypt_note):
+            export_col.addWidget(w)
+        export_col.addLayout(action_row)
+        what = GroupCard()
+        what.add_field(tr("Qué se exporta"),
+                       tr("Cuentas, movimientos, categorías, operaciones, cartera y ajustes. Todo tal cual está ahora."), export_box)
 
         self.warning = warning = QFrame()
         warning.setObjectName("Banner")
@@ -71,20 +80,24 @@ class ExportView(QWidget):
         warn_lay.addWidget(warn_head)
         warn_lay.addWidget(warn_text)
 
-        steps = self._card(
-            tr("Cómo llevarlo a otro ordenador"),
-            self._step("1", tr("Instala Kreix en el otro ordenador y ábrelo.")),
-            self._step("2", tr("Ve a Importar y arrastra el archivo {EXTENSION} a la zona de importación.").format(EXTENSION=EXTENSION)),
-            self._step("3", tr("Confirma. Verás exactamente los mismos datos que aquí.")),
-            self._note(tr("Importar un archivo .kreix reemplaza los datos que hubiera en ese ordenador.")),
-        )
+        steps_box = QWidget()
+        steps_col = QVBoxLayout(steps_box)
+        steps_col.setContentsMargins(0, 0, 0, 0)
+        steps_col.setSpacing(14)
+        for number, text in (("1", tr("Instala Kreix en el otro ordenador y ábrelo.")),
+                             ("2", tr("Ve a Importar y arrastra el archivo {EXTENSION} a la zona de importación.").format(EXTENSION=EXTENSION)),
+                             ("3", tr("Confirma. Verás exactamente los mismos datos que aquí."))):
+            steps_col.addWidget(self._step(number, text))
+        self._warning_row = what.add_setting(self.warning)    # el aviso de "no cifrado", dentro de la misma tarjeta
+        what.add_field(tr("Cómo llevarlo a otro ordenador"),
+                       tr("Importar un archivo .kreix reemplaza los datos que hubiera en ese ordenador."), steps_box)
 
         body = QWidget()
         body.setObjectName("Page")
         col = QVBoxLayout(body)
         col.setContentsMargins(48, 40, 48, 48)
         col.setSpacing(26)
-        for w in (header, what, warning, steps):
+        for w in (header, what):
             col.addWidget(w)
         col.addStretch(1)
         scroll = QScrollArea()
@@ -108,7 +121,9 @@ class ExportView(QWidget):
         return self._seal is not None and self.encrypt.isChecked()
 
     def _update_warning(self) -> None:
-        self.warning.setVisible(not self.encrypting())     # el aviso de "no cifrado" solo cuando de verdad no lo esta
+        show = not self.encrypting()                        # el aviso de "no cifrado" solo cuando de verdad no lo esta
+        self.warning.setVisible(show)
+        self._warning_row.setVisible(show)
 
     # ------------------------------------------------------------------ piezas
     @staticmethod
@@ -142,7 +157,7 @@ class ExportView(QWidget):
         lay = QVBoxLayout(card)
         lay.setContentsMargins(32, 28, 32, 28)
         lay.setSpacing(14)
-        heading = QLabel(title.upper())
+        heading = QLabel(title)
         heading.setObjectName("CardTitle")
         lay.addWidget(heading)
         for item in items:

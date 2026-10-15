@@ -73,7 +73,7 @@ def _alpha(color: QColor, alpha: float) -> QColor:
 
 class SkyWidget(QWidget):
     W, H = 92, 50                   # tamano del dibujo en coordenadas logicas
-    SCALE = 1.15                    # y cuanto se amplia en pantalla
+    SCALE = 2.6                     # y cuanto se amplia en pantalla (rellena el hueco entre el saludo y las cuatro franjas)
     BASE = 46                       # la linea del horizonte
 
     def __init__(self) -> None:

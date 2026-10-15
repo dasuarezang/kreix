@@ -72,12 +72,12 @@ def test_month_selection_filters_everything_and_persists_across_reloads(window, 
     assert v.table.proxy.rowCount() == 2
     assert [t.description for t in v.table.visible_rows()] == ["NETFLIX.COM", "TRASPASO"]
     assert v.card_balance._value.text() == fmt_eur(Decimal("100"))        # saldo al cierre de septiembre
-    assert v.mini_average._title.text().startswith("GASTO MEDIO DIARIO")
+    assert v.mini_average._title.text().startswith("Gasto medio diario")
     window.refresh()                                                        # p. ej. tras importar otro archivo
     assert v.period.current_month() == date(2026, 9, 1)
     assert v.table.proxy.rowCount() == 2
     v.period.select_month(None)
-    assert v.table.proxy.rowCount() == 3 and v.mini_average._title.text().startswith("GASTO MEDIO MENSUAL")
+    assert v.table.proxy.rowCount() == 3 and v.mini_average._title.text().startswith("Gasto medio mensual")
 
 
 def test_movements_search_category_filter_and_sorting(window, two_months):
@@ -136,7 +136,7 @@ def test_investment_tab_global_and_month(window):
 
     v.period.select_month(date(2026, 2, 1))
     assert v.operations_table.proxy.rowCount() == 1
-    assert v.card_gain._title.text() == "VARIACIÓN DEL MES" and v.card_contrib._value.text().startswith("+")
+    assert v.card_gain._title.text() == "Variación del mes" and v.card_contrib._value.text().startswith("+")
     window.refresh()
     assert v.period.current_month() == date(2026, 2, 1)                       # persiste al recargar
 

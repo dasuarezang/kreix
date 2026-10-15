@@ -12,7 +12,7 @@ from ui.popups import Combo
 from ui.format import EMPTY, fmt_date, fmt_eur, fmt_pct, fmt_units, month_long, operation_label
 from ui.views.accounts_view import signed_eur
 from ui.headlines import evolution_headline, fund_headline
-from ui.widgets.cards import ChartCard, PageHeader, StatBand, StatCard
+from ui.widgets.cards import flatten, ChartCard, PageHeader, StatBand, StatCard
 from ui.widgets.onboarding import EmptyState, InterestOffState
 from ui.widgets.charts import DonutChart
 from ui.widgets.charts_period import FundsChart, PortfolioChart
@@ -134,7 +134,7 @@ class InvestmentView(QWidget):
         pick = QHBoxLayout()
         pick.addWidget(self.fund_combo)
         pick.addStretch(1)
-        self.history_card.layout().insertLayout(2, pick)
+        self.history_card.layout().insertLayout(5, pick)               # tras el titulo y su explicacion (antes, la regla de marca y su separacion)
         root.addWidget(self.history_card)
 
         self.positions_table = DataTable([
@@ -183,10 +183,9 @@ class InvestmentView(QWidget):
             head.addWidget(extra)
         head.addStretch(1)
         card = QFrame()
-        card.setObjectName("Card")
         lay = QVBoxLayout(card)
-        lay.setContentsMargins(34, 30, 34, 24)
         lay.setSpacing(10)
+        flatten(card, lay, (0, 0, 0, 8))
         lay.addLayout(head)
         if subtitle:
             sub = QLabel(subtitle)

@@ -298,7 +298,7 @@ class BarsChart(BaseChart):
         n = len(self._labels)
         top_pad, bottom_pad = 34, 26
         ticks = nice_ticks(0, max(max(self._column_totals(), default=0), 1) * 1.04, 4)
-        axis_font = fonts.qfont(fonts.BODY, 11)
+        axis_font = fonts.qfont(fonts.BODY, 12)
         fm = QFontMetricsF(axis_font)
         left_pad = max(fm.horizontalAdvance(axis_label(t)) for t in ticks) + 14
         plot = QRectF(left_pad, top_pad, self.width() - left_pad - 6, self.height() - top_pad - bottom_pad)
@@ -350,7 +350,7 @@ class BarsChart(BaseChart):
                 p.setBrush(gradient)
                 top_segment = (not self._stacked) or all(t.values[i] <= 0 for t in self._series[j + 1:])
                 p.drawPath(rounded_top(rect, 5 if top_segment else 1.5))
-            p.setFont(fonts.qfont(fonts.BODY_MEDIUM if i == hover else fonts.BODY, 11))
+            p.setFont(fonts.qfont(fonts.BODY_MEDIUM if i == hover else fonts.BODY, 12))
             p.setPen(color(pal, "text" if i == hover else "muted"))
             p.drawText(QRectF(cx - slot / 2, plot.bottom() + 6, slot, 18), Qt.AlignmentFlag.AlignCenter, self._labels[i])
 
@@ -457,7 +457,7 @@ class LineChart(BaseChart):
         high = max(values)
         ticks = nice_ticks(low, high * 1.04 if high > 0 else 1, 4)
         low, high = ticks[0], ticks[-1]
-        axis_font = fonts.qfont(fonts.BODY, 11)
+        axis_font = fonts.qfont(fonts.BODY, 12)
         fm = QFontMetricsF(axis_font)
         left_pad = max(fm.horizontalAdvance(axis_label(t)) for t in ticks) + 14
         top_pad, bottom_pad = 34, 28

@@ -75,7 +75,7 @@ class GoalBars(QWidget):
                 p.setBrush(tone)
                 p.drawRoundedRect(QRectF(0, top + 29, max(self.width() * goal.fraction, 6), 5), 2.5, 2.5)
             p.setFont(note_font)
-            p.setPen(QColor(pal.green if goal.reached else pal.muted))
+            p.setPen(QColor(pal.green_text if goal.reached else pal.muted))
             p.drawText(QRectF(0, top + 38, self.width(), 20), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
                        f"{round(goal.fraction * 100)} %  ·  {self.note(goal)}")
 

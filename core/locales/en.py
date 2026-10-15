@@ -387,8 +387,6 @@ TEXTS: dict[str, str] = {
     'Útil si tu dinero llega por traspasos desde otra cuenta. Los traspasos salientes nunca cuentan.': 'Useful if your money arrives by transfer from another account. Outgoing transfers never count.',
     'Cielo animado y luz según la hora': 'Animated sky and light by time of day',
     'Anima el sol y la luna de Inicio y baja muy ligeramente el brillo por la tarde y por la noche. No cambia el tema.': 'Animates the sun and moon on Home and dims the screen very slightly in the afternoon and at night. It does not change the theme.',
-    'Cálculo del ahorro': 'Savings calculation',
-    'Ambiente': 'Atmosphere',
     'Kreix te saluda por tu nombre en Inicio. Se guarda con tus datos y viaja con ellos al exportar e importar.': 'Kreix greets you by name on Home. It is saved with your data and travels with it when you export and import.',
     'Elige qué quieres gestionar. Lo que desactives no desaparece: sus pestañas siguen ahí y puedes activarlo cuando quieras, aquí o desde la propia pestaña.': 'Choose what you want to manage. What you turn off does not disappear: its tabs stay there and you can turn it on whenever you like, here or from the tab itself.',
     'Lo que te interesa': "What you're interested in",

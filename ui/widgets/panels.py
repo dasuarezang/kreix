@@ -11,6 +11,7 @@ from core.budget import BudgetLine
 from core.recurring import Recurring, monthly_cost
 from ui import fonts, theme
 from ui.format import category_label, fmt_date, fmt_eur
+from ui.widgets.cards import BrandRule
 from ui.widgets.tables import RIGHT, Column, DataTable
 from core.i18n import tr, trn
 
@@ -89,9 +90,9 @@ class BudgetBars(QWidget):
 class Panel(QFrame):
     """Tarjeta con titulo, subtitulo, un boton opcional arriba a la derecha y un cuerpo."""
 
-    def __init__(self, title: str, subtitle: str, body: QWidget, action: QWidget | None = None) -> None:
+    def __init__(self, title: str, subtitle: str, body: QWidget, action: QWidget | None = None, raised: bool = False) -> None:
         super().__init__()
-        self.setObjectName("Card")
+        self.setObjectName("Card" if raised else "Section")
         self.heading = QLabel(title)
         self.heading.setObjectName("H2")
         self.subtitle = QLabel(subtitle)
@@ -107,8 +108,12 @@ class Panel(QFrame):
         if action is not None:
             top.addWidget(action, 0, Qt.AlignmentFlag.AlignTop)
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(34, 30, 34, 26)
         layout.setSpacing(14)
+        if raised:                                          # el carrusel y los primeros pasos se tocan: siguen siendo tarjetas
+            layout.setContentsMargins(34, 30, 34, 26)
+        else:
+            layout.setContentsMargins(0, 0, 0, 6)
+            layout.addWidget(BrandRule())
         layout.addLayout(top)
         layout.addWidget(body, 1)
         self.setAccessibleName(title)

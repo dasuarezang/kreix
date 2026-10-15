@@ -96,10 +96,12 @@ def test_the_sky_sits_next_to_the_name_with_room_to_spare(window):
     window.start_demo()
     window.navigate(window.SUMMARY)
     sky = window.dashboard.sky
-    assert head._title_row.indexOf(sky) == 1                              # justo despues del bloque etiqueta + titulo
-    gap = sky.mapTo(window, sky.rect().topLeft()).x() - head.title.mapTo(window, head.title.rect().topRight()).x()
-    assert ACCESSORY_GAP - 4 <= gap <= ACCESSORY_GAP + 40                 # pegado al nombre pero con holgura (36 px)
-    assert sky.y() >= 0 and sky.geometry().bottom() <= head._title_row.geometry().bottom() + 2
+    assert head._row.indexOf(sky) == 2                                    # a la derecha de todo el bloque de texto
+    dash = window.dashboard
+    right_of_text = max(w.mapTo(window, w.rect().topRight()).x() for w in (head.title, dash.date_line, head._subtitle))
+    gap = sky.mapTo(window, sky.rect().topLeft()).x() - right_of_text
+    assert ACCESSORY_GAP - 4 <= gap <= ACCESSORY_GAP + 400                # pegado al texto pero con holgura (el bloque puede ser mas ancho que sus lineas)
+    assert sky.y() >= 0 and sky.geometry().bottom() <= head.rect().bottom() + 2          # dentro de la cabecera
 
 
 def test_the_lines_of_text_in_the_header_are_evenly_spaced_and_the_sky_does_not_stretch_them(window):
@@ -115,8 +117,10 @@ def test_the_lines_of_text_in_the_header_are_evenly_spaced_and_the_sky_does_not_
     def bottom(widget) -> int:
         return widget.mapTo(window, widget.rect().bottomLeft()).y()
 
-    # el dibujo no es mas alto que la etiqueta y el titulo juntos: no abre un hueco entre el saludo y la fecha
-    assert dash.sky.height() <= bottom(head.title) - top(head._eyebrow) + 2
+    # el dibujo no es mas alto que las lineas de texto juntas (saludo, fecha y actualizacion) y va a su derecha: no abre huecos entre ellas
+    assert dash.sky.height() <= 160                                      # alto, pero sin descolocar la pagina: la cabecera crece lo justo
+    right_of_text = max(w.mapTo(window, w.rect().topRight()).x() for w in (head.title, dash.date_line, head._subtitle))
+    assert dash.sky.mapTo(window, dash.sky.rect().topLeft()).x() > right_of_text
     gaps = [top(dash.date_line) - bottom(head.title), top(head._subtitle) - bottom(dash.date_line)]
     assert max(gaps) <= 6 and abs(gaps[0] - gaps[1]) <= 4                 # saltos de linea casi iguales (el hueco que se veia era de ~14 px)
     assert head.sizePolicy() is not None
@@ -176,10 +180,15 @@ def test_it_only_dims_a_little_and_does_not_touch_the_theme(window):
     night = window.grab().toImage()
     assert window.settings_view._settings.theme == window._settings.theme == "dark"
 
+    sky = window.dashboard.sky
+    sky_rect = sky.rect().translated(sky.mapTo(window, sky.rect().topLeft())).adjusted(-30, -30, 30, 30)
+
     def brightness(image: QImage) -> float:
         total = 0
-        for x in range(240, image.width(), 97):
-            for y in range(0, image.height(), 89):
+        for x in range(240, image.width(), 53):
+            for y in range(sky_rect.bottom() + 10, image.height(), 41):      # por debajo de la cabecera: se mide la luz de la pantalla, no el saludo ni el propio cielo
+                if sky_rect.contains(x, y):
+                    continue
                 c = image.pixelColor(x, y)
                 total += c.red() + c.green() + c.blue()
         return total
