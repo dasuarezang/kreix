@@ -371,7 +371,7 @@ HELP: dict[str, dict] = {
     },
     "Modo privacidad": {
         "term": "Privacy mode",
-        "plain": "The eye in the sidebar (or Ctrl+H) hides every amount in euros: it replaces each figure with dots. It is useful when someone is next to you or when you share your screen.",
+        "plain": "The eye in the sidebar (or Ctrl+H) hides every amount in euros: it blurs each figure: you can tell there is a number, never which one. It is useful when someone is next to you or when you share your screen.",
         "how": "The amounts in figures, charts (including their axes), tables and notices are hidden. Percentages are still shown. It is remembered when you close and open Kreix. The dialogs where you type an amount (budgets, goals) show what you type.",
         "keywords": ["privacy", "hide", "figures", "eye", "money", "screen", "share"],
     },

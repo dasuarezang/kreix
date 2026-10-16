@@ -58,7 +58,7 @@ def test_to_date_formats():
         ("URBAN CLIMBING BC", "-12.00", TxCategory.LEISURE),
         ("BIZUM RECIBIDO", "40.00", TxCategory.P2P),
         ("TRASPASO", "50.00", TxCategory.TRANSFER),
-        ("MEDIAMARKT", "-50.00", TxCategory.UNCATEGORIZED),  # "DIA" no debe casar
+        ("MEDIAMARKT", "-50.00", TxCategory.OTHER),  # "DIA" no debe casar (supermercado); es un comercio conocido de "otros"
         ("COSA RARA", "10.00", TxCategory.INCOME),
     ],
 )

@@ -12,7 +12,13 @@ import pytest
 def qapp():
     from PySide6.QtWidgets import QApplication
 
-    return QApplication.instance() or QApplication([])
+    if QApplication.instance():
+        return QApplication.instance()
+    from ui import blur
+
+    app = QApplication([])
+    blur.install(app)
+    return app
 
 
 def dispose_windows(*windows):

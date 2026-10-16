@@ -15,7 +15,7 @@ from core.enums import TxCategory
 
 MAX_DAYS_APART = 3
 # La otra mitad de un traspaso puede estar categorizada como cualquiera de estas (cada banco lo llama de una forma).
-_OTHER_HALF = {TxCategory.TRANSFER, TxCategory.INCOME, TxCategory.OTHER, TxCategory.UNCATEGORIZED}
+_OTHER_HALF = {TxCategory.TRANSFER, TxCategory.INCOME, TxCategory.SALARY, TxCategory.OTHER, TxCategory.UNCATEGORIZED}
 
 
 def _eligible(t: TransactionDraft) -> bool:

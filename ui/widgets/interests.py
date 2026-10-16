@@ -11,7 +11,7 @@ from ui.widgets.setting_row import SettingRow
 from core.i18n import N_, tr
 
 ACCOUNTS_TITLE = N_("Mis cuentas bancarias")
-ACCOUNTS_TEXT = N_("Saldo, ingresos y gastos, categorías, presupuestos y pagos recurrentes de tus cuentas (Imagin).")
+ACCOUNTS_TEXT = N_("Saldo, ingresos y gastos, categorías, presupuestos y pagos recurrentes de tus cuentas bancarias.")
 INVESTMENTS_TITLE = N_("Mis inversiones")
 INVESTMENTS_TEXT = N_("Tu cartera de fondos: valor, aportaciones, plusvalía y rentabilidad (MyInvestor).")
 AT_LEAST_ONE = N_("Tiene que quedar al menos una activada. Activa la otra antes de desactivar esta.")

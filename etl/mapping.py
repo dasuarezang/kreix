@@ -45,6 +45,12 @@ class ColumnMapping:
     day_first: bool = True       # 03/04/2026 es 3 de abril (False: 4 de marzo)
     decimal_comma: bool = True   # 1.234,56 (False: 1,234.56)
     invert_sign: bool = False    # los gastos vienen como numeros positivos
+    # Solo para los bancos que Kreix reconoce solo (etl/banks.py); el asistente del usuario no los toca ni se guardan.
+    description_fallbacks: tuple[str, ...] = ()      # otras columnas de concepto, por si la principal viene vacia en una fila
+    fee: str = ""                                    # comision aparte, que se resta del importe
+    currency: str = ""                               # solo se leen las filas en euros
+    only_column: str = ""                            # solo se leen las filas cuyo valor en esta columna este en `only_values`
+    only_values: tuple[str, ...] = ()
 
     @property
     def uses_two_columns(self) -> bool:

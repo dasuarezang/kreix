@@ -13,6 +13,7 @@ from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QAbstractItemView, QHeaderView, QStyleOptionViewItem, QTableView
 
 from ui import fonts, theme
+from ui.blur import BlurDelegate
 
 SORT_ROLE = Qt.ItemDataRole.UserRole
 LEFT = Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
@@ -136,6 +137,7 @@ class DataTable(QTableView):
         self.proxy = FilterProxy()
         self.proxy.setSourceModel(self.model_)
         self.setModel(self.proxy)
+        self.setItemDelegate(BlurDelegate(self))
         self.setAlternatingRowColors(False)
         self.setFont(fonts.qfont(fonts.BODY, 13, tabular=True))   # cifras de ancho fijo: las columnas se alinean
         self.setShowGrid(False)

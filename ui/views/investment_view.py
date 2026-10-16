@@ -4,7 +4,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QComboBox, QFrame, QHBoxLayout, QLabel, QPushButton, QScrollArea, QStackedLayout, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QScrollArea, QStackedLayout, QVBoxLayout, QWidget
 
 from core.entities import PositionSnapshot
 from services.investment_service import InvestmentService, InvestmentViewData

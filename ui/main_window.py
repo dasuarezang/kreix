@@ -151,6 +151,7 @@ class MainWindow(QMainWindow):
         self.dashboard.setup_dismissed.connect(self._dismiss_setup)
         self.dashboard.category_clicked.connect(self._show_category_in_accounts)
         self.dashboard.rule_requested.connect(self._create_rule_for)
+        self.dashboard.recurring_removed.connect(self.accounts_view.remove_recurring)
         self.settings_view.settings_changed.connect(self._on_settings_changed)
         self.settings_view.rules_changed.connect(self.refresh)
         self.settings_view.whats_new_requested.connect(self.show_whats_new)

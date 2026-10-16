@@ -16,6 +16,7 @@ class AccountKind(str, enum.Enum):
 
 class TxCategory(str, enum.Enum):
     INCOME = "ingresos"
+    SALARY = "sueldo"                             # nomina: ingreso que llega cada mes del trabajo
     GROCERIES = "supermercado"
     DINING = "restaurantes"
     SUBSCRIPTIONS = "suscripciones"

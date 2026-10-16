@@ -190,8 +190,9 @@ def test_the_user_can_mark_and_unmark_a_recurring_payment_from_a_movement(loaded
     assert view.set_recurring(mercadona.description, True)
     assert any("MERCADONA" in r.name and r.manual for r in view._data.recurring)
     shown = [view.recurring_panel.table.cell_texts(i)[0] for i in range(view.recurring_panel.table.proxy.rowCount())]
-    assert any("MERCADONA" in t and "marcado por ti" in t for t in shown)
-    assert "Dejar de marcar" in view.recurring_action(mercadona)[0] and view.recurring_action(mercadona)[1] is None
+    assert any("MERCADONA" in t for t in shown) and not any("marcado por ti" in t for t in shown)      # no se distingue el origen
+    text, include = view.recurring_action(mercadona)
+    assert "no es un pago recurrente" in text and include is False                                   # un pago marcado tambien se puede quitar
     window.dashboard.set_data(window._svc.dashboard.load())                                  # y tambien en Proximos pagos
     assert any("MERCADONA" in r.name for r in window._svc.dashboard.load().upcoming)
     assert view.set_recurring(mercadona.description, None)
@@ -216,3 +217,12 @@ def test_net_worth_shows_liquidity_and_investment_with_their_share(window):
     assert all("€" in p[1] and "%" in p[1] for p in parts)                                    # importe y porcentaje del patrimonio
     shares = [float(p[1].split("·")[-1].replace("%", "").replace(",", ".").strip()) for p in parts]
     assert abs(sum(shares) - 100) < 0.2
+
+
+def test_any_recurring_payment_can_be_removed_from_upcoming_payments(loaded):
+    window = loaded
+    upcoming = window.dashboard.upcoming
+    netflix = next(r for r in window._svc.dashboard.load().upcoming if "NETFLIX" in r.name)          # detectado por Kreix
+    upcoming.remove_requested.emit(netflix)
+    assert not [r for r in window._svc.dashboard.load().upcoming if "NETFLIX" in r.name]
+    assert not [r for r in window.accounts_view._data.recurring if "NETFLIX" in r.name]

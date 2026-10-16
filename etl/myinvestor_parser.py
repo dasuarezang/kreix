@@ -8,7 +8,7 @@ from core.categorizer import normalize
 from core.entities import FileKind, OperationDraft, ParseResult, PositionSnapshot
 from core.enums import Bank, OperationType
 from etl.common import HashFactory, ParseError, Table, clean_text, to_date, to_decimal
-from core.i18n import tr, N_
+from core.i18n import tr
 
 OPS_REQUIRED = {"fecha operacion", "isin", "tipo operacion", "participaciones", "importe"}
 PORTFOLIO_REQUIRED = {"producto", "isin", "participaciones totales", "valor liquidativo actual"}

@@ -1,6 +1,7 @@
 """Piezas visuales de las paginas: cifras (KPI), tarjeta principal, bandas, cabecera de pagina y chips."""
 from __future__ import annotations
 
+from ui.blur import draw_text
 from collections.abc import Sequence
 
 from PySide6.QtCore import QRectF, QSize, Qt
@@ -10,7 +11,6 @@ from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QSizePolicy, QVBoxLay
 from ui import fonts, theme
 from ui.widgets.charts import Sparkline
 from ui.widgets.help_link import InfoButton
-from core.i18n import tr
 
 
 def repolish(widget: QWidget) -> None:
@@ -331,10 +331,10 @@ class SplitBar(QWidget):
             amount_w = QFontMetricsF(amount_font).horizontalAdvance(amount)
             p.setFont(name_font)
             p.setPen(QColor(pal.muted))
-            p.drawText(QRectF(cursor + 14, 22, name_w + 4, 18), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, name)
+            draw_text(p, QRectF(cursor + 14, 22, name_w + 4, 18), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, name)
             p.setFont(amount_font)
             p.setPen(QColor(pal.text))
-            p.drawText(QRectF(cursor + 14 + name_w + 8, 22, amount_w + 4, 18),
+            draw_text(p, QRectF(cursor + 14 + name_w + 8, 22, amount_w + 4, 18),
                        Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, amount)
             cursor += 14 + name_w + 8 + amount_w + 26
 

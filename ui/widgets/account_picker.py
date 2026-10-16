@@ -8,7 +8,7 @@ from __future__ import annotations
 from functools import partial
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QCheckBox, QMenu, QPushButton, QWidget, QWidgetAction
+from PySide6.QtWidgets import QCheckBox, QPushButton, QWidgetAction
 
 from ui.popups import Menu
 from core.i18n import tr, trn

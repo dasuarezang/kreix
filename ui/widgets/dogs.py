@@ -264,8 +264,6 @@ def sleeping_pair(p: QPainter, lk: Look, t: float = 0.0) -> None:
     p.save()
     p.scale(1.0, big)
     pen.shape([(-27, 0), (-28.5, -7), (-23, -14.5), (-14, -17), (-4, -14.5), (0, -7), (-0.5, 0)], lk.coat)
-    pen.line([(-31, -13), (-28.5, -6.5)], width=0.5)                                   # el pliegue de la grupa
-    pen.line([(-24, -18), (-22, -12)], width=0.45)
     p.restore()
     p.save()                                                                            # la cola de Blitzen, asomando a la izquierda
     p.translate(-26.0, -2.0)

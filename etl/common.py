@@ -8,6 +8,7 @@ from collections import Counter
 from datetime import date, datetime
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
+from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
 
@@ -23,18 +24,22 @@ class ParseError(ValueError):
 
 
 # ---------------------------------------------------------------- lectura de ficheros
-def load_rows(path: Path) -> list[list[Any]]:
-    """Lee CSV/TSV/TXT o Excel como lista de filas crudas (sin asumir cabecera)."""
-    suffix = path.suffix.lower()
-    if suffix in {".xlsx", ".xlsm", ".xls"}:
-        from openpyxl import load_workbook          # solo se carga si se importa un Excel
+_ZIP_MAGIC = b"PK\x03\x04"
+_OLE_MAGIC = b"\xd0\xcf\x11\xe0"          # el .xls clasico (BIFF)
 
-        workbook = load_workbook(path, read_only=True, data_only=True)
-        try:
-            return [list(row) for row in workbook.worksheets[0].iter_rows(values_only=True)]
-        finally:
-            workbook.close()
+
+def load_rows(path: Path) -> list[list[Any]]:
+    """Lee CSV/TSV/TXT o Excel como lista de filas crudas (sin asumir cabecera).
+
+    El formato se decide por el contenido y no por la extension: muchos bancos (ING entre ellos) llaman `.xls` a un
+    `.xlsx`, a un Excel antiguo de verdad o a una tabla HTML."""
     raw = path.read_bytes()
+    if raw[:4] == _ZIP_MAGIC:
+        return _xlsx_rows(raw, path.name)
+    if raw[:4] == _OLE_MAGIC:
+        return _xls_rows(path)
+    if path.suffix.lower() in {".xlsx", ".xlsm", ".xls"} and raw.lstrip()[:1] == b"<":
+        return _html_rows(raw, path.name)
     for enc in CSV_ENCODINGS:
         try:
             text = raw.decode(enc)
@@ -50,6 +55,98 @@ def load_rows(path: Path) -> list[list[Any]]:
     except csv.Error:
         delimiter = ";"
     return [row for row in csv.reader(lines, delimiter=delimiter)]
+
+
+def _xlsx_rows(raw: bytes, name: str) -> list[list[Any]]:
+    from io import BytesIO
+
+    from openpyxl import load_workbook          # solo se carga si se importa un Excel
+
+    try:
+        workbook = load_workbook(BytesIO(raw), read_only=True, data_only=True)       # desde memoria: openpyxl rechaza la extension .xls
+    except Exception as exc:                    # archivo danado, protegido con contrasena...
+        raise ParseError(tr("No se pudo abrir el Excel {name}: {exc}").format(name=name, exc=exc)) from exc
+    try:
+        for sheet in workbook.worksheets:       # la primera hoja con datos (algunos bancos dejan una portada vacia)
+            rows = [list(row) for row in sheet.iter_rows(values_only=True)]
+            if any(any(cell not in (None, "") for cell in row) for row in rows):
+                return rows
+        return []
+    finally:
+        workbook.close()
+
+
+def _xls_rows(path: Path) -> list[list[Any]]:
+    try:
+        import xlrd
+    except ImportError as exc:  # pragma: no cover - xlrd va en requirements.txt
+        raise ParseError(tr("Falta el componente para leer archivos .xls antiguos.")) from exc
+    try:
+        book = xlrd.open_workbook(str(path))
+    except Exception as exc:
+        raise ParseError(tr("No se pudo abrir el Excel {name}: {exc}").format(name=path.name, exc=exc)) from exc
+    for sheet in book.sheets():
+        rows: list[list[Any]] = []
+        for r in range(sheet.nrows):
+            row: list[Any] = []
+            for cell in sheet.row(r):
+                if cell.ctype in (xlrd.XL_CELL_EMPTY, xlrd.XL_CELL_BLANK):
+                    row.append(None)
+                elif cell.ctype == xlrd.XL_CELL_DATE:
+                    row.append(xlrd.xldate_as_datetime(cell.value, book.datemode))
+                else:
+                    row.append(cell.value)
+            rows.append(row)
+        if any(any(cell not in (None, "") for cell in row) for row in rows):
+            return rows
+    return []
+
+
+class _TableReader(HTMLParser):
+    """Las filas de la tabla mas grande de una pagina HTML (los 'Excel' que en realidad son HTML)."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.tables: list[list[list[str]]] = []
+        self._depth = 0
+        self._cell: list[str] | None = None
+
+    def handle_starttag(self, tag: str, attrs) -> None:
+        if tag == "table":
+            self._depth += 1
+            self.tables.append([])
+        elif tag == "tr" and self.tables:
+            self.tables[-1].append([])
+        elif tag in ("td", "th") and self.tables and self.tables[-1]:
+            self._cell = []
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in ("td", "th") and self._cell is not None:
+            self.tables[-1][-1].append(" ".join("".join(self._cell).split()))
+            self._cell = None
+        elif tag == "table":
+            self._depth -= 1
+
+    def handle_data(self, data: str) -> None:
+        if self._cell is not None:
+            self._cell.append(data)
+
+
+def _html_rows(raw: bytes, name: str) -> list[list[Any]]:
+    for enc in CSV_ENCODINGS:
+        try:
+            text = raw.decode(enc)
+            break
+        except UnicodeDecodeError:
+            continue
+    else:  # pragma: no cover
+        raise ParseError(tr("No se pudo decodificar {name}").format(name=name))
+    reader = _TableReader()
+    reader.feed(text)
+    tables = [t for t in reader.tables if t]
+    if not tables:
+        raise ParseError(tr("No se encontró ninguna tabla en {name}.").format(name=name))
+    return [list(row) for row in max(tables, key=len)]
 
 
 def normalize_header(h: Any) -> str:

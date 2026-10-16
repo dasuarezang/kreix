@@ -1,11 +1,8 @@
 """Conexion, sesiones e inicializacion de la base de datos SQLite."""
 from __future__ import annotations
 
-import os
-import sys
 from collections.abc import Iterator
 from contextlib import contextmanager
-from pathlib import Path
 
 from sqlalchemy import Engine, create_engine, event
 from sqlalchemy.orm import Session, sessionmaker

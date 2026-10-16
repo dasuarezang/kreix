@@ -184,7 +184,7 @@ ENTRIES: tuple[HelpEntry, ...] = (
         "La fecha del próximo cargo es una estimación. Los «Próximos pagos» de Inicio son estos mismos pagos, solo los que tocan en las próximas semanas.",
         "Netflix cobra 12,99 € cada mes: se muestra como 12,99 € al mes y 155,88 € al año.",
         "El supermercado no aparece aquí aunque gastes cada semana: varía de importe y se repite más de una vez al mes.",
-        "Si Kreix no detecta una suscripción, o detecta una que no lo es, pulsa ••• (o clic derecho) sobre uno de sus movimientos en Cuentas y elige «Marcar como pago recurrente» o «No es un pago recurrente». Un pago marcado por ti aparece aunque solo tenga un cargo: Kreix usa el ritmo que vea en sus cargos (mensual si solo hay uno).",
+        "Si Kreix no detecta una suscripción, o detecta una que no lo es, pulsa ••• (o clic derecho) sobre uno de sus movimientos en Cuentas y elige «Marcar como pago recurrente» o «No es un pago recurrente». Un pago marcado por ti aparece aunque solo tenga un cargo: Kreix usa el ritmo que vea en sus cargos (mensual si solo hay uno). Cualquier pago de Próximos pagos o de Pagos recurrentes se quita con clic derecho > «Quitar de pagos recurrentes», lo haya detectado Kreix o lo hayas marcado tú (por ejemplo, porque lo has dado de baja).",
         keywords=("suscripciones", "recibos", "domiciliaciones", "fijos", "mensuales"),
     ),
     HelpEntry(
@@ -554,7 +554,7 @@ ENTRIES: tuple[HelpEntry, ...] = (
     ),
     HelpEntry(
         S_USE, "Modo privacidad",
-        "El ojo de la barra lateral (o Ctrl+H) oculta todas las cantidades en euros: sustituye cada importe por puntos. Sirve para "
+        "El ojo de la barra lateral (o Ctrl+H) oculta todas las cantidades en euros: difumina cada importe: se ve que hay una cifra, nunca cuál. Sirve para "
         "mirar Kreix con alguien al lado o compartir la pantalla.",
         "Se ocultan los importes de las cifras, los gráficos (incluidos sus ejes), las tablas y los avisos. Los porcentajes se "
         "siguen viendo. Se recuerda al cerrar y abrir Kreix. Los cuadros donde tú escribes un importe (presupuestos, metas) "

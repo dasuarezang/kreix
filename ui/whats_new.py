@@ -6,9 +6,21 @@ from PySide6.QtWidgets import QFrame, QLabel, QPushButton, QScrollArea, QVBoxLay
 from core.i18n import tr, N_
 from ui.widgets.brand_dialog import BrandDialog
 
-VERSION = "0.4.0"
+VERSION = "0.5.0"
 
 RELEASES: dict[str, tuple[tuple[str, str], ...]] = {
+    "0.5.0": (
+        (N_("Sueldo y muchos más comercios"),
+         N_("Kreix reconoce muchos más comercios, recibos y trámites, separa tu sueldo de otros ingresos y deja menos movimientos sin categoría.")),
+        (N_("Por clasificar, con el cargo completo"),
+         N_("Cada propuesta muestra el concepto entero tal como sale en tu extracto, y se puede marcar como sueldo.")),
+        (N_("Más bancos"),
+         N_("Kreix reconoce solo los extractos de CaixaBank, Santander, Revolut y Trade Republic, y lee los .xls antiguos, como los de ING. Si no reconoce un archivo, te pregunta qué columna es cada cosa.")),
+        (N_("Privacidad con difuminado"),
+         N_("Con el ojo, las cantidades se ven difuminadas en vez de tapadas con puntos: se nota que hay una cifra, pero no cuál.")),
+        (N_("Quitar pagos recurrentes"),
+         N_("Cualquier pago de Próximos pagos o de Pagos recurrentes se quita con clic derecho, lo haya detectado Kreix o lo hayas marcado tú.")),
+    ),
     "0.4.0": (
         (N_("Modo privacidad"),
          N_("El ojo de la barra lateral (o Ctrl+H) oculta todas las cantidades en euros, para mirar Kreix con alguien al lado o "

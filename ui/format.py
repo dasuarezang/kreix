@@ -8,6 +8,7 @@ from datetime import date, datetime
 from decimal import Decimal
 
 from core import i18n
+from ui import blur
 from core.enums import OperationType, TxCategory
 from core.i18n import N_, tr
 
@@ -29,8 +30,7 @@ def _number(value: Decimal | float, decimals: int) -> str:
 _es_number = _number      # nombre antiguo
 
 
-HIDDEN = "••••"
-_private = False          # modo privacidad: ninguna cantidad en euros se muestra
+_private = False          # modo privacidad: las cantidades en euros se ven difuminadas (ver ui/blur.py)
 
 
 def set_private(on: bool) -> None:
@@ -45,11 +45,12 @@ def is_private() -> bool:
 
 def fmt_eur(value: Decimal | float | None, decimals: int = 2) -> str:
     """5781.2 -> '5.781,20 €' (castellano y catalan) o '€5,781.20' (ingles). Los negativos usan el signo menos.
-    En modo privacidad, '•••• €' (o '€••••'): nada que ensenar a quien mire la pantalla."""
+    En modo privacidad devuelve una cifra de relleno marcada para difuminarla (nunca la real)."""
     if value is None:
         return EMPTY
     if _private:
-        return f"{HIDDEN}{NBSP}€" if i18n.decimal_comma() else f"€{HIDDEN}"
+        filler = ("8.888,88" if decimals else "8.888") if i18n.decimal_comma() else ("8,888.88" if decimals else "8,888")
+        return blur.mark(f"{filler}{NBSP}€" if i18n.decimal_comma() else f"€{filler}")
     sign = MINUS if value < 0 and round(abs(value), decimals) != 0 else ""
     if i18n.decimal_comma():
         return f"{sign}{_number(value, decimals)}{NBSP}€"
@@ -109,6 +110,7 @@ def fmt_ago(moment: datetime, now: datetime) -> str:
 
 CATEGORY_LABELS = {
     TxCategory.INCOME: N_("Ingresos"),
+    TxCategory.SALARY: N_("Sueldo"),
     TxCategory.GROCERIES: N_("Supermercado"),
     TxCategory.DINING: N_("Restaurantes"),
     TxCategory.SUBSCRIPTIONS: N_("Suscripciones"),

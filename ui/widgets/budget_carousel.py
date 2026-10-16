@@ -5,6 +5,7 @@ raton esta encima y, si lo cambias a mano, espera un buen rato antes de volver a
 """
 from __future__ import annotations
 
+from ui.blur import draw_text
 from PySide6.QtCore import QEasingCurve, QRectF, QSize, Qt, QTimer, QVariantAnimation, Signal
 from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
@@ -122,11 +123,11 @@ class SlideView(QWidget):
 
         p.setFont(fonts.qfont(fonts.BODY_MEDIUM, 15))
         p.setPen(QColor(pal.text))
-        p.drawText(QRectF(0, 0, w * 0.6, 24), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+        draw_text(p, QRectF(0, 0, w * 0.6, 24), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
                    category_label(line.category))
         p.setFont(fonts.qfont(fonts.BODY_MEDIUM, 12))
         p.setPen(_tone_text(line.state, pal))
-        p.drawText(QRectF(w * 0.4, 0, w * 0.6, 24), Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
+        draw_text(p, QRectF(w * 0.4, 0, w * 0.6, 24), Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
                    tr(STATE_TEXT[line.state]))
 
         spent = fmt_eur(line.spent)
@@ -134,13 +135,13 @@ class SlideView(QWidget):
         p.setFont(big)
         p.setPen(QColor(pal.text))
         spent_w = p.fontMetrics().horizontalAdvance(spent)
-        p.drawText(QRectF(0, 30, spent_w + 6, 40), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, spent)
+        draw_text(p, QRectF(0, 30, spent_w + 6, 40), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, spent)
         p.setFont(fonts.qfont(fonts.BODY_MEDIUM, 14))
         p.setPen(QColor(pal.muted))
-        p.drawText(QRectF(spent_w + 10, 30, w - spent_w - 10, 40), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+        draw_text(p, QRectF(spent_w + 10, 30, w - spent_w - 10, 40), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
                    tr("de {budget}").format(budget=fmt_eur(line.budget)))
         p.setFont(fonts.qfont(fonts.BODY, 13))
-        p.drawText(QRectF(w * 0.6, 30, w * 0.4, 40), Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
+        draw_text(p, QRectF(w * 0.6, 30, w * 0.4, 40), Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
                    fmt_pct(line.ratio, 0))
 
         track = QRectF(0, 82, w, 5)
@@ -156,7 +157,7 @@ class SlideView(QWidget):
                 else tr("Te quedan {remaining} este mes").format(remaining=fmt_eur(line.remaining)))
         p.setFont(fonts.qfont(fonts.BODY_MEDIUM, 13))
         p.setPen(tone if line.state == "over" else QColor(pal.muted))
-        p.drawText(QRectF(0, 94, w, 22), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, note)
+        draw_text(p, QRectF(0, 94, w, 22), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, note)
         p.restore()
 
 

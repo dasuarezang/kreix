@@ -12,6 +12,7 @@ from core.recurring import Recurring, monthly_cost
 from ui import fonts, theme
 from ui.format import category_label, fmt_date, fmt_eur
 from ui.widgets.cards import BrandRule
+from ui.popups import Menu
 from ui.widgets.tables import RIGHT, Column, DataTable
 from core.i18n import tr, trn
 
@@ -153,11 +154,27 @@ class BudgetPanel(Panel):
 
 
 def _payment_name(r: Recurring) -> str:
-    """El concepto del pago; si lo marco el usuario, se dice."""
-    return tr("{name}  ·  marcado por ti").format(name=r.name) if r.manual else r.name
+    """El concepto del pago, venga de lo que Kreix ha detectado o de lo que el usuario ha marcado: da igual."""
+    return r.name
 
 
-class UpcomingPanel(Panel):
+class _RemovableMixin:
+    """Cualquier pago recurrente se puede quitar (por ejemplo porque se ha dado de baja), lo haya detectado Kreix o lo haya marcado el usuario."""
+
+    remove_requested = Signal(object)           # el Recurring que se quita
+
+    def _wire_remove(self, table: DataTable) -> None:
+        table.context_requested.connect(self._show_remove_menu)
+        table.setToolTip(tr("Clic derecho sobre un pago para quitarlo si ya no se cobra"))
+
+    def _show_remove_menu(self, item, pos) -> None:
+        menu = Menu(self)
+        action = menu.addAction(tr("Quitar de pagos recurrentes"))
+        action.triggered.connect(lambda _=False: self.remove_requested.emit(item))
+        menu.exec(pos)
+
+
+class UpcomingPanel(_RemovableMixin, Panel):
     """Inicio: los pagos recurrentes que se esperan en las proximas semanas (los mismos que ve Cuentas en Pagos recurrentes,
     pero solo los que tocan pronto: ordenados por fecha)."""
 
@@ -179,6 +196,7 @@ class UpcomingPanel(Panel):
         col.addWidget(self._message)
         col.addStretch(1)
         super().__init__(tr("Próximos pagos"), "", body)
+        self._wire_remove(self.table)
 
     def set_items(self, items: list[Recurring]) -> None:
         self.table.setVisible(bool(items))
@@ -194,7 +212,7 @@ class UpcomingPanel(Panel):
         self.table.refresh_theme()
 
 
-class RecurringPanel(Panel):
+class RecurringPanel(_RemovableMixin, Panel):
     def __init__(self) -> None:
         columns = [
             Column(tr("PAGO"), _payment_name, lambda r: r.name.lower(), stretch=True),
@@ -214,6 +232,7 @@ class RecurringPanel(Panel):
         col.addWidget(self._empty)
         col.addStretch(1)
         super().__init__(tr("Pagos recurrentes"), "", body)
+        self._wire_remove(self.table)
 
     def set_items(self, items: list[Recurring]) -> None:
         self.table.setVisible(bool(items))

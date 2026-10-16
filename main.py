@@ -19,7 +19,7 @@ from core import i18n
 from core.i18n import tr
 from data.paths import default_db_path, default_vault_path, legacy_db_path, read_language_hint, read_scale_hint
 from data.vault import CorruptVaultError, WrongPasswordError
-from ui import assets, fonts, theme
+from ui import assets, blur, fonts, theme
 from ui.lock_screen import LockDialog, LockMode
 from ui.widgets.nav_button import install_keyboard_rings
 from ui.system_language import system_language
@@ -229,7 +229,7 @@ def main(argv: list[str] | None = None) -> int:
 
     gc.set_threshold(20000, 20, 20)                         # menos pasadas del recolector al cargar miles de movimientos
     app = QApplication(sys.argv[:1])
-    app.setStyle("Fusion")          # mismo aspecto en todos los sistemas y sin el recuadro punteado de foco de Windows
+    blur.install(app)               # Fusion (mismo aspecto en todos los sistemas y sin el recuadro punteado de foco de Windows) y con las cantidades difuminadas en modo privacidad
     fonts.setup_application(app)
     app.setApplicationName("Kreix")
     app.setWindowIcon(assets.app_icon())

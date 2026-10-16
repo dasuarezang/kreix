@@ -20,11 +20,19 @@ class SuggestionRow(QWidget):
     def __init__(self, suggestion: RuleSuggestion) -> None:
         super().__init__()
         self.suggestion = suggestion
-        name = QLabel(suggestion.keyword)
+        name = QLabel(suggestion.example)               # el cargo entero, no solo la palabra de la regla
         name.setObjectName("H2")
-        detail = QLabel(trn("{n} movimiento · {total}", "{n} movimientos · {total}", suggestion.count)
-                        .format(n=suggestion.count, total=fmt_eur(suggestion.total)))
+        name.setWordWrap(True)
+        name.setToolTip(suggestion.example)
+        name.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        text = (trn("{n} movimiento · {total}", "{n} movimientos · {total}", suggestion.count)
+                .format(n=suggestion.count, total=fmt_eur(suggestion.total)))
+        text += "  ·  " + tr("La regla usará «{word}»").format(word=suggestion.keyword)
+        if suggestion.variants > 1:
+            text += "  ·  " + tr("{n} conceptos parecidos").format(n=suggestion.variants)
+        detail = QLabel(text)
         detail.setObjectName("Muted")
+        detail.setWordWrap(True)
         self.button = QPushButton(tr("Crear regla…"))
         self.button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.button.setAccessibleName(tr("Crear una regla para {word}").format(word=suggestion.keyword))
@@ -33,9 +41,12 @@ class SuggestionRow(QWidget):
         row = QHBoxLayout(self)
         row.setContentsMargins(0, 3, 0, 3)
         row.setSpacing(14)
-        row.addWidget(name)
-        row.addWidget(detail, 1)
-        row.addWidget(self.button)
+        texts = QVBoxLayout()
+        texts.setSpacing(1)
+        texts.addWidget(name)
+        texts.addWidget(detail)
+        row.addLayout(texts, 1)
+        row.addWidget(self.button, 0, Qt.AlignmentFlag.AlignVCenter)
 
     def _emit(self) -> None:
         self.create_requested.emit(self.suggestion.keyword)

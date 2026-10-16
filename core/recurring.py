@@ -23,7 +23,7 @@ MIN_OCCURRENCES = 3
 MONTHLY_GAP = (25, 35)          # dias entre cargos consecutivos
 AMOUNT_TOLERANCE = Decimal("0.20")
 ACTIVE_WITHIN_DAYS = 45         # un cargo que no se repite desde hace mas se da por cancelado
-_IGNORED = {TxCategory.TRANSFER, TxCategory.INVESTMENT_TRANSFER, TxCategory.P2P, TxCategory.INCOME}
+_IGNORED = {TxCategory.TRANSFER, TxCategory.INVESTMENT_TRANSFER, TxCategory.P2P, TxCategory.INCOME, TxCategory.SALARY}
 
 
 @dataclass(frozen=True, slots=True)
@@ -110,7 +110,7 @@ def detect_recurring_income(transactions: Iterable[TransactionDraft], today: dat
     reference = today or max(t.booking_date for t in txs)
     groups: dict[str, list[TransactionDraft]] = defaultdict(list)
     for t in txs:
-        if t.amount > 0 and t.category is TxCategory.INCOME and t.paired_with is None and (key := merchant_key(t.description)):
+        if t.amount > 0 and t.category in (TxCategory.INCOME, TxCategory.SALARY) and t.paired_with is None and (key := merchant_key(t.description)):
             groups[key].append(t)
     found = []
     for rows in groups.values():

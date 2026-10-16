@@ -8,6 +8,8 @@ el raton. Usan la paleta y las tipografias del tema activo.
 from __future__ import annotations
 
 import math
+from ui import blur
+from ui.blur import draw_text
 from bisect import bisect_left
 from types import SimpleNamespace
 from dataclasses import dataclass
@@ -43,11 +45,11 @@ def nice_ticks(low: float, high: float, count: int = 5) -> list[float]:
 
 
 def axis_label(value: float) -> str:
-    """Etiqueta corta de eje: 1500 -> '1,5k'. En modo privacidad, solo puntos: los ejes tambien dicen cuanto dinero hay."""
+    """Etiqueta corta de eje: 1500 -> '1,5k'. En modo privacidad, difuminada: los ejes tambien dicen cuanto dinero hay."""
     from ui.format import is_private
 
     if is_private():
-        return "••"
+        return blur.mark("8,8k")
     sign = "−" if value < 0 else ""
     v = abs(value)
     if v >= 1_000_000:
@@ -209,7 +211,7 @@ class BaseChart(QWidget):
             p.drawPath(path)
         p.setFont(fonts.qfont(fonts.BODY_MEDIUM, 13))
         p.setPen(color(pal, "muted"))
-        p.drawText(QRectF(10, cy + 24, self.width() - 20, 30), Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop,
+        draw_text(p, QRectF(10, cy + 24, self.width() - 20, 30), Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop,
                    tr(self.EMPTY_TEXT))
 
     # -- piezas comunes ----------------------------------------------------
@@ -224,7 +226,7 @@ class BaseChart(QWidget):
             p.setBrush(c)
             p.drawRoundedRect(QRectF(cursor, y - 4, 10, 10), 3, 3)
             p.setPen(color(pal, "muted"))
-            p.drawText(QPointF(cursor + 16, y + 5), name)
+            draw_text(p, QPointF(cursor + 16, y + 5), name)
             cursor += 16 + fm.horizontalAdvance(name) + 20
         return cursor - x
 
@@ -262,7 +264,7 @@ class BaseChart(QWidget):
         p.drawRoundedRect(QRectF(x + pad, y + 5, 22, 3), 1.5, 1.5)
         p.setFont(title_font)
         p.setPen(color(pal, "text"))
-        p.drawText(QPointF(x + pad, y + pad + 11), title)
+        draw_text(p, QPointF(x + pad, y + pad + 11), title)
         yy = y + pad + 26
         for dot, label, value in rows:
             if dot is not None:
@@ -271,10 +273,10 @@ class BaseChart(QWidget):
                 p.drawEllipse(QRectF(x + pad, yy - 8, 8, 8))
             p.setFont(label_font)
             p.setPen(color(pal, "muted"))
-            p.drawText(QPointF(x + pad + 16, yy), label)
+            draw_text(p, QPointF(x + pad + 16, yy), label)
             p.setFont(value_font)
             p.setPen(color(pal, "text"))
-            p.drawText(QPointF(x + width - pad - vfm.horizontalAdvance(value), yy), value)
+            draw_text(p, QPointF(x + width - pad - vfm.horizontalAdvance(value), yy), value)
             yy += row_h
 
 
@@ -327,7 +329,7 @@ class BarsChart(BaseChart):
             p.setPen(QPen(color(pal, "grid" if t else "border"), 1))
             p.drawLine(QPointF(plot.left(), y), QPointF(plot.right(), y))
             p.setPen(color(pal, "muted"))
-            p.drawText(QRectF(0, y - 9, left_pad - 8, 18), Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
+            draw_text(p, QRectF(0, y - 9, left_pad - 8, 18), Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
                        axis_label(t))
 
         slot = plot.width() / n
@@ -366,7 +368,7 @@ class BarsChart(BaseChart):
                 p.drawPath(rounded_top(rect, 5 if top_segment else 1.5))
             p.setFont(fonts.qfont(fonts.BODY_MEDIUM if i == hover else fonts.BODY, 12))
             p.setPen(color(pal, "text" if i == hover else "muted"))
-            p.drawText(QRectF(cx - slot / 2, plot.bottom() + 6, slot, 18), Qt.AlignmentFlag.AlignCenter, self._labels[i])
+            draw_text(p, QRectF(cx - slot / 2, plot.bottom() + 6, slot, 18), Qt.AlignmentFlag.AlignCenter, self._labels[i])
 
         if hover is not None:
             rows = [(color(pal, s.color_key), s.name, fmt_eur(s.values[hover])) for s in self._series]
@@ -520,7 +522,7 @@ class LineChart(BaseChart):
             p.setPen(QPen(color(pal, "grid" if t else "border"), 1))
             p.drawLine(QPointF(plot.left(), y), QPointF(plot.right(), y))
             p.setPen(color(pal, "muted"))
-            p.drawText(QRectF(0, y - 9, g.left_pad - 2, 18), Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
+            draw_text(p, QRectF(0, y - 9, g.left_pad - 2, 18), Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
                        axis_label(t))
 
         # etiquetas del eje X: unas pocas, repartidas
@@ -534,7 +536,7 @@ class LineChart(BaseChart):
             w = 70.0
             x = xs_px[i]
             left = x if align == Qt.AlignmentFlag.AlignLeft else x - w if align == Qt.AlignmentFlag.AlignRight else x - w / 2
-            p.drawText(QRectF(left, plot.bottom() + 8, w, 18), align, self._x_label(self._xs[i]))
+            draw_text(p, QRectF(left, plot.bottom() + 8, w, 18), align, self._x_label(self._xs[i]))
 
         # revelado de izquierda a derecha
         p.save()
@@ -808,14 +810,14 @@ class DonutChart(BaseChart):
         # cifra central
         p.setPen(color(pal, "muted"))
         p.setFont(fonts.qfont(fonts.LABEL, 10, 1.2))
-        p.drawText(QRectF(center.x() - radius, center.y() - 30, 2 * radius, 16), Qt.AlignmentFlag.AlignCenter, "TOTAL")
+        draw_text(p, QRectF(center.x() - radius, center.y() - 30, 2 * radius, 16), Qt.AlignmentFlag.AlignCenter, "TOTAL")
         value_text = fmt_eur(total, 0)
         size = 26
         while size > 12 and QFontMetricsF(fonts.qfont(fonts.DISPLAY, size)).horizontalAdvance(value_text) > 2 * radius - thickness - 6:
             size -= 1
         p.setFont(fonts.qfont(fonts.DISPLAY, size))
         p.setPen(color(pal, "text"))
-        p.drawText(QRectF(center.x() - radius, center.y() - 12, 2 * radius, 36), Qt.AlignmentFlag.AlignCenter, value_text)
+        draw_text(p, QRectF(center.x() - radius, center.y() - 12, 2 * radius, 36), Qt.AlignmentFlag.AlignCenter, value_text)
 
         # leyenda con importes
         x0 = area.right() + 28 if side_legend else 16
@@ -837,18 +839,18 @@ class DonutChart(BaseChart):
                 value_font = fonts.qfont(fonts.BODY_MEDIUM, 13)
                 avail = self.width() - x0 - 20 - 16 - QFontMetricsF(value_font).horizontalAdvance(
                     f"{fmt_eur(s.value)}  ·  {fmt_pct(s.weight)}") - 16
-            p.drawText(QPointF(x0 + 20, row_y + 14), QFontMetricsF(label_font).elidedText(s.label, Qt.TextElideMode.ElideRight, max(avail, 40)))
+            draw_text(p, QPointF(x0 + 20, row_y + 14), QFontMetricsF(label_font).elidedText(s.label, Qt.TextElideMode.ElideRight, max(avail, 40)))
             if side_legend:
                 p.setFont(fonts.qfont(fonts.LABEL, 14))
-                p.drawText(QPointF(x0 + 20, row_y + 34), fmt_eur(s.value))
+                draw_text(p, QPointF(x0 + 20, row_y + 34), fmt_eur(s.value))
                 p.setFont(fonts.qfont(fonts.BODY_MEDIUM, 12))
                 p.setPen(color(pal, "muted"))
                 amount_w = QFontMetricsF(fonts.qfont(fonts.LABEL, 14)).horizontalAdvance(fmt_eur(s.value))
-                p.drawText(QPointF(x0 + 20 + amount_w + 10, row_y + 34), fmt_pct(s.weight))
+                draw_text(p, QPointF(x0 + 20 + amount_w + 10, row_y + 34), fmt_pct(s.weight))
             else:
                 p.setFont(fonts.qfont(fonts.BODY_MEDIUM, 13))
                 text = f"{fmt_eur(s.value)}  ·  {fmt_pct(s.weight)}"
-                p.drawText(QPointF(self.width() - 16 - QFontMetricsF(p.font()).horizontalAdvance(text), row_y + 14), text)
+                draw_text(p, QPointF(self.width() - 16 - QFontMetricsF(p.font()).horizontalAdvance(text), row_y + 14), text)
 
         if hover is not None:
             s = self._slices[hover]
@@ -942,7 +944,7 @@ class CategoryBarsChart(BaseChart):
                 p.drawRoundedRect(QRectF(0, y + 2, self.width(), self.row_h - 4), 12, 12)
             p.setFont(label_font)
             p.setPen(color(pal, "text"))
-            p.drawText(QRectF(10, y, label_w - 10, self.row_h), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+            draw_text(p, QRectF(10, y, label_w - 10, self.row_h), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
                        lfm.elidedText(name, Qt.TextElideMode.ElideRight, label_w - 10))
             track = QRectF(bar_left, mid - 3, max(bar_right - bar_left, 10), 6)
             p.setPen(Qt.PenStyle.NoPen)
@@ -961,9 +963,9 @@ class CategoryBarsChart(BaseChart):
             p.drawRoundedRect(fill, 3, 3)
             p.setFont(amount_font)
             p.setPen(color(pal, "text"))
-            p.drawText(QRectF(bar_right + 8, y, amount_w + 4, self.row_h), Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
+            draw_text(p, QRectF(bar_right + 8, y, amount_w + 4, self.row_h), Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
                        fmt_eur(amount))
             p.setFont(fonts.qfont(fonts.BODY_MEDIUM, 12))
             p.setPen(color(pal, "muted"))
-            p.drawText(QRectF(self.width() - pct_w - 6, y, pct_w, self.row_h),
+            draw_text(p, QRectF(self.width() - pct_w - 6, y, pct_w, self.row_h),
                        Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter, fmt_pct(share, 0))

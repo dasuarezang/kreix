@@ -29,7 +29,8 @@ class RuleSuggestion:
     keyword: str                # la palabra para la regla (en mayusculas y sin acentos, como la compara Kreix)
     count: int                  # cuantos movimientos sin categoria la llevan
     total: Decimal              # lo que suman (en positivo)
-    example: str                # el concepto del movimiento mas reciente, para reconocerlo
+    example: str                # el concepto COMPLETO del movimiento mas reciente, tal como sale en el extracto
+    variants: int = 1           # cuantos conceptos distintos comparten la palabra
 
 
 def keyword_of(description: str) -> str:
@@ -47,7 +48,8 @@ def suggest_rules(transactions: list[TransactionDraft], limit: int = MAX_SUGGEST
         if t.category is TxCategory.UNCATEGORIZED and not t.is_manual and (word := keyword_of(t.description)):
             groups[word].append(t)
     found = [
-        RuleSuggestion(word, len(rows), sum((abs(t.amount) for t in rows), Decimal(0)), max(rows, key=lambda t: t.booking_date).description)
+        RuleSuggestion(word, len(rows), sum((abs(t.amount) for t in rows), Decimal(0)), max(rows, key=lambda t: t.booking_date).description,
+                       len({normalize(t.description) for t in rows}))
         for word, rows in groups.items() if len(rows) >= MIN_REPEATS
     ]
     found.sort(key=lambda s: (s.count, s.total), reverse=True)

@@ -8,8 +8,7 @@ from pathlib import Path
 from PySide6.QtCore import QPoint, Qt, QTimer, Signal
 from PySide6.QtGui import QCursor, QGuiApplication
 from PySide6.QtWidgets import (
-    QComboBox, QFileDialog, QFrame, QHBoxLayout, QInputDialog, QLabel, QLineEdit, QMenu, QMessageBox,
-    QPushButton, QScrollArea, QStackedLayout, QVBoxLayout, QWidget,
+    QFileDialog, QFrame, QHBoxLayout, QInputDialog, QLabel, QLineEdit, QMenu, QMessageBox, QPushButton, QScrollArea, QStackedLayout, QVBoxLayout, QWidget,
 )
 
 from core.entities import TransactionDraft
@@ -171,7 +170,7 @@ class AccountsView(QWidget):
         panels.setSpacing(28)
         panels.addWidget(self.budget_panel, 5)
         panels.addWidget(self.recurring_panel, 5)
-        self.recurring_panel.table.context_requested.connect(self._show_recurring_menu)
+        self.recurring_panel.remove_requested.connect(self.remove_recurring)
         root.addLayout(panels)
         root.addWidget(self._build_movements())
 
@@ -439,7 +438,7 @@ class AccountsView(QWidget):
             return None
         mark = self._service.recurring_marks().get(key)
         if mark is True:
-            return tr("Dejar de marcar «{name}» como pago recurrente").format(name=key), None
+            return tr("«{name}» no es un pago recurrente").format(name=key), False
         if mark is False:
             return tr("Volver a detectar «{name}» automáticamente").format(name=key), None
         detected = any(merchant_key(r.name) == key for r in self._data.recurring)
@@ -467,15 +466,9 @@ class AccountsView(QWidget):
         tell(self.feedback, message.format(name=name), snapshot)
         return True
 
-    def _show_recurring_menu(self, item, pos: QPoint) -> None:
-        menu = Menu(self)
-        if item.manual:
-            action = menu.addAction(tr("Dejar de marcar como pago recurrente"))
-            action.triggered.connect(lambda _=False: self.set_recurring(item.name, None))
-        else:
-            action = menu.addAction(tr("No es un pago recurrente"))
-            action.triggered.connect(lambda _=False: self.set_recurring(item.name, False))
-        self._run_menu(menu, pos)
+    def remove_recurring(self, item) -> bool:
+        """Quita un pago de los recurrentes (se ha dado de baja, o Kreix se equivoco), sea cual sea su origen."""
+        return self.set_recurring(item.name, False)
 
     def _run_menu(self, menu: QMenu, pos: QPoint) -> None:
         menu.exec(pos)

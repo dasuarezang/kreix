@@ -38,6 +38,7 @@ class DashboardView(QWidget):
     navigate_requested = Signal(str)      # "import" | "accounts": acceso directo desde los primeros pasos
     setup_dismissed = Signal()
     category_clicked = Signal(object)     # desde un presupuesto de Inicio: ver esos movimientos en Cuentas
+    recurring_removed = Signal(object)    # desde Proximos pagos: quitar un pago recurrente
     rule_requested = Signal(str)          # desde "Por clasificar": crear una regla con esta palabra
     goals_requested = Signal()            # abrir la gestion de metas de ahorro
 
@@ -123,6 +124,7 @@ class DashboardView(QWidget):
         self.budgets.category_clicked.connect(self.category_clicked)
         self.review = ReviewPanel()                         # movimientos por clasificar y las reglas que se proponen
         self.review.rule_requested.connect(self.rule_requested)
+        self.upcoming.remove_requested.connect(self.recurring_removed)
         self.review.review_requested.connect(lambda: self.category_clicked.emit(TxCategory.UNCATEGORIZED))
         self.review.hide()
         root.addWidget(self.review)

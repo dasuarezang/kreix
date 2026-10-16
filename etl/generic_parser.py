@@ -35,7 +35,25 @@ def _amount(row: dict, mapping: ColumnMapping) -> Decimal:
         if not seen:
             raise ParseError(tr("Importe no valido: {value}").format(value="''"))
         value = money
+    if mapping.fee and not _blank(row.get(mapping.fee)):
+        value -= abs(parse_amount(row[mapping.fee], comma))
     return -value if mapping.invert_sign else value
+
+
+def _description(row: dict, mapping: ColumnMapping) -> str:
+    for column in (mapping.description, *mapping.description_fallbacks):
+        if not _blank(row.get(column)):
+            return clean_text(row[column])
+    return clean_text(row.get(mapping.description))
+
+
+def _skipped(row: dict, mapping: ColumnMapping) -> str:
+    """'other' si la fila es de otro tipo (p. ej. bolsa), 'currency' si no esta en euros, '' si se lee."""
+    if mapping.only_column and str(row.get(mapping.only_column) or "").strip().upper() not in mapping.only_values:
+        return "other"
+    if mapping.currency and not _blank(row.get(mapping.currency)) and str(row[mapping.currency]).strip().upper() != "EUR":
+        return "currency"
+    return ""
 
 
 def parse(table: Table, source_file: str, mapping: ColumnMapping, categorizer: Categorizer | None = None) -> ParseResult:
@@ -49,10 +67,14 @@ def parse(table: Table, source_file: str, mapping: ColumnMapping, categorizer: C
     hashes = HashFactory(NAMESPACE)
     result = ParseResult(FileKind.BANK_STATEMENT, source_file, format_name=mapping.name)
     ignored = 0
+    left_out = {"other": 0, "currency": 0}
     for line, row in enumerate(table.rows, start=2):
+        if reason := _skipped(row, mapping):
+            left_out[reason] += 1
+            continue
         try:
             booking = parse_date(row[mapping.date], mapping.day_first)
-            description = clean_text(row[mapping.description])
+            description = _description(row, mapping)
             amount = _amount(row, mapping)
             balance = parse_amount(row[mapping.balance], mapping.decimal_comma) if mapping.balance and not _blank(row[mapping.balance]) else None
         except ParseError as exc:
@@ -71,6 +93,10 @@ def parse(table: Table, source_file: str, mapping: ColumnMapping, categorizer: C
             source_file=source_file,
         ))
     result.ignored_rows = ignored
+    if left_out["other"]:
+        result.warnings.append(tr("{n} filas que no son movimientos de la cuenta (por ejemplo, compras de bolsa) no se han importado.").format(n=left_out["other"]))
+    if left_out["currency"]:
+        result.warnings.append(tr("{n} movimientos en otra divisa distinta del euro no se han importado.").format(n=left_out["currency"]))
     if ignored > MAX_WARNINGS:
         result.warnings.append(tr("Y {n} filas más ignoradas por el mismo motivo.").format(n=ignored - MAX_WARNINGS))
     if not result.transactions:

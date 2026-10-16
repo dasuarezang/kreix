@@ -46,7 +46,7 @@ class Palette:
 DARK = Palette(
     name="dark", bg="#101418", side="#0C0F12", surface="#171C22", surface_alt="#1E242B", border="#242B34",
     text="#EFEBE3", muted="#8D97A4", accent="#F5BE1E", accent_hover="#FFCC3D", on_accent="#1A1500",
-    accent_soft="#2A2410", field_edge="#3C4756", accent_edge="#FFE08A", accent_text="#F5BE1E", red="#F2464A", red_soft="#34171A", green="#4DB48C", green_soft="#16261F",
+    accent_soft="#2A2410", field_edge="#3C4756", accent_edge="#FFE08A", accent_text="#F5BE1E", red="#F54F53", red_soft="#34171A", green="#4DB48C", green_soft="#16261F",
     green_text="#4DB48C",
     neutral="#6B7885", hover="#1F252C", grid="#1F262E", glow="#B7584F", glow_alpha=46,
     series=("#F5BE1E", "#F2464A", "#6B7885", "#C48F00", "#F59A9C", "#A5B0BC"),
@@ -54,8 +54,8 @@ DARK = Palette(
 LIGHT = Palette(
     name="light", bg="#F6F2EA", side="#EFE9DC", surface="#FFFFFF", surface_alt="#F3EEE3", border="#ECE6D9",
     text="#22262B", muted="#626872", accent="#EDB00C", accent_hover="#F7C023", on_accent="#2A2000",
-    accent_soft="#FCF1CB", field_edge="#B9B1A0", accent_edge="#B78A0B", accent_text="#80590A", red="#DC2F36", red_soft="#FCE0E0", green="#3E9C77", green_soft="#E0F1E9",
-    green_text="#2F7D5E",
+    accent_soft="#FCF1CB", field_edge="#B9B1A0", accent_edge="#B78A0B", accent_text="#80590A", red="#C42329", red_soft="#FCE0E0", green="#3E9C77", green_soft="#E0F1E9",
+    green_text="#2A7556",
     neutral="#9098A3", hover="#F6F1E6", grid="#F0EADE", glow="#F5BE1E", glow_alpha=34,
     series=("#EDB00C", "#DC2F36", "#9098A3", "#B07F00", "#E8703F", "#BCC2CB"),
 )
@@ -133,7 +133,7 @@ def stylesheet(p: Palette) -> str:
 
 def _stylesheet(p: Palette) -> str:
     body, medium = F.stack(F.BODY), F.stack(F.BODY_MEDIUM)
-    display, display_bold, label = F.stack(F.DISPLAY), F.stack(F.DISPLAY_BOLD), F.stack(F.LABEL)
+    display, label = F.stack(F.DISPLAY), F.stack(F.LABEL)
     # Jerarquia estricta: negrita y extranegrita SOLO para las cifras principales (Montserrat). Todo lo demas, DM Sans en
     # regular (etiquetas, en gris) o medium (titulos y controles).
     bold = medium

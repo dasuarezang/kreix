@@ -23,6 +23,7 @@ from ui.autolock import AutoLock
 from ui.session_watch import (
     PBT_APMSUSPEND, WM_POWERBROADCAST, WM_WTSSESSION_CHANGE, WTS_SESSION_LOCK, SessionWatcher, should_lock,
 )
+from ui import blur
 from ui.widgets import charts
 
 FIX = Path(__file__).parent / "fixtures"
@@ -31,11 +32,13 @@ FIX = Path(__file__).parent / "fixtures"
 # ---------------------------------------------------------------- modo privacidad
 def test_private_mode_masks_every_euro_amount_in_each_language():
     formatting.set_private(True)
-    assert formatting.fmt_eur(1234.5) == "•••• €" and formatting.fmt_eur(-3) == "•••• €"
+    shown = formatting.fmt_eur(1234.5)
+    assert blur.has_mark(shown) and blur.clean_text(shown) == "8.888,88 €" == blur.clean_text(formatting.fmt_eur(-3))   # relleno: nunca la cifra real
+    assert "1.234" not in shown and "1234" not in shown
     assert formatting.fmt_eur(None) == "—"                                          # lo que no hay no se tapa
     assert formatting.fmt_pct(0.1) != "••" and "%" in formatting.fmt_pct(0.1)       # los porcentajes siguen a la vista
     i18n.set_language("en")
-    assert formatting.fmt_eur(1234.5) == "€••••"
+    assert blur.clean_text(formatting.fmt_eur(1234.5)) == "€8,888.88"
     formatting.set_private(False)
     assert formatting.fmt_eur(1234.5) == "€1,234.50"
 
@@ -43,7 +46,7 @@ def test_private_mode_masks_every_euro_amount_in_each_language():
 def test_axis_labels_are_hidden_too_in_private_mode():
     assert charts.axis_label(1500) == "1,5k"
     formatting.set_private(True)
-    assert charts.axis_label(1500) == "••"
+    assert blur.has_mark(charts.axis_label(1500)) and "1" not in blur.clean_text(charts.axis_label(1500))
 
 
 def test_toggling_privacy_rewrites_the_visible_figures_and_is_remembered(window):
@@ -52,14 +55,14 @@ def test_toggling_privacy_rewrites_the_visible_figures_and_is_remembered(window)
     import_view = window.import_view
     import_view.import_paths([str(FIX / "imagin_sample.csv")])
     window.navigate(window.ACCOUNTS)
-    assert "•" not in window.accounts_view.card_balance._value.text()
+    assert not blur.has_mark(window.accounts_view.card_balance._value.text())
     window.privacy_button.click()
     assert formatting.is_private() and window.privacy_button.isChecked()
-    assert window.accounts_view.card_balance._value.text().startswith("••••")
+    assert blur.has_mark(window.accounts_view.card_balance._value.text())
     assert window._svc.settings.load().privacy_mode is True
     assert "Mostrar" in window.privacy_button.toolTip()
     window.privacy_button.click()
-    assert not formatting.is_private() and "•" not in window.accounts_view.card_balance._value.text()
+    assert not formatting.is_private() and not blur.has_mark(window.accounts_view.card_balance._value.text())
     assert window._svc.settings.load().privacy_mode is False and "Ocultar" in window.privacy_button.toolTip()
     del Decimal
 
@@ -350,3 +353,26 @@ def test_the_session_lock_setting_is_in_settings_and_saved(window):
     assert window._svc.settings.load().lock_on_session is False
     view.set_settings(replace(window._settings, lock_on_session=True))
     assert view.lock_session.switch.isChecked()
+
+
+def test_blurred_amounts_are_painted_without_showing_any_figure(qapp):
+    """Un pintor que reconoce las marcas dibuja una mancha, no texto: la imagen es distinta de la del relleno sin difuminar."""
+    from PySide6.QtCore import QRectF, Qt
+    from PySide6.QtGui import QColor, QFont, QImage, QPainter
+
+    def render(text, draw):
+        image = QImage(160, 30, QImage.Format.Format_ARGB32_Premultiplied)
+        image.fill(QColor("white"))
+        p = QPainter(image)
+        p.setFont(QFont("Arial", 14))
+        p.setPen(QColor("black"))
+        draw(p, QRectF(0, 0, 160, 30), int(Qt.AlignmentFlag.AlignCenter), text)
+        p.end()
+        return image
+
+    filler = "8.888,88 €"
+    sharp = render(filler, lambda p, r, f, t: p.drawText(r, f, t))
+    soft = render(blur.mark(filler), blur.draw_text)
+    assert soft != sharp and any(soft.pixelColor(x, 15).value() < 250 for x in range(160))      # hay mancha, y no es el texto nitido
+    again = render(blur.mark(filler), blur.draw_text)
+    assert again == soft                                                                        # y sale igual la segunda vez (cache)

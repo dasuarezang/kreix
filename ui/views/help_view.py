@@ -4,10 +4,7 @@ from __future__ import annotations
 from functools import partial
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import (
-    QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QScrollArea, QStackedLayout,
-    QVBoxLayout, QWidget,
-)
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QLineEdit, QPushButton, QScrollArea, QStackedLayout, QVBoxLayout, QWidget
 
 from ui import icons, theme
 from ui.widgets.cards import PageHeader

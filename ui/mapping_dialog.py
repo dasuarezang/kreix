@@ -4,7 +4,6 @@ El formato queda guardado con un nombre: la proxima vez que llegue un archivo co
 """
 from __future__ import annotations
 
-from decimal import Decimal
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -201,6 +200,7 @@ class MappingDialog(BrandDialog):
                 self.table.setItem(r, c, item)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         self.table.horizontalHeader().setStretchLastSection(True)
+        self.table.horizontalHeader().setDefaultAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)      # los titulos sobre sus datos
         self.table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.table.setFixedHeight(self.table.horizontalHeader().height() + 30 * len(rows) + 22)     # justo lo que ocupan las filas
 

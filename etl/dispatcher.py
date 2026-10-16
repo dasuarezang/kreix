@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from core.entities import FileKind, ParseResult
-from etl import generic_parser, imagin_parser, myinvestor_parser, price_history_parser
+from etl import banks, generic_parser, imagin_parser, myinvestor_parser, price_history_parser
 from etl.common import ParseError, build_table, load_rows, normalize_header
 from etl.mapping import ColumnMapping, find_header
 from core.i18n import tr
@@ -51,7 +51,12 @@ def parse_file(path: str | Path, portfolio_as_of: date | None = None, fund_isin:
             header_idx = find_header(rows, mapping)
             if header_idx is not None:
                 return generic_parser.parse(build_table(rows, header_idx), path.name, mapping)
+        known = banks.recognize(rows)                         # CaixaBank, Santander, Revolut, Trade Republic...
+        if known is not None:
+            return generic_parser.parse(build_table(rows, known[1]), path.name, known[0])
         raise
+    if kind is FileKind.PRICE_HISTORY and (known := banks.recognize(rows)) is not None:       # Trade Republic tambien trae fecha y precio
+        return generic_parser.parse(build_table(rows, known[1]), path.name, known[0])
     table = build_table(rows, header_idx)
     if kind is FileKind.IMAGIN_STATEMENT:
         return imagin_parser.parse(table, path.name)

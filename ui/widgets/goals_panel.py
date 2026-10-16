@@ -107,7 +107,7 @@ class GoalsPanel(Panel):
         if goals:
             done = sum(1 for g in goals if g.reached)
             self.subtitle.setText(trn("{n} meta", "{n} metas", len(goals)).format(n=len(goals))
-                                  + (f"  ·  " + trn("{n} alcanzada", "{n} alcanzadas", done).format(n=done) if done else ""))
+                                  + ("  ·  " + trn("{n} alcanzada", "{n} alcanzadas", done).format(n=done) if done else ""))
             self.bars.set_goals(goals, today)
         else:
             self.subtitle.setText(tr("Sin metas todavía"))

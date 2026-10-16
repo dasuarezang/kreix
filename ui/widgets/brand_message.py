@@ -8,9 +8,7 @@ resto del codigo (y las pruebas) siguen llamando a `QMessageBox.warning(...)`, `
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (
-    QDialog, QDoubleSpinBox, QHBoxLayout, QInputDialog, QLabel, QLineEdit, QMessageBox, QPushButton, QWidget,
-)
+from PySide6.QtWidgets import QDialog, QDoubleSpinBox, QHBoxLayout, QInputDialog, QLineEdit, QMessageBox, QPushButton, QWidget
 
 from core.i18n import N_, tr
 from ui.widgets.brand_dialog import BrandDialog

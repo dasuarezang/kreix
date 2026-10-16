@@ -24,10 +24,10 @@
 - **Previsión a fin de mes:** Inicio calcula cuánto dinero tendrás el último día del mes con tus pagos fijos que quedan, tus ingresos fijos que aún faltan (la nómina) y tu gasto de cada día. Es una estimación y la ayuda explica cómo se hace.
 - **Por clasificar:** Inicio cuenta los movimientos sin categoría y, si un comercio se repite, propone una regla para clasificarlos de un clic.
 - **Traspasos entre tus cuentas:** una salida y una entrada del mismo importe en dos cuentas tuyas se emparejan y no cuentan como gasto ni ingreso.
-- **Modo privacidad** (el ojo de la barra lateral, o `Ctrl+H`): oculta todas las cantidades en euros, también en gráficos y tablas.
+- **Modo privacidad** (el ojo de la barra lateral, o `Ctrl+H`): difumina todas las cantidades en euros, también en gráficos y tablas: se ve que hay una cifra, nunca cuál (la cifra real ni llega a pantalla).
 - **Tamaño del texto** ajustable (normal, grande o muy grande) en toda la aplicación.
 - **Nunca duplica movimientos.** Puedes reimportar el mismo extracto, o varios que se solapan, y solo se añade lo nuevo. Dos pagos idénticos el mismo día se distinguen por el saldo posterior.
-- **Categoriza los gastos** con reglas por palabras clave (supermercado, suscripciones, ocio, restaurantes, transporte, vivienda, salud, Bizum...) y **tú mandas**: cambia la categoría de un movimiento con clic derecho o crea tus propias reglas.
+- **Categoriza los gastos** con reglas por palabras clave (sueldo, supermercado, suscripciones, ocio, restaurantes, transporte, vivienda, salud, Bizum...), con un diccionario amplio de comercios y recibos habituales y **tú mandas**: cambia la categoría de un movimiento con clic derecho o crea tus propias reglas.
 - **Presupuestos por categoría:** fija un tope mensual y mira cuánto llevas gastado; Inicio avisa de los que estás a punto de superar o ya has superado.
 - **Pagos recurrentes:** detecta tus suscripciones y recibos mensuales, te dice cuánto suman al mes y al año y cuándo toca el siguiente.
 - **Comparación con el mes anterior** en ingresos y gastos.
@@ -136,10 +136,14 @@ Atajos: `Ctrl+H` oculta o muestra las cantidades, `Ctrl+1` a `Ctrl+7` cambian de
 | Imagin | Extracto de movimientos (CSV o Excel) | `Concepto; Fecha; Importe; Saldo` |
 | MyInvestor | Operaciones (CSV o Excel) | `Fecha Operación; ...; ISIN; Tipo Operación; Participaciones; ...` |
 | MyInvestor | Cartera (CSV o Excel) | `Producto; ISIN; Participaciones Totales; ...; Valor Liquidativo Actual` |
-| Otro banco | Extracto de movimientos (CSV o Excel) | las que asignes tú en el asistente: fecha, concepto, importe (o ingresos y gastos) y, si la hay, saldo |
+| CaixaBank | Extracto de movimientos (CSV o Excel) | `F. Operación; Ingreso; Gasto; Saldo; Concepto...` (ingresos y gastos en columnas distintas) |
+| Santander | Extracto de movimientos (CSV o Excel) | `Fecha Operación; Fecha Valor; Concepto; Importe; Saldo` |
+| Revolut | Extracto de la cuenta (CSV, en inglés o en español) | `Started Date; Completed Date; Description; Amount; Fee; Currency; Balance`: resta la comisión y solo lee los movimientos en euros |
+| Trade Republic | Transacciones (CSV) | `date; category; type; amount; transaction_id...`: lee la cuenta de efectivo y deja fuera las compras y ventas de bolsa |
+| Otro banco (o si el tuyo cambia sus columnas) | Extracto de movimientos (CSV o Excel) | las que asignes tú en el asistente: fecha, concepto, importe (o ingresos y gastos) y, si la hay, saldo |
 | Cualquiera | Histórico de precios de un fondo (CSV o Excel) | una columna `Fecha`/`Date` y otra de precio (`Valor liquidativo`, `Cierre`/`Close`, `Precio`/`Price`...), y opcionalmente `ISIN` |
 
-- Admite CSV con `;`, `,` o tabulador, en UTF-8 o Windows-1252, y Excel con títulos antes de la tabla.
+- Admite CSV con `;`, `,` o tabulador, en UTF-8 o Windows-1252, y Excel (`.xlsx` y el antiguo `.xls`, también el que algunos bancos como ING guardan como tabla web con extensión `.xls`) con títulos antes de la tabla. El formato se decide por el contenido del archivo, no por su extensión. Si Kreix no reconoce un archivo, abre solo el asistente para preguntarte qué columna es cada cosa.
 - **No importa la extensión:** archivos como `extractImagin` (sin extensión) o `.csv.txt` funcionan igual, porque el tipo se detecta por las cabeceras.
 - Los importes en formato español (`-2,99EUR`, `1.234,56 €`) se limpian automáticamente.
 - **Solo CSV y Excel:** Kreix no importa PDF. Descarga el extracto en uno de esos dos formatos desde tu banco.

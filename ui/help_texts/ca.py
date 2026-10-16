@@ -370,7 +370,7 @@ HELP: dict[str, dict] = {
     },
     "Modo privacidad": {
         "term": "Mode privacitat",
-        "plain": "L'ull de la barra lateral (o Ctrl+H) amaga totes les quantitats en euros: substitueix cada import per punts. Serveix per mirar Kreix amb algú al costat o compartir la pantalla.",
+        "plain": "L'ull de la barra lateral (o Ctrl+H) amaga totes les quantitats en euros: difumina cada import: es veu que hi ha una xifra, mai quina. Serveix per mirar Kreix amb algú al costat o compartir la pantalla.",
         "how": "S'amaguen els imports de les xifres, els gràfics (inclosos els seus eixos), les taules i els avisos. Els percentatges es continuen veient. Es recorda en tancar i obrir Kreix. Els quadres on escrius un import (pressupostos, metes) mostren el que escrius.",
         "keywords": ["privacitat", "amagar", "xifres", "ull", "diners", "pantalla", "compartir"],
     },

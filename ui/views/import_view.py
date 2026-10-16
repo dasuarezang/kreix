@@ -4,10 +4,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import date
 
-from PySide6.QtCore import QDate, Qt, Signal
-from PySide6.QtWidgets import (
-    QComboBox, QDateEdit, QFrame, QHBoxLayout, QLabel, QMessageBox, QPushButton, QScrollArea, QVBoxLayout, QWidget,
-)
+from PySide6.QtCore import QDate, Qt, QTimer, Signal
+from PySide6.QtWidgets import QDateEdit, QFrame, QHBoxLayout, QLabel, QMessageBox, QPushButton, QScrollArea, QVBoxLayout, QWidget
 
 from core.entities import FileKind
 from etl.common import ParseError
@@ -196,7 +194,7 @@ class ImportView(QWidget):
                             subtitle=tr("Los archivos se procesan en tu equipo. Reimportar un extracto no duplica movimientos."))
 
         self.dropzone = DropZone()
-        self.dropzone.files_dropped.connect(self.preview_paths)
+        self.dropzone.files_dropped.connect(self._on_files_chosen)
 
         self.as_of = QDateEdit(QDate.currentDate())
         self.as_of.setCalendarPopup(True)
@@ -405,6 +403,21 @@ class ImportView(QWidget):
     def portfolio_date(self) -> date:
         qd = self.as_of.date()
         return date(qd.year(), qd.month(), qd.day())
+
+    def _on_files_chosen(self, paths: list[str]) -> None:
+        """Lo que el usuario suelta o elige: se previsualiza y, si hay un archivo de un banco que Kreix no conoce, se le pregunta
+        ya mismo que columna es cada cosa (el boton «Asignar las columnas» sigue ahi por si cierra el asistente)."""
+        self.preview_paths(paths)
+        unknown = next((self._preview.itemAt(i).widget() for i in range(self._preview.count())
+                        if getattr(self._preview.itemAt(i).widget(), "map_button", None) is not None), None)
+        if unknown is not None:
+            self._ask_columns_soon(unknown)
+
+    def _ask_columns_soon(self, row: "PreviewRow") -> None:
+        timer = QTimer(self)                                  # hijo de la vista: no dispara sobre una ventana ya destruida
+        timer.setSingleShot(True)
+        timer.timeout.connect(row.map_button.click)
+        timer.start(0)
 
     def preview_paths(self, paths: list[str]) -> None:
         """Lo que se suelta o se elige: se lee y se ensena que pasaria; se guarda al pulsar Importar."""

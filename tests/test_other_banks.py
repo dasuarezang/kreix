@@ -178,7 +178,7 @@ def test_two_columns_spanish_statement_reads_signs_dates_and_balances(tmp_path, 
     assert parsed.ignored_rows == 1 and any("ignorada" in w for w in parsed.warnings)      # la fila "Total"
     from core.enums import TxCategory
 
-    assert parsed.transactions[0].category is TxCategory.GROCERIES and parsed.transactions[1].category is TxCategory.INCOME
+    assert parsed.transactions[0].category is TxCategory.GROCERIES and parsed.transactions[1].category is TxCategory.SALARY
 
 
 def test_one_amount_column_with_dot_decimals_and_month_first_dates(tmp_path, service):
@@ -409,3 +409,15 @@ def test_texts_of_the_assistant_exist_in_every_language(view, tmp_path):
         dialog = MappingDialog(view._service, str(write(tmp_path, f"{code}.csv", SPANISH)))
         assert dialog.windowTitle() != "Importar de otro banco" and "Se leen" not in dialog.result.text()
         dialog.deleteLater()
+
+
+def test_dropping_an_unknown_file_asks_for_its_columns_without_extra_clicks(view, tmp_path, monkeypatch):
+    from PySide6.QtTest import QTest
+    from ui.mapping_dialog import MappingDialog
+
+    asked = []
+    monkeypatch.setattr(MappingDialog, "exec", lambda self: asked.append(self.name.text()) or MappingDialog.DialogCode.Rejected)
+    path = write(tmp_path, "mi-banco.csv", SPANISH)
+    view.dropzone.files_dropped.emit([str(path)])
+    QTest.qWait(50)
+    assert asked == ["Mi banco"]                                  # el asistente se abrio solo, con el nombre propuesto
