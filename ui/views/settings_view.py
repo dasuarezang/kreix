@@ -145,7 +145,7 @@ class SettingsView(QWidget):
         )
         self.ambient = SettingRow(
             tr("Cielo animado y luz según la hora"),
-            tr("Anima el sol y la luna de Inicio y baja muy ligeramente el brillo por la tarde y por la noche. No cambia el tema."),
+            tr("Anima el sol, la luna y a Blitzen y Black en Inicio, y baja muy ligeramente el brillo por la tarde y por la noche. No cambia el tema."),
             settings.ambient,
         )
         self.ambient.switch.toggled.connect(lambda v: self._update(ambient=v))

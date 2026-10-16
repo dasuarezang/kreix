@@ -15,7 +15,7 @@ from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen, QRadialGradient
 from PySide6.QtWidgets import QWidget
 
 from ui import theme
-from ui.widgets import charts
+from ui.widgets import charts, dogs
 from core.i18n import tr
 
 DAWN, DUSK = 6.0, 21.0            # el sol sale a las 6 y se pone a las 21
@@ -120,7 +120,7 @@ class SkyWidget(QWidget):
 
     def _refresh_description(self) -> None:
         state = self.state
-        text = tr("Es de día: sol") if state.kind == "sun" else tr("Es de noche: luna")
+        text = tr("Es de día: sol, con Blitzen y Black") if state.kind == "sun" else tr("Es de noche: luna, con Blitzen y Black durmiendo")
         self.setAccessibleName(tr("Cielo"))
         self.setAccessibleDescription(text)
         self.setToolTip("")
@@ -196,6 +196,19 @@ class SkyWidget(QWidget):
                 self._paint_sun(p, pal, progress, t, presence)
             else:
                 self._paint_moon(p, pal, progress, t, presence)
+        p.setClipping(False)
+        if self._animated:                                     # Blitzen y Black: con el cielo animado (si se apaga, tampoco estan)
+            self._paint_dogs(p, pal, t)
+
+    GROUND = BASE + 1.2                # donde pisan los perros: justo sobre la linea del horizonte
+
+    def _paint_dogs(self, p: QPainter, pal, t: float) -> None:
+        """De dia, Blitzen sentado y Black tumbado junto al horizonte, mirando al sol; de noche, los dos hechos un ovillo."""
+        dark = pal.name == "dark"
+        if self.kind == "sun":
+            dogs.paint_day(p, dark, t, self.GROUND, blitzen_x=84.0, black_x=59.0)
+        else:
+            dogs.paint_night(p, dark, t, self.GROUND, center_x=72.0)
 
     def _paint_horizon(self, p: QPainter, pal) -> None:
         pen = QPen(_alpha(QColor(pal.muted), 0.35), 1.6)
