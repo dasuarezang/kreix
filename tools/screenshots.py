@@ -70,8 +70,41 @@ def main() -> None:
             window.resize(1280, 1900 if page == window.ACCOUNTS else 1180)    # Cuentas es la pagina mas larga
             window.navigate(page)
             shot(f"{name}-{suffix}")
+    window.apply_theme("dark")
+    other_bank_and_lock_screenshots(window, tmp, out)
     app.quit()
     print(f"Capturas en {out}")
+
+
+BANK_CSV = (
+    "Extracto de movimientos;;;;;\n"
+    "Fecha operación;Fecha valor;Concepto;Cargo;Abono;Saldo\n"
+    "03/04/2026;03/04/2026;COMPRA SUPERMERCADO CENTRO;23,40;;1.976,60\n"
+    "02/04/2026;02/04/2026;NOMINA EMPRESA DEMO SL;;1.500,00;2.000,00\n"
+    "01/04/2026;01/04/2026;RECIBO ELECTRICIDAD;45,10;;500,00\n"
+    "Total;;;68,50;1.500,00;\n"
+)
+
+
+def other_bank_and_lock_screenshots(window, tmp: Path, out: Path) -> None:
+    """El asistente de otro banco y la pantalla de bloqueo con el medidor de contrasena (datos inventados)."""
+    from ui.lock_screen import LockDialog, LockMode
+    from ui.mapping_dialog import MappingDialog
+
+    csv = tmp / "otro-banco.csv"
+    csv.write_text(BANK_CSV, encoding="utf-8")
+    dialog = MappingDialog(window._svc.importer, str(csv), window)
+    dialog.show()
+    QTest.qWait(600)
+    dialog.grab().save(str(out / "otro-banco-oscuro.png"))
+    dialog.close()
+    lock = LockDialog(LockMode.CREATE, lambda _password: None)
+    lock.password.setText("correcto caballo bateria grapa")
+    lock.confirm.setText("correcto caballo bateria grapa")
+    lock.show()
+    QTest.qWait(600)
+    lock.grab().save(str(out / "bloqueo-oscuro.png"))
+    lock.close()
 
 
 if __name__ == "__main__":

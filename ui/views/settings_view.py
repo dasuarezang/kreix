@@ -2,19 +2,23 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from pathlib import Path
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QUrl, Qt, Signal
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
-    QFrame, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QScrollArea, QVBoxLayout, QWidget,
+    QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QScrollArea, QVBoxLayout, QWidget,
 )
 
 from data.repositories import RuleError
 from services.category_service import CategoryService
-from services.settings_service import AppSettings
+from services.settings_service import BACKUP_KEEP, LOCK_MINUTES, AppSettings
 from ui.dialogs import RuleDialog
 from ui.feedback import Feedback, snapshot_of, tell
 from ui.format import category_label
+from ui.popups import Combo
 from core.greeting import MAX_NAME, clean_name
+from ui.widgets.backup_list import BackupList
 from ui.widgets.cards import PageHeader
 from ui.widgets.interests import InterestPicker
 from ui.widgets.language_picker import LanguagePicker
@@ -116,6 +120,9 @@ class SettingsView(QWidget):
     interests_changed = Signal(bool, bool)   # (cuentas, inversiones)
     language_changed = Signal(str)           # "es" | "ca" | "en"
     change_password_requested = Signal()
+    lock_requested = Signal()
+    backup_now_requested = Signal()
+    restore_backup_requested = Signal(str)     # ruta de la copia que se quiere restaurar
 
     def __init__(self, settings: AppSettings, db_path: str, categories: CategoryService | None = None, parent=None) -> None:
         super().__init__(parent)
@@ -211,11 +218,77 @@ class SettingsView(QWidget):
         self.password_button = QPushButton(tr("Cambiar contraseña maestra…"))
         self.password_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.password_button.clicked.connect(self.change_password_requested)
+        self.lock_now_button = QPushButton(tr("Bloquear ahora"))
+        self.lock_now_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.lock_now_button.setToolTip(tr("Atajo: Ctrl+L"))
+        self.lock_now_button.clicked.connect(self.lock_requested)
         password_box = QWidget()
         password_row = QHBoxLayout(password_box)
         password_row.setContentsMargins(0, 0, 0, 0)
+        password_row.setSpacing(10)
         password_row.addWidget(self.password_button)
+        password_row.addWidget(self.lock_now_button)
         password_row.addStretch(1)
+
+        self.lock_after = Combo()
+        self.lock_after.setAccessibleName(tr("Bloqueo automático"))
+        self.lock_after.setFixedWidth(240)
+        for minutes in LOCK_MINUTES:
+            self.lock_after.addItem(self.lock_minutes_label(minutes), minutes)
+        self._select_lock_minutes(settings.auto_lock_minutes)
+        self.lock_after.activated.connect(self._on_lock_after)
+        self.lock_minimize = SettingRow(
+            tr("Bloquear al minimizar"),
+            tr("Al minimizar la ventana, Kreix vuelve a pedir la contraseña maestra antes de mostrar tus datos."),
+            settings.lock_on_minimize,
+        )
+        self.lock_minimize.switch.toggled.connect(lambda v: self._update(lock_on_minimize=v))
+
+        self.backup_enabled = SettingRow(
+            tr("Copias de seguridad automáticas"),
+            tr("Kreix guarda una copia cifrada de tus datos al abrirlo, como mucho una por hora si hay cambios, y al cerrarlo. "
+               "Se abre con tu contraseña maestra."),
+            settings.backup_enabled,
+        )
+        self.backup_enabled.switch.toggled.connect(lambda v: self._update(backup_enabled=v))
+        self.backup_path = QLabel()
+        self.backup_path.setObjectName("Muted")
+        self.backup_path.setWordWrap(True)
+        self.backup_path.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.backup_status = QLabel()
+        self.backup_status.setObjectName("Small")
+        self.backup_status.setWordWrap(True)
+        self.backup_status.hide()
+        self.backup_choose = QPushButton(tr("Cambiar carpeta…"))
+        self.backup_open = QPushButton(tr("Abrir carpeta"))
+        self.backup_now = QPushButton(tr("Hacer una copia ahora"))
+        for button in (self.backup_choose, self.backup_open, self.backup_now):
+            button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.backup_choose.clicked.connect(self.choose_backup_folder)
+        self.backup_open.clicked.connect(self.open_backup_folder)
+        self.backup_now.clicked.connect(self.backup_now_requested)
+        self.backup_keep = Combo()
+        self.backup_keep.setAccessibleName(tr("Copias que se conservan"))
+        self.backup_keep.setFixedWidth(300)
+        for keep in BACKUP_KEEP:
+            self.backup_keep.addItem(tr("Conservar las últimas {n} copias").format(n=keep), keep)
+        self._select_backup_keep(settings.backup_keep)
+        self.backup_keep.activated.connect(self._on_backup_keep)
+        backup_buttons = QHBoxLayout()
+        backup_buttons.setSpacing(10)
+        for button in (self.backup_choose, self.backup_open, self.backup_now):
+            backup_buttons.addWidget(button)
+        backup_buttons.addStretch(1)
+        backup_box = QWidget()
+        backup_col = QVBoxLayout(backup_box)
+        backup_col.setContentsMargins(0, 0, 0, 0)
+        backup_col.setSpacing(10)
+        backup_col.addWidget(self.backup_path)
+        backup_col.addLayout(backup_buttons)
+        backup_col.addWidget(self.backup_keep)
+        backup_col.addWidget(self.backup_status)
+        self.backup_list = BackupList()
+        self.backup_list.restore_requested.connect(self.restore_backup_requested)
 
         self.whats_new_button = QPushButton(tr("Ver las novedades"))
         self.whats_new_button.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -230,7 +303,14 @@ class SettingsView(QWidget):
         self.security_card = app.add_field(           # solo se ofrece cuando hay almacen cifrado (set_security)
             tr("Seguridad"), tr("Tus datos están cifrados con tu contraseña maestra. Puedes cambiarla cuando quieras."),
             password_box)
-        self.security_card.hide()
+        self.lock_card = app.add_field(
+            tr("Bloqueo automático"),
+            tr("Si no tocas el equipo durante este tiempo, Kreix esconde tus datos y vuelve a pedir la contraseña."),
+            self.lock_after)
+        self.lock_minimize_card = app.add_setting(self.lock_minimize)
+        self._security_rows = (self.security_card, self.lock_card, self.lock_minimize_card)
+        for row in self._security_rows:
+            row.hide()
         app.add_field(tr("Tus datos"), tr("Todo se guarda solo en este equipo. Kreix no envía datos a ningún servidor."), data_box)
         app.add_field(tr("Acerca de"), tr("Kreix {VERSION}").format(VERSION=VERSION), whats_box)
 
@@ -243,6 +323,18 @@ class SettingsView(QWidget):
         col.addWidget(you)
         col.addWidget(GroupHeading(tr("Aspecto y cálculos")))
         col.addWidget(look)
+        self.backup_heading = GroupHeading(tr("Copias de seguridad"))
+        self.backup_group = GroupCard()
+        self.backup_group.add_setting(self.backup_enabled)
+        self.backup_group.add_field(tr("Dónde y cuántas"), tr("Elige la carpeta (por ejemplo, una unidad externa o una carpeta "
+                                    "sincronizada) y cuántas copias se guardan; las más viejas se borran solas."), backup_box)
+        self.backup_group.add_field(tr("Copias guardadas"), tr("Para recuperar una, pulsa Restaurar y escribe tu contraseña "
+                                    "maestra. Reemplaza los datos actuales, y puedes deshacerlo."), self.backup_list)
+        self._backup_widgets = (self.backup_heading, self.backup_group)
+        for widget in self._backup_widgets:
+            widget.hide()
+        col.addWidget(self.backup_heading)
+        col.addWidget(self.backup_group)
         col.addWidget(GroupHeading(tr("Datos y aplicación")))
         col.addWidget(app)
         col.addStretch(1)
@@ -264,9 +356,45 @@ class SettingsView(QWidget):
             (card.add_row if rows or isinstance(w, SettingRow) else card.add)(w)
         return card
 
-    def _update(self, **changes: bool) -> None:
+    def _update(self, **changes: bool | int) -> None:
         self._settings = replace(self._settings, **changes)
         self.settings_changed.emit(self._settings)
+
+    @staticmethod
+    def lock_minutes_label(minutes: int) -> str:
+        if minutes == 0:
+            return tr("Nunca")
+        return trn("{n} minuto", "{n} minutos", minutes).format(n=minutes)
+
+    def _select_lock_minutes(self, minutes: int) -> None:
+        self.lock_after.setCurrentIndex(max(0, LOCK_MINUTES.index(minutes) if minutes in LOCK_MINUTES else 0))
+
+    def _on_lock_after(self, index: int) -> None:
+        self._update(auto_lock_minutes=int(self.lock_after.itemData(index)))
+
+    def _select_backup_keep(self, keep: int) -> None:
+        self.backup_keep.setCurrentIndex(BACKUP_KEEP.index(keep) if keep in BACKUP_KEEP else BACKUP_KEEP.index(10))
+
+    def _on_backup_keep(self, index: int) -> None:
+        self._update(backup_keep=int(self.backup_keep.itemData(index)))
+
+    def choose_backup_folder(self) -> None:
+        start = self._settings.backup_folder or self.backup_path.text()
+        folder = QFileDialog.getExistingDirectory(self, tr("Carpeta de las copias de seguridad"), start)
+        if folder:
+            self._update(backup_folder=str(Path(folder)))
+
+    def open_backup_folder(self) -> None:
+        folder = Path(self.backup_path.text())
+        if folder.is_dir():
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder)))
+
+    def show_backups(self, folder: Path, files, status: str = "") -> None:
+        """Pone al dia la carpeta, la lista de copias y el aviso (error o nota) de la ultima copia."""
+        self.backup_path.setText(str(folder))
+        self.backup_list.set_files(files)
+        self.backup_status.setText(status)
+        self.backup_status.setVisible(bool(status))
 
     def _on_name_typed(self, text: str) -> None:
         self.name_save.setEnabled(clean_name(text) != self._settings.user_name)
@@ -296,8 +424,11 @@ class SettingsView(QWidget):
         self.name_save.setEnabled(False)
         self.interests.set_values(settings.interest_accounts, settings.interest_investments)
         self.language.set_language(settings.language)
+        self._select_lock_minutes(settings.auto_lock_minutes)
+        self._select_backup_keep(settings.backup_keep)
         for row, value in ((self.p2p, settings.include_p2p), (self.transfers, settings.transfers_in_as_income),
-                           (self.ambient, settings.ambient)):
+                           (self.ambient, settings.ambient), (self.lock_minimize, settings.lock_on_minimize),
+                           (self.backup_enabled, settings.backup_enabled)):
             row.switch.blockSignals(True)
             row.switch.setChecked(value)
             row.switch.blockSignals(False)
@@ -314,7 +445,8 @@ class SettingsView(QWidget):
 
     def set_security(self, available: bool) -> None:
         """Muestra la tarjeta de seguridad solo si los datos estan en un almacen cifrado."""
-        self.security_card.setVisible(available)
+        for row in self._security_rows + self._backup_widgets:
+            row.setVisible(available)
 
     def reload_rules(self) -> None:
         if self.rules is not None:

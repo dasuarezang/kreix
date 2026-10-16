@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import sqlite3
+from collections.abc import Callable
 from contextlib import closing
 from pathlib import Path
 
@@ -57,6 +58,7 @@ class SecureStore:
         self.engine = engine
         self._vault = vault
         self.dirty = False
+        self._saved: list[Callable[[], None]] = []
         tracker_for(engine).on_change(self._mark_dirty)          # solo cambios reales: leer una pagina no obliga a guardar
 
     def _mark_dirty(self) -> None:
@@ -93,14 +95,24 @@ class SecureStore:
         self.save()
         _erase(self.path, (".bak",))
 
+    def verify_password(self, password: str) -> bool:
+        """Comprueba la contrasena maestra sin tocar el disco (desbloqueo tras un bloqueo automatico)."""
+        return self._vault.check(password)
+
     def seal_export(self, plain: bytes) -> bytes:
         """Cifra el contenido de una exportacion con la contrasena maestra (se abre con ella en cualquier equipo)."""
         return self._vault.seal(plain)
 
     # ------------------------------------------------------------------ guardar
+    def on_saved(self, callback: Callable[[], None]) -> None:
+        """Avisa cada vez que se guardan cambios en disco (para las copias de seguridad)."""
+        self._saved.append(callback)
+
     def save(self) -> None:
         self._vault.write(self.path, serialize(self.engine))
         self.dirty = False
+        for callback in self._saved:
+            callback()
 
     def flush(self) -> bool:
         if not self.dirty:

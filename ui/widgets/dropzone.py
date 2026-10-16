@@ -35,7 +35,7 @@ class DropZone(QFrame):
         self._title = QLabel(tr("Arrastra aquí tus extractos"))
         self._title.setObjectName("H1")
         self._title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        hint = QLabel(tr("CSV o Excel de Imagin y MyInvestor, con o sin extensión; también el histórico de precios de un fondo. Y un archivo .kreix exportado desde otro Kreix."))
+        hint = QLabel(tr("CSV o Excel de Imagin, MyInvestor o cualquier otro banco, con o sin extensión; también el histórico de precios de un fondo. Y un archivo .kreix exportado desde otro Kreix."))
         hint.setObjectName("Muted")
         hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
         hint.setWordWrap(True)

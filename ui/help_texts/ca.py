@@ -337,9 +337,27 @@ HELP: dict[str, dict] = {
         "plain": "Tot es desa només al teu ordinador. Kreix no fa servir internet, no té comptes i no envia dades a cap servidor.",
         "keywords": ["dades", "seguretat"],
     },
+    "Bloqueo automático": {
+        "term": "Bloqueig automàtic",
+        "plain": "Si deixes d'usar l'equip uns minuts, o minimitzes la finestra, Kreix amaga les teves dades i torna a demanar la contrasenya mestra. També el pots bloquejar a mà amb Ctrl+L o des de Configuració.",
+        "how": "A Configuració, a Seguretat, tries el temps (o «Mai») i si vols que es bloquegi en minimitzar. Després de diverses contrasenyes incorrectes seguides, Kreix et fa esperar uns segons abans del següent intent, i l'espera creix. Un quadre que tinguessis obert es tanca en bloquejar; les teves dades ja estaven desades. En crear o canviar la contrasenya, un mesurador et diu com de difícil seria endevinar-la: barreja lletres, números i símbols, o usa una frase llarga.",
+        "keywords": ["bloqueig", "bloquejar", "inactivitat", "minimitzar", "contrasenya", "seguretat", "cadenat"],
+    },
+    "Copias de seguridad automáticas": {
+        "term": "Còpies de seguretat automàtiques",
+        "plain": "Kreix desa sol una còpia xifrada de les teves dades en una carpeta: en obrir, si encara no n'hi ha cap; després de fer canvis, com a molt una per hora; i en tancar. Es conserven les últimes 3, 5, 10 o 20, i les més velles s'esborren.",
+        "how": "Cada còpia és un arxiu .kreix amb la data al nom, xifrat amb la teva contrasenya mestra. A Configuració tries la carpeta (per exemple, un disc extern o una carpeta sincronitzada). Per recuperar-ne una, prem Restaura al costat i escriu la teva contrasenya mestra: substitueix les dades actuals i ho pots desfer. Si canvies la contrasenya, les còpies es tornen a xifrar amb la nova.",
+        "keywords": ["còpia", "còpies", "backup", "seguretat", "restaurar", "recuperar", "carpeta"],
+    },
+    "Importar de otro banco": {
+        "term": "Importar d'un altre banc",
+        "plain": "Si Kreix no reconeix un CSV o Excel perquè no és d'Imagin ni de MyInvestor, et deixa dir-li quina columna és cada cosa: la data, el concepte, l'import i, si n'hi ha, el saldo.",
+        "how": "Veus les primeres files de l'arxiu i Kreix proposa les columnes pels seus títols; tu les corregeixes. Si el banc separa ingressos i despeses en dues columnes, tries «Dues columnes». També indiques si els decimals porten coma o punt i l'ordre de la data. Abans de desar veus quants moviments es llegeixen i els primers, per comprovar dates i imports. El format es desa amb el nom que li posis i s'aplica només als arxius següents; a Importar el pots oblidar. Només CSV i Excel, mai PDF.",
+        "keywords": ["un altre banc", "columnes", "format", "importar", "csv", "excel", "assistent"],
+    },
     "Atajos de teclado": {
         "term": "Dreceres de teclat",
-        "plain": "Ctrl+1 Inici, Ctrl+2 Comptes, Ctrl+3 Inversions, Ctrl+4 Importar, Ctrl+5 Exportar, Ctrl+6 Configuració, Ctrl+7 Ajuda. Ctrl+T canvia entre mode clar i fosc, Ctrl+K ho cerca tot, Ctrl+F cerca als teus moviments i F5 recalcula la pàgina.",
+        "plain": "Ctrl+1 Inici, Ctrl+2 Comptes, Ctrl+3 Inversions, Ctrl+4 Importar, Ctrl+5 Exportar, Ctrl+6 Configuració, Ctrl+7 Ajuda. Ctrl+T canvia entre mode clar i fosc, Ctrl+K ho cerca tot, Ctrl+F cerca als teus moviments, Ctrl+L bloqueja Kreix i F5 recalcula la pàgina.",
         "keywords": ["teclat", "ctrl"],
     },
 }

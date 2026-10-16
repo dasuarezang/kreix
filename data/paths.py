@@ -23,6 +23,11 @@ def default_vault_path() -> Path:
     return default_db_path().with_suffix(VAULT_EXTENSION)
 
 
+def default_backup_folder() -> Path:
+    """Donde van las copias de seguridad automaticas si el usuario no elige otra carpeta."""
+    return default_db_path().parent / "Copias de seguridad"
+
+
 def legacy_db_path() -> Path:
     """La base sin cifrar de versiones anteriores (se migra la primera vez)."""
     return default_db_path()

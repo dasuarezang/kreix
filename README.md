@@ -20,6 +20,7 @@
 - **Pensado para no perderse:** una guía de tres pasos la primera vez, datos de ejemplo para explorar sin importar nada, una lista de primeros pasos en Inicio, una frase bajo cada gráfico que dice lo que cuenta y errores que explican qué hacer.
 - **Todo se confirma y se puede deshacer:** cada cambio importante avisa con un mensaje breve y un botón **Deshacer** (importar, categorías, reglas, presupuestos, borrados...).
 - **Búsqueda en todo (`Ctrl+K`):** páginas, acciones, movimientos y explicaciones de la ayuda.
+- **Importa de cualquier banco.** Si Kreix no reconoce un CSV o Excel, te enseña sus primeras filas y te deja decir qué columna es la fecha, el concepto, el importe (o los ingresos y los gastos por separado) y el saldo. Recuerda el formato: la próxima vez ese banco se lee solo.
 - **Nunca duplica movimientos.** Puedes reimportar el mismo extracto, o varios que se solapan, y solo se añade lo nuevo. Dos pagos idénticos el mismo día se distinguen por el saldo posterior.
 - **Categoriza los gastos** con reglas por palabras clave (supermercado, suscripciones, ocio, restaurantes, transporte, vivienda, salud, Bizum...) y **tú mandas**: cambia la categoría de un movimiento con clic derecho o crea tus propias reglas.
 - **Presupuestos por categoría:** fija un tope mensual y mira cuánto llevas gastado; Inicio avisa de los que estás a punto de superar o ya has superado.
@@ -30,7 +31,7 @@
 - **Varias cuentas bancarias:** añade, renombra o elimina cuentas, y mira una sola, una combinación de varias (casillas) o todas a la vez.
 - **Metas de ahorro:** ponte objetivos (por ejemplo «1.000 € para vacaciones»), apunta lo que vas guardando y ve el avance en Inicio, con lo que faltaría apartar cada mes si le pones fecha.
 - **Avisa de lo que no cuadra** en vez de importar en silencio: saldos con huecos, cartera que no coincide con las operaciones, importes incoherentes.
-- **Datos cifrados con contraseña maestra:** al abrir Kreix se pide una contraseña y tus datos solo se descifran en memoria; en disco hay únicamente un archivo `.krx` cifrado (ver *Seguridad*).
+- **Datos cifrados con contraseña maestra:** al abrir Kreix se pide una contraseña y tus datos solo se descifran en memoria; en disco hay únicamente un archivo `.krx` cifrado (ver *Seguridad*). Se bloquea solo tras unos minutos sin uso o al minimizar, y hace copias de seguridad cifradas y con fecha.
 - **Evolución de cada fondo:** en Inversiones, una gráfica con el valor de cada fondo al cierre de cada mes, o de uno solo frente a lo aportado, calculada con tus propios extractos (nada sale del equipo).
 - **Modo claro y oscuro** intercambiables en caliente (`Ctrl+T`), con la paleta amarilla y roja de la marca.
 - **Fluido con muchos datos:** los movimientos se ordenan, filtran y cargan en una fracción de segundo incluso con decenas de miles de filas, solo se recalcula la página que estás viendo y la ventana recuerda su tamaño y la última página.
@@ -47,14 +48,19 @@ Arriba a la izquierda están las tres vistas de tus datos; abajo, en forma de p�
 | **Inversiones** | Todo lo de tu cartera: valor, aportado, plusvalía, rentabilidad (TWR y TIR), distribución por fondo, aportado frente a valor, evolución de cada fondo, posiciones actuales y operaciones. |
 | **Datos > Importar** | Arrastra extractos y elige a qué cuenta pertenecen. También restaura un archivo `.kreix`. |
 | **Datos > Exportar** | Guarda todos tus datos en un único archivo `.kreix`, cifrado con tu contraseña maestra si quieres, para hacer una copia o llevarlos a otro ordenador. |
-| **Ajustes** | Organizados en tarjetas por tema: tu nombre, idioma y lo que te interesa; ambiente y cálculo del ahorro; reglas de categorías; seguridad (cambiar la contraseña maestra); tus datos (ubicación, borrar todo) y novedades. |
+| **Ajustes** | Organizados en tarjetas por tema: tu nombre, idioma y lo que te interesa; ambiente y cálculo del ahorro; reglas de categorías; seguridad (cambiar la contraseña, bloqueo automático y bloquear ahora); copias de seguridad (carpeta, cuántas conservar, restaurar); tus datos (ubicación, borrar todo) y novedades. |
 | **Ayuda** | Qué significa cada cifra y cada gráfico, explicado sin tecnicismos y con ejemplos. |
 
-Atajos: `Ctrl+1` a `Ctrl+7` cambian de página en el orden de la tabla (Importar y Exportar, que viven bajo *Datos*, son `Ctrl+4` y `Ctrl+5`), `Ctrl+K` busca en todo, `Ctrl+T` alterna el modo claro y oscuro, `Ctrl+F` va al buscador de movimientos y `F5` recalcula la página.
+Atajos: `Ctrl+1` a `Ctrl+7` cambian de página en el orden de la tabla (Importar y Exportar, que viven bajo *Datos*, son `Ctrl+4` y `Ctrl+5`), `Ctrl+K` busca en todo, `Ctrl+T` alterna el modo claro y oscuro, `Ctrl+F` va al buscador de movimientos, `Ctrl+L` bloquea Kreix y `F5` recalcula la página.
 
 <p align="center">
   <img src="docs/screenshots/bienvenida-oscuro.png" alt="Pantalla de bienvenida" width="49%">
   <img src="docs/screenshots/importar-oscuro.png" alt="Vista previa de la importación" width="49%">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/otro-banco-oscuro.png" alt="Asistente para importar de otro banco" width="49%">
+  <img src="docs/screenshots/bloqueo-oscuro.png" alt="Pantalla de bloqueo con el medidor de contraseña" width="49%">
 </p>
 
 **Lo que te interesa.** La primera vez, en el mismo cuadro donde Kreix te pregunta el nombre, eliges con dos interruptores si quieres gestionar **tus cuentas bancarias, tus inversiones o ambas cosas** (siempre queda al menos una). Inicio se adapta: sin inversiones no muestra el rendimiento ni el reparto de activos; sin cuentas no muestra la tasa de ahorro, el flujo de caja, los pagos recurrentes ni los presupuestos. Puedes cambiarlo en **Ajustes > Lo que te interesa**, y si entras en Cuentas o Inversiones y esa pestaña está desactivada, te ofrece un botón para activarla sin tocar la otra. Viaja con tus datos en el archivo `.kreix`.
@@ -125,6 +131,7 @@ Atajos: `Ctrl+1` a `Ctrl+7` cambian de página en el orden de la tabla (Importar
 | Imagin | Extracto de movimientos (CSV o Excel) | `Concepto; Fecha; Importe; Saldo` |
 | MyInvestor | Operaciones (CSV o Excel) | `Fecha Operación; ...; ISIN; Tipo Operación; Participaciones; ...` |
 | MyInvestor | Cartera (CSV o Excel) | `Producto; ISIN; Participaciones Totales; ...; Valor Liquidativo Actual` |
+| Otro banco | Extracto de movimientos (CSV o Excel) | las que asignes tú en el asistente: fecha, concepto, importe (o ingresos y gastos) y, si la hay, saldo |
 | Cualquiera | Histórico de precios de un fondo (CSV o Excel) | una columna `Fecha`/`Date` y otra de precio (`Valor liquidativo`, `Cierre`/`Close`, `Precio`/`Price`...), y opcionalmente `ISIN` |
 
 - Admite CSV con `;`, `,` o tabulador, en UTF-8 o Windows-1252, y Excel con títulos antes de la tabla.
@@ -133,11 +140,22 @@ Atajos: `Ctrl+1` a `Ctrl+7` cambian de página en el orden de la tabla (Importar
 - **Solo CSV y Excel:** Kreix no importa PDF. Descarga el extracto en uno de esos dos formatos desde tu banco.
 - El extracto de cartera de MyInvestor no incluye fecha, así que Kreix te pide a qué día corresponde.
 
+**Importar de otro banco.** Al soltar un archivo que Kreix no reconoce aparece el botón *Asignar las columnas*. El asistente muestra las primeras filas, propone las columnas por sus títulos (o, si no dicen nada, por lo que contienen) y tú las corriges:
+
+- La fila de los títulos (se salta las líneas de presentación que traen algunos Excel).
+- El importe: una columna con signo, o dos de ingresos y gastos; y, si hace falta, que los gastos vienen como números positivos.
+- Los decimales (`1.234,56` o `1,234.56`) y el orden de la fecha (día/mes/año o mes/día/año); entiende años de dos cifras y fechas con `/`, `-` o `.`.
+- El saldo es opcional; si lo das, Kreix comprueba que encadena.
+
+Antes de guardar ves cuántos movimientos se leen y los primeros, para comprobar fechas, importes y signos. El formato queda guardado con el nombre que le pongas (viaja con los datos al exportar) y se aplica solo a los archivos siguientes; en *Importar > Bancos que ya conozco* se puede olvidar. Un extracto de otro banco usa el mismo anti-duplicados que los demás y va a la cuenta de destino que elijas (si aún no tienes ninguna, se crea con el nombre del formato).
+
 ## Instalación y ejecución
 
 Requiere Python 3.11 o superior (desarrollado y probado con 3.14). Es ligero: solo `PySide6-Essentials`, `SQLAlchemy`, `openpyxl` y `cryptography`, y arranca en alrededor de un segundo. (Kreix no usa pandas: los datos se procesan con código propio sobre SQLite.)
 
 **En Windows, lo más fácil:** haz doble clic en `Kreix.bat`. La primera vez crea el entorno e instala lo necesario; después abre la aplicación directamente.
+
+**Como programa de Windows (sin Python):** `powershell -ExecutionPolicy Bypass -File packaging\build.ps1` empaqueta Kreix con PyInstaller en `dist\Kreix\Kreix.exe`, comprueba que el programa empaquetado arranca y recorre todas sus páginas en los tres idiomas y, si encuentra [Inno Setup 6](https://jrsoftware.org/isdl.php), crea el instalador `dist\Kreix-Setup-<versión>.exe` (si no, deja un `.zip` portátil). El instalador no pide permisos de administrador, instala en tu carpeta de usuario, crea el acceso directo en el menú Inicio y, si quieres, en el escritorio, y se ofrece en castellano, català y English. Al desinstalar no se borran tus datos (`%APPDATA%\Kreix`).
 
 **A mano:**
 
@@ -170,6 +188,9 @@ Tus datos nunca se guardan en claro. La primera vez que abres Kreix creas una **
 - **Si vienes de una versión anterior:** la primera vez Kreix te pide crear la contraseña, cifra tu base `kreix.db`, comprueba que se abre y entonces la sobrescribe y borra.
 - **Cambiar la contraseña:** *Ajustes > Seguridad* la cambia comprobando la actual; los datos se vuelven a cifrar con una clave y una sal nuevas y se borra la copia `.bak` antigua.
 - **Exportar cifrado:** en *Exportar*, la casilla *Cifrar el archivo con mi contraseña maestra* (activa por defecto) guarda el `.kreix` cifrado con la misma clave; al importarlo, en este u otro ordenador, Kreix pide la contraseña con la que se exportó.
+- **Medidor de contraseña:** al crearla o cambiarla, cuatro franjas (roja, amarilla, verde) y una frase dicen lo difícil que sería adivinarla y cómo mejorarla. Es un aviso, no una regla: el único mínimo son 8 caracteres.
+- **Bloqueo automático:** tras unos minutos sin tocar el equipo (1, 2, 5, 10, 15 o 30; o nunca) y, si quieres, al minimizar la ventana, Kreix esconde todo y vuelve a pedir la contraseña. `Ctrl+L` o *Ajustes > Seguridad > Bloquear ahora* lo bloquea al momento. La inactividad es la de todo el sistema (teclado y ratón). Desbloquear solo compara la contraseña con la del almacén, sin releer el disco, y los cuadros que estuvieran abiertos se cierran. A partir del tercer fallo seguido hay que esperar 5, 10, 20 y, como máximo, 30 segundos antes de probar de nuevo.
+- **Copias de seguridad automáticas:** una copia cifrada (`Kreix-copia-AAAA-MM-DD_HH-MM.kreix`) al abrir si aún no hay ninguna, después de guardar cambios (como máximo una por hora y nunca si no hay nada nuevo) y al cerrar. Se guardan en la carpeta que elijas en *Ajustes > Copias de seguridad* (por defecto, junto a los datos) y se conservan las últimas 3, 5, 10 o 20. Se restauran desde la misma pantalla escribiendo la contraseña maestra. Al cambiar la contraseña, las copias se vuelven a cifrar con la nueva, para que ninguna siga abriéndose con la vieja. Si la carpeta elegida no existe (por ejemplo, tras restaurar datos en otro equipo), usa la de por defecto y te avisa.
 - **Si olvidas la contraseña:** no hay forma de recuperar los datos. En la pantalla de bloqueo, **He olvidado la contraseña** borra el archivo cifrado (tras pedir confirmación) para empezar de cero con una contraseña nueva e importar de nuevo tus extractos.
 - **Lo que no se cifra:** un `.kreix` exportado sin marcar la casilla de cifrado, y el archivo que importas mientras se valida. Trátalos como datos sensibles.
 
@@ -199,13 +220,14 @@ Clean Architecture: las dependencias apuntan hacia el dominio, y `core` no sabe 
 main.py                 ensambla las capas y arranca la interfaz
 ui/                     PySide6: ventana, pantalla de bloqueo, vistas, gráficos, tema claro/oscuro
 services/               casos de uso: importar, resumen, cuentas, inversión, categorías y presupuestos,
-                        ajustes, exportar movimientos, exportar/restaurar
-etl/                    lectores de CSV/Excel y parsers (Imagin, MyInvestor), cuadre
+                        ajustes, exportar movimientos, exportar/restaurar, copias de seguridad automáticas
+etl/                    lectores de CSV/Excel y parsers (Imagin, MyInvestor, formatos de otros bancos), cuadre
 data/                   modelos SQLAlchemy, repositorios idempotentes, migraciones y almacén cifrado
                         (vault.py: PBKDF2 + Fernet; secure_store.py: base en memoria respaldada por el .krx;
                         tracker.py: detector de cambios reales y caché de resultados)
 core/                   lógica pura: métricas (generales, por cuenta y de inversión),
                         periodos, categorizador, pagos recurrentes, presupuestos, entidades, enumeraciones
+packaging/              PyInstaller (kreix.spec), instalador de Inno Setup (installer.iss) y build.ps1
 logo-mejorado/          logotipos e iconos de la marca (SVG como fuente; `tools/build_logos.py` regenera PNG e .ico)
 assets/fonts/           tipografías incluidas (Montserrat y DM Sans, licencia OFL)
 tools/                  capturas, benchmark de rendimiento, generador de fuentes y atajo para los datos de demostración
@@ -245,6 +267,8 @@ Decisiones de diseño relevantes:
 .venv\Scripts\python tools\screenshots.py  # regenera las capturas del README
 ```
 
+El programa empaquetado se comprueba con `Kreix.exe --selftest informe.txt` (sin ventana: recorre las páginas en los tres idiomas y escribe `OK` o el error).
+
 Para medir el rendimiento con un volumen grande de datos inventados (nunca toca tus datos):
 
 ```powershell
@@ -258,7 +282,8 @@ Los tests de interfaz usan Qt sin pantalla (`QT_QPA_PLATFORM=offscreen`) y simul
 ## Hoja de ruta
 
 - Migraciones de base de datos con Alembic.
-- Empaquetado como ejecutable (`.exe` / `.app`).
+- Empaquetado para macOS (`.app`); el de Windows ya está.
+- Versión móvil con sincronización cifrada entre dispositivos.
 - Más idiomas (el catálogo de traducciones está en `core/locales/` y la ayuda en `ui/help_texts/`).
 
 ## Privacidad

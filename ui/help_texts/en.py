@@ -338,9 +338,27 @@ HELP: dict[str, dict] = {
         "plain": "Everything is stored only on your computer. Kreix doesn't use the internet, has no accounts and doesn't send data to any server.",
         "keywords": ["data", "security"],
     },
+    "Bloqueo automático": {
+        "term": "Automatic lock",
+        "plain": "If you stop using the computer for a few minutes, or minimize the window, Kreix hides your data and asks for the master password again. You can also lock it by hand with Ctrl+L or from Settings.",
+        "how": "In Settings, under Security, you choose the time (or «Never») and whether it locks when minimized. After several wrong passwords in a row, Kreix makes you wait a few seconds before the next attempt, and the wait grows. A dialog you had open is closed when locking; your data was already saved. When you create or change the password, a meter tells you how hard it would be to guess: mix letters, numbers and symbols, or use a long phrase.",
+        "keywords": ["lock", "locking", "inactivity", "minimize", "password", "security", "padlock"],
+    },
+    "Copias de seguridad automáticas": {
+        "term": "Automatic backups",
+        "plain": "Kreix saves an encrypted copy of your data in a folder on its own: when it opens, if there is none yet; after changes, at most once an hour; and when it closes. The last 3, 5, 10 or 20 are kept, and the oldest are deleted.",
+        "how": "Each backup is a .kreix file with the date in its name, encrypted with your master password. In Settings you choose the folder (for example an external drive or a synced folder). To recover one, press Restore next to it and type your master password: it replaces the current data and you can undo it. If you change the password, the backups are encrypted again with the new one.",
+        "keywords": ["backup", "backups", "copy", "security", "restore", "recover", "folder"],
+    },
+    "Importar de otro banco": {
+        "term": "Import from another bank",
+        "plain": "If Kreix does not recognise a CSV or Excel file because it is not from Imagin or MyInvestor, it lets you tell it which column is which: the date, the description, the amount and, if there is one, the balance.",
+        "how": "You see the first rows of the file and Kreix suggests the columns from their titles; you correct them. If the bank splits income and expenses into two columns, choose «Two columns». You also say whether decimals use a comma or a point and the order of the date. Before saving you see how many transactions are read and the first few, to check dates and amounts. The format is saved under the name you give it and only applies to later files; in Import you can forget it. CSV and Excel only, never PDF.",
+        "keywords": ["another bank", "columns", "format", "import", "csv", "excel", "assistant"],
+    },
     "Atajos de teclado": {
         "term": "Keyboard shortcuts",
-        "plain": "Ctrl+1 Home, Ctrl+2 Accounts, Ctrl+3 Investments, Ctrl+4 Import, Ctrl+5 Export, Ctrl+6 Settings, Ctrl+7 Help. Ctrl+T switches between light and dark mode, Ctrl+K searches everything, Ctrl+F searches your transactions and F5 recalculates the page.",
+        "plain": "Ctrl+1 Home, Ctrl+2 Accounts, Ctrl+3 Investments, Ctrl+4 Import, Ctrl+5 Export, Ctrl+6 Settings, Ctrl+7 Help. Ctrl+T switches between light and dark mode, Ctrl+K searches everything, Ctrl+F searches your transactions, Ctrl+L locks Kreix and F5 recalculates the page.",
         "keywords": ["keyboard", "ctrl"],
     },
 }

@@ -6,16 +6,18 @@ from datetime import date
 
 from PySide6.QtCore import QDate, Qt, Signal
 from PySide6.QtWidgets import (
-    QComboBox, QDateEdit, QFrame, QHBoxLayout, QLabel, QPushButton, QScrollArea, QVBoxLayout, QWidget,
+    QComboBox, QDateEdit, QFrame, QHBoxLayout, QLabel, QMessageBox, QPushButton, QScrollArea, QVBoxLayout, QWidget,
 )
 
 from core.entities import FileKind
+from etl.common import ParseError
 from services.accounts_service import AccountInfo
 from services.import_service import FilePreview, FileReport, ImportReport, ImportService
 from services.transfer_service import EXTENSION
 from ui.popups import Combo
 from ui.feedback import Feedback, snapshot_of, tell
 from ui.format import fmt_date
+from ui.mapping_dialog import MappingDialog
 from ui.widgets.cards import PageHeader, repolish
 from ui.widgets.dropzone import DropZone
 from ui.widgets.section_card import GroupCard
@@ -76,6 +78,7 @@ class ResultRow(QFrame):
 
 ROW_NAMES = {
     FileKind.IMAGIN_STATEMENT: (N_("movimiento"), N_("movimientos")),
+    FileKind.BANK_STATEMENT: (N_("movimiento"), N_("movimientos")),
     FileKind.MYINVESTOR_OPERATIONS: (N_("operación"), N_("operaciones")),
     FileKind.MYINVESTOR_PORTFOLIO: (N_("posición"), N_("posiciones")),
 }
@@ -89,9 +92,12 @@ def plural(n: int, kind: FileKind | None) -> str:
 class PreviewRow(QFrame):
     """Un archivo leido y lo que pasara al importarlo: cuantas filas, de cuando a cuando, nuevas y repetidas."""
 
+    map_requested = Signal(str)        # el usuario quiere asignar las columnas de este archivo (ruta)
+
     def __init__(self, preview: FilePreview) -> None:
         super().__init__()
         self.setObjectName("ListRow")
+        self.map_button: QPushButton | None = None
         if not preview.ok:
             state, label = "error", tr("No se puede importar")
         elif not preview.changes_data:
@@ -137,6 +143,40 @@ class PreviewRow(QFrame):
             w.setObjectName("Small")
             w.setWordWrap(True)
             col.addWidget(w)
+        if preview.unknown_format and preview.path:
+            self.map_button = QPushButton(tr("Asignar las columnas…"))
+            self.map_button.setObjectName("Primary")
+            self.map_button.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.map_button.setAccessibleName(tr("Asignar las columnas de {name}").format(name=preview.file_name))
+            self.map_button.clicked.connect(lambda _=False, path=preview.path: self.map_requested.emit(path))
+            row = QHBoxLayout()
+            row.addWidget(self.map_button)
+            row.addStretch(1)
+            col.addSpacing(4)
+            col.addLayout(row)
+
+
+class FormatRow(QWidget):
+    """Un banco que Kreix ya sabe leer (formato definido por el usuario) y el boton para olvidarlo."""
+
+    remove_requested = Signal(str)
+
+    def __init__(self, name: str, detail: str) -> None:
+        super().__init__()
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(0, 2, 0, 2)
+        title = QLabel(name)
+        title.setObjectName("H2")
+        info = QLabel(detail)
+        info.setObjectName("Muted")
+        info.setWordWrap(True)
+        self.remove = QPushButton(tr("Olvidar"))
+        self.remove.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.remove.setAccessibleName(tr("Olvidar el formato {name}").format(name=name))
+        self.remove.clicked.connect(lambda _=False, n=name: self.remove_requested.emit(n))
+        lay.addWidget(title)
+        lay.addWidget(info, 1)
+        lay.addWidget(self.remove)
 
 
 class ImportView(QWidget):
@@ -150,6 +190,7 @@ class ImportView(QWidget):
         self._service = service
         self.before_import: Callable[[], None] | None = None   # la ventana lo usa para quitar los datos de ejemplo
         self._pending: list[str] = []
+        self._last_paths: list[str] = []
 
         header = PageHeader(tr("Importar extractos"), eyebrow=tr("Entrada de datos"),
                             subtitle=tr("Los archivos se procesan en tu equipo. Reimportar un extracto no duplica movimientos."))
@@ -178,10 +219,10 @@ class ImportView(QWidget):
         self.account_combo = Combo()
         self.account_combo.setMinimumWidth(230)
         self.account_combo.setAccessibleName(tr("Cuenta de destino"))
-        self.account_combo.addItem(tr("Imagin (se creará al importar)"), None)
+        self.account_combo.addItem(tr("Cuenta nueva (se creará al importar)"), None)
         account_label = QLabel(tr("Cuenta de destino"))
         account_label.setObjectName("H2")
-        account_hint = QLabel(tr("A qué cuenta bancaria pertenecen los extractos de Imagin que importes."))
+        account_hint = QLabel(tr("A qué cuenta bancaria pertenecen los extractos que importes (Imagin u otro banco)."))
         account_hint.setObjectName("Small")
         account_row = QHBoxLayout()
         account_row.setContentsMargins(0, 0, 0, 0)
@@ -247,6 +288,20 @@ class ImportView(QWidget):
         box.addLayout(self._preview)
         box.addLayout(actions)
         self._preview_box.hide()
+        self._formats_title = QLabel(tr("Bancos que ya conozco"))
+        self._formats_title.setObjectName("H2")
+        self._formats_hint = QLabel(tr("Formatos que definiste tú: los archivos con esas columnas se leen solos."))
+        self._formats_hint.setObjectName("Small")
+        self._formats = QVBoxLayout()
+        self._formats.setSpacing(2)
+        self._formats_box = QWidget()
+        formats_col = QVBoxLayout(self._formats_box)
+        formats_col.setContentsMargins(0, 0, 0, 0)
+        formats_col.setSpacing(6)
+        formats_col.addWidget(self._formats_title)
+        formats_col.addWidget(self._formats_hint)
+        formats_col.addLayout(self._formats)
+        self._formats_box.hide()
         results_title = QLabel(tr("Resultado"))
         results_title.setObjectName("H2")
         self._results_title = results_title
@@ -264,6 +319,7 @@ class ImportView(QWidget):
         col.addWidget(self._preview_box)
         col.addWidget(results_title)
         col.addLayout(self._results)
+        col.addWidget(self._formats_box)
         col.addStretch(1)
 
         scroll = QScrollArea()
@@ -273,6 +329,52 @@ class ImportView(QWidget):
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.addWidget(scroll)
+        self.refresh_formats()
+
+    # ------------------------------------------------------------------ bancos definidos por el usuario
+    def refresh_formats(self) -> None:
+        """La lista de formatos guardados (se oculta si no hay ninguno)."""
+        _clear(self._formats)
+        formats = self._service.formats()
+        for mapping in formats:
+            if mapping.uses_two_columns:
+                money = tr("ingresos «{income}» y gastos «{expense}»").format(income=mapping.income, expense=mapping.expense)
+            else:
+                money = tr("importe «{amount}»").format(amount=mapping.amount)
+            detail = tr("fecha «{date}», concepto «{description}», {money}").format(
+                date=mapping.date, description=mapping.description, money=money)
+            row = FormatRow(mapping.name, detail)
+            row.remove_requested.connect(self.forget_format)
+            self._formats.addWidget(row)
+        self._formats_box.setVisible(bool(formats))
+
+    def forget_format(self, name: str) -> None:
+        snapshot = snapshot_of(self.feedback)
+        if self._service.delete_format(name):
+            self.refresh_formats()
+            tell(self.feedback, tr("Formato «{name}» olvidado. Los movimientos ya importados no cambian.").format(name=name), snapshot)
+        elif snapshot is not None:
+            self.feedback.remove(snapshot)
+
+    def open_mapping(self, path: str) -> bool:
+        """Abre el asistente para asignar las columnas de un archivo desconocido; si se guarda, vuelve a leer lo pendiente."""
+        try:
+            dialog = MappingDialog(self._service, path, self)
+        except (ParseError, OSError) as exc:
+            QMessageBox.warning(self, tr("No se puede leer el archivo"), str(exc))
+            return False
+        snapshot = snapshot_of(self.feedback)
+        accepted = dialog.exec() == MappingDialog.DialogCode.Accepted
+        dialog.deleteLater()
+        if not accepted:
+            if snapshot is not None:
+                self.feedback.remove(snapshot)
+            return False
+        self.refresh_formats()
+        tell(self.feedback, tr("Formato guardado: Kreix ya sabe leer este banco."), snapshot)
+        if self._last_paths:
+            self.preview_paths(list(self._last_paths))
+        return True
 
     def set_accounts(self, accounts: list[AccountInfo]) -> None:
         keep = self.account_combo.currentData()
@@ -284,7 +386,7 @@ class ImportView(QWidget):
             index = self.account_combo.findData(keep)
             self.account_combo.setCurrentIndex(max(index, 0))
         else:
-            self.account_combo.addItem(tr("Imagin (se creará al importar)"), None)
+            self.account_combo.addItem(tr("Cuenta nueva (se creará al importar)"), None)
         self.account_combo.blockSignals(False)
 
     def set_funds(self, funds: list[tuple[str, str]]) -> None:
@@ -312,11 +414,14 @@ class ImportView(QWidget):
             self.restore_requested.emit(backups[0])
             if not paths:
                 return
+        self._last_paths = list(paths)
         previews = self._service.preview(paths, self.portfolio_date(), self.account_combo.currentData(),
                                          self.fund_combo.currentData())
         _clear(self._preview)
         for preview in previews:
-            self._preview.addWidget(PreviewRow(preview))
+            row = PreviewRow(preview)
+            row.map_requested.connect(self.open_mapping)
+            self._preview.addWidget(row)
         self._pending = [p for p, preview in zip(paths, previews) if preview.ok]
         ready = [pr for pr in previews if pr.changes_data]
         self.confirm_button.setEnabled(bool(ready))

@@ -10,6 +10,7 @@ Este modulo es puro: no conoce SQLite, SQLAlchemy ni la interfaz.
 from __future__ import annotations
 
 import base64
+import hmac
 import os
 import struct
 from pathlib import Path
@@ -49,11 +50,16 @@ class Vault:
     def __init__(self, password: str, salt: bytes | None = None, iterations: int = ITERATIONS) -> None:
         self._salt = salt if salt is not None else os.urandom(SALT_BYTES)
         self._iterations = iterations
-        self._fernet = Fernet(derive_key(password, self._salt, iterations))
+        self._key = derive_key(password, self._salt, iterations)
+        self._fernet = Fernet(self._key)
 
     @property
     def iterations(self) -> int:
         return self._iterations
+
+    def check(self, password: str) -> bool:
+        """True si la contrasena es la de este almacen (sin leer el disco: se compara la clave derivada)."""
+        return hmac.compare_digest(derive_key(password, self._salt, self._iterations), self._key)
 
     # ------------------------------------------------------------------ bytes <-> bytes
     def seal(self, plain: bytes) -> bytes:

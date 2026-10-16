@@ -14,7 +14,7 @@ from core.entities import FileKind, ParseResult
 from core.enums import AccountKind, Bank
 from data.database import session_scope
 from data.hashing import scoped_hash
-from data.models import Investment, InvestmentOperation, PricePoint, Transaction, Valuation
+from data.models import Investment, InvestmentOperation, PricePoint, Setting, Transaction, Valuation
 from data.repositories import (
     InsertStats,
     get_or_create_account,
@@ -27,7 +27,10 @@ from data.repositories import (
     upsert_valuations,
 )
 from etl.common import ParseError
-from etl.dispatcher import parse_file
+from etl.common import build_table, load_rows
+from etl.dispatcher import UnknownFormatError, parse_file
+from etl.generic_parser import parse as parse_with_mapping
+from etl.mapping import ColumnMapping, FileSample, dump_formats, guess_mapping, load_formats
 from etl.reconcile import reconcile_portfolio
 from services.import_errors import describe
 from services.mappers import load_operations, load_snapshots
@@ -38,7 +41,10 @@ KIND_LABELS = {
     FileKind.MYINVESTOR_OPERATIONS: N_("Operaciones de MyInvestor"),
     FileKind.MYINVESTOR_PORTFOLIO: N_("Cartera de MyInvestor"),
     FileKind.PRICE_HISTORY: N_("Histórico de precios"),
+    FileKind.BANK_STATEMENT: N_("Extracto de otro banco"),
 }
+FORMATS_KEY = "import_formats"
+STATEMENT_KINDS = (FileKind.IMAGIN_STATEMENT, FileKind.BANK_STATEMENT)      # los dos van a una cuenta corriente
 ACCOUNT_NAMES = {Bank.IMAGIN: "Imagin", Bank.MYINVESTOR: "MyInvestor"}
 
 
@@ -80,6 +86,8 @@ class FilePreview:
     updated: int = 0                # valoraciones de cartera que cambian
     warnings: list[str] = field(default_factory=list)
     error: str | None = None
+    path: str = ""                  # ruta del archivo leido
+    unknown_format: bool = False    # no es de ningun banco conocido: se pueden asignar sus columnas
 
     @property
     def ok(self) -> bool:
@@ -116,6 +124,60 @@ class ImportService:
     def __init__(self, factory: sessionmaker[Session]) -> None:
         self._factory = factory
         self._parsed: dict[tuple, ParseResult] = {}            # lo ultimo leido: la vista previa y la importacion no leen dos veces
+        self._formats: list[ColumnMapping] | None = None       # formatos de otros bancos (se leen de la base la primera vez)
+
+    # ------------------------------------------------------------------ formatos de otros bancos
+    def formats(self) -> list[ColumnMapping]:
+        if self._formats is None:
+            with session_scope(self._factory) as s:
+                row = s.get(Setting, FORMATS_KEY)
+                self._formats = load_formats(row.value) if row else []
+        return list(self._formats)
+
+    def _store_formats(self, formats: list[ColumnMapping]) -> None:
+        with session_scope(self._factory) as s:
+            s.merge(Setting(key=FORMATS_KEY, value=dump_formats(formats)))
+        self._formats = list(formats)
+        self._parsed.clear()                                   # lo leido antes con otros formatos ya no vale
+
+    def reload_formats(self) -> None:
+        """Vuelve a leer los formatos guardados (p. ej. tras restaurar datos de otro archivo)."""
+        self._formats = None
+        self._parsed.clear()
+
+    def save_format(self, mapping: ColumnMapping) -> None:
+        """Guarda (o reemplaza, si el nombre ya existe) un formato."""
+        problem = mapping.problem()
+        if problem or not mapping.name.strip():
+            raise ParseError(problem or tr("Ponle un nombre al formato."))
+        mapping = ColumnMapping(**{**mapping.to_json(), "name": mapping.name.strip()})
+        kept = [f for f in self.formats() if f.name.lower() != mapping.name.lower()]
+        self._store_formats(kept + [mapping])
+
+    def delete_format(self, name: str) -> bool:
+        before = self.formats()
+        after = [f for f in before if f.name != name]
+        if len(after) == len(before):
+            return False
+        self._store_formats(after)
+        return True
+
+    def sample(self, path: str | Path, header_index: int | None = None) -> FileSample:
+        """Las primeras filas de un archivo, para que el usuario asigne las columnas."""
+        rows = load_rows(Path(path))
+        if not rows:
+            raise ParseError(tr("El archivo está vacío."))
+        return FileSample.of(rows, header_index)
+
+    def suggest_mapping(self, sample: FileSample, name: str = "") -> ColumnMapping:
+        return guess_mapping(sample, name)
+
+    def try_mapping(self, path: str | Path, sample: FileSample, mapping: ColumnMapping) -> ParseResult:
+        """Lee el archivo con unas columnas a prueba (sin guardar nada). Lanza ParseError con el motivo si no funciona."""
+        problem = mapping.problem()
+        if problem:
+            raise ParseError(problem)
+        return parse_with_mapping(build_table(sample.rows, sample.header_index), Path(path).name, mapping)
 
     def _parse(self, path: Path, portfolio_as_of: date | None, fund_isin: str | None) -> ParseResult:
         """Lee un archivo; si es el mismo (misma ruta, tamano y fecha de modificacion) que se acaba de leer, reutiliza el resultado."""
@@ -123,10 +185,10 @@ class ImportService:
             stat = path.stat()
             key = (str(path), stat.st_size, stat.st_mtime_ns, portfolio_as_of, fund_isin)
         except OSError:
-            return parse_file(path, portfolio_as_of, fund_isin)
+            return parse_file(path, portfolio_as_of, fund_isin, self.formats())
         found = self._parsed.get(key)
         if found is None:
-            found = parse_file(path, portfolio_as_of, fund_isin)       # los errores no se guardan: se vuelven a intentar
+            found = parse_file(path, portfolio_as_of, fund_isin, self.formats())       # los errores no se guardan: se vuelven a intentar
             self._parsed[key] = found
             while len(self._parsed) > 4:
                 self._parsed.pop(next(iter(self._parsed)))
@@ -162,10 +224,10 @@ class ImportService:
         try:
             parsed = self._parse(path, portfolio_as_of, fund_isin)
         except (ParseError, OSError, ValueError) as exc:
-            return FilePreview(path.name, error=str(exc))
-        out = FilePreview(path.name, parsed.kind, warnings=list(parsed.warnings))
+            return FilePreview(path.name, error=str(exc), path=str(path), unknown_format=isinstance(exc, UnknownFormatError))
+        out = FilePreview(path.name, parsed.kind, warnings=list(parsed.warnings), path=str(path))
         with session_scope(self._factory) as s:
-            if parsed.kind is FileKind.IMAGIN_STATEMENT:
+            if parsed.kind in STATEMENT_KINDS:
                 existing_accounts = list_accounts(s, AccountKind.CHECKING)
                 target = account_id if account_id is not None else (existing_accounts[0].id if existing_accounts else None)
                 if account_id is not None and not any(a.id == account_id for a in existing_accounts):
@@ -225,8 +287,8 @@ class ImportService:
             return FileReport(path.name, error=str(exc))
         stats = InsertStats()
         with session_scope(self._factory) as s:  # un fichero = una transaccion
-            if parsed.kind is FileKind.IMAGIN_STATEMENT:
-                target = self._checking_account_id(s, account_id)
+            if parsed.kind in STATEMENT_KINDS:
+                target = self._checking_account_id(s, account_id, parsed.format_name or ACCOUNT_NAMES[Bank.IMAGIN])
                 if target is None:
                     return FileReport(path.name, parsed.kind, error=tr("La cuenta de destino ya no existe."))
                 stats = insert_transactions(s, target, parsed.transactions)
@@ -247,13 +309,14 @@ class ImportService:
         )
 
     @staticmethod
-    def _checking_account_id(session: Session, account_id: int | None) -> int | None:
+    def _checking_account_id(session: Session, account_id: int | None, new_name: str = ACCOUNT_NAMES[Bank.IMAGIN]) -> int | None:
+        """La cuenta corriente destino; si aun no hay ninguna, se crea con `new_name` (Imagin, o el nombre del formato)."""
         existing = list_accounts(session, AccountKind.CHECKING)
         if account_id is not None:
             return account_id if any(a.id == account_id for a in existing) else None
         if existing:
             return existing[0].id
-        return get_or_create_account(session, Bank.IMAGIN, AccountKind.CHECKING, ACCOUNT_NAMES[Bank.IMAGIN]).id
+        return get_or_create_account(session, Bank.IMAGIN, AccountKind.CHECKING, new_name).id
 
     def reconciliation_warnings(self) -> list[str]:
         with session_scope(self._factory) as s:

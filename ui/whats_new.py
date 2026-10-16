@@ -5,9 +5,25 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QDialog, QFrame, QLabel, QPushButton, QScrollArea, QVBoxLayout, QWidget
 from core.i18n import tr, N_
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 
 RELEASES: dict[str, tuple[tuple[str, str], ...]] = {
+    "0.3.0": (
+        (N_("Importa de cualquier banco"),
+         N_("Si Kreix no reconoce un CSV o Excel, te enseña sus primeras filas y te deja decir qué columna es la fecha, el "
+            "concepto y el importe. Recuerda el formato: la próxima vez, ese banco se lee solo.")),
+        (N_("Copias de seguridad automáticas"),
+         N_("Kreix guarda copias cifradas, con la fecha en el nombre, en la carpeta que elijas y conserva las últimas. "
+            "Las recuperas desde Ajustes con tu contraseña maestra.")),
+        (N_("Bloqueo automático"),
+         N_("Tras unos minutos sin usar el equipo, o al minimizar la ventana, Kreix vuelve a pedir la contraseña. Con "
+            "Ctrl+L lo bloqueas al momento. Si fallas la contraseña varias veces, tendrás que esperar unos segundos.")),
+        (N_("Un medidor para tu contraseña"),
+         N_("Al crear o cambiar la contraseña maestra, un medidor te dice lo difícil que sería adivinarla y cómo mejorarla.")),
+        (N_("Kreix como programa de Windows"),
+         N_("Ahora se instala con un instalador, con su acceso directo en el menú Inicio y en el escritorio. Ya no hace "
+            "falta tener Python.")),
+    ),
     "0.2.0": (
         (N_("Castellano, català o English"),
          N_("Kreix ya está en tres idiomas. Los eliges la primera vez, junto al nombre y a lo que te interesa, y puedes "

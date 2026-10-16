@@ -24,6 +24,18 @@ class BrandDialog(QDialog):
         gradient.setColorAt(1.0, end)
         painter.fillRect(self.rect(), gradient)
 
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        self._fit_height()
+
+    def _fit_height(self) -> None:
+        """Los textos se parten en lineas segun el ancho: la altura la da el contenido (si no, algo quedaria recortado)."""
+        layout = self.layout()
+        if layout is not None:
+            needed = layout.totalHeightForWidth(self.width())
+            if needed > self.height():
+                self.resize(self.width(), needed)
+
     def frame(self, title: str, intro: str = "", extra_top: QWidget | None = None) -> QVBoxLayout:
         """Monta titulo, explicacion y tarjeta; devuelve la capa de la tarjeta, donde va el contenido."""
         outer = QVBoxLayout(self)

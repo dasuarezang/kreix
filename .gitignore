@@ -29,3 +29,5 @@ extractos/
 .vscode/
 .DS_Store
 Thumbs.db
+.venv-build/
+packaging/tools/

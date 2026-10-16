@@ -497,6 +497,40 @@ ENTRIES: tuple[HelpEntry, ...] = (
         keywords=("exportar", "copia de seguridad", "backup", "mover datos", "kreix"),
     ),
     HelpEntry(
+        S_USE, "Bloqueo automático",
+        "Si dejas de usar el equipo unos minutos, o minimizas la ventana, Kreix esconde tus datos y vuelve a pedir la "
+        "contraseña maestra. También puedes bloquearlo a mano con Ctrl+L o desde Ajustes.",
+        "En Ajustes, en Seguridad, eliges el tiempo (o «Nunca») y si quieres que se bloquee al minimizar. Tras varias "
+        "contraseñas incorrectas seguidas, Kreix te hace esperar unos segundos antes del siguiente intento, y la espera "
+        "crece. Un cuadro que tuvieras abierto se cierra al bloquear; tus datos ya estaban guardados. Al crear o cambiar la "
+        "contraseña, un medidor te dice lo difícil que sería adivinarla: mezcla letras, números y símbolos, o usa una frase larga.",
+        "",
+        keywords=("bloqueo", "bloquear", "inactividad", "minimizar", "contraseña", "seguridad", "candado"),
+    ),
+    HelpEntry(
+        S_USE, "Copias de seguridad automáticas",
+        "Kreix guarda solo una copia cifrada de tus datos en una carpeta: al abrir, si aún no hay ninguna; después de hacer "
+        "cambios, como mucho una por hora; y al cerrar. Se conservan las últimas 3, 5, 10 o 20, y las más viejas se borran.",
+        "Cada copia es un archivo .kreix con la fecha en el nombre, cifrado con tu contraseña maestra. En Ajustes eliges la "
+        "carpeta (por ejemplo, un disco externo o una carpeta sincronizada). Para recuperar una, pulsa Restaurar junto a ella "
+        "y escribe tu contraseña maestra: sustituye los datos actuales y puedes deshacerlo. Si cambias la contraseña, las "
+        "copias se vuelven a cifrar con la nueva.",
+        "",
+        keywords=("copia", "copias", "backup", "seguridad", "restaurar", "recuperar", "carpeta"),
+    ),
+    HelpEntry(
+        S_USE, "Importar de otro banco",
+        "Si Kreix no reconoce un CSV o Excel porque no es de Imagin ni de MyInvestor, te deja decirle qué columna es cada "
+        "cosa: la fecha, el concepto, el importe y, si la hay, el saldo.",
+        "Ves las primeras filas del archivo y Kreix propone las columnas por sus títulos; tú las corriges. Si el banco separa "
+        "ingresos y gastos en dos columnas, eliges «Dos columnas». También indicas si los decimales llevan coma o punto y el "
+        "orden de la fecha. Antes de guardar ves cuántos movimientos se leen y los primeros, para comprobar fechas e importes. "
+        "El formato se guarda con el nombre que le pongas y se aplica solo a los archivos siguientes; en Importar puedes "
+        "olvidarlo. Solo CSV y Excel, nunca PDF.",
+        "",
+        keywords=("otro banco", "columnas", "formato", "importar", "csv", "excel", "asistente"),
+    ),
+    HelpEntry(
         S_USE, "Privacidad",
         "Todo se guarda solo en tu ordenador. Kreix no usa internet, no tiene cuentas y no envía datos a ningún servidor.",
         "",
@@ -506,8 +540,8 @@ ENTRIES: tuple[HelpEntry, ...] = (
     HelpEntry(
         S_USE, "Atajos de teclado",
         "Ctrl+1 Inicio, Ctrl+2 Cuentas, Ctrl+3 Inversiones, Ctrl+4 Importar, Ctrl+5 Exportar, Ctrl+6 Ajustes, "
-        "Ctrl+7 Ayuda. Ctrl+T cambia entre modo claro y oscuro, Ctrl+K busca en todo, Ctrl+F busca en tus movimientos "
-        "y F5 recalcula la página.",
+        "Ctrl+7 Ayuda. Ctrl+T cambia entre modo claro y oscuro, Ctrl+K busca en todo, Ctrl+F busca en tus movimientos, "
+        "Ctrl+L bloquea Kreix y F5 recalcula la página.",
         "",
         "",
         keywords=("teclado", "ctrl"),

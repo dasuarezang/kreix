@@ -108,6 +108,7 @@ class MainWindow(QMainWindow):
         self._db_path = db_path
         self.rebuilding = False
         self.secure_store = None
+        self.backups = None                 # BackupService (solo con almacen cifrado)
         self.detect_language = False        # True (lo activa main): la primera vez se propone el idioma del sistema
         self.setWindowTitle("Kreix")
         self.setWindowIcon(assets.app_icon())
@@ -147,6 +148,9 @@ class MainWindow(QMainWindow):
         self.settings_view.language_changed.connect(self._on_language_picked)
         self.dashboard.goals_requested.connect(self.open_goals)
         self.settings_view.change_password_requested.connect(self.change_password)
+        self.settings_view.lock_requested.connect(self.lock_now)
+        self.settings_view.backup_now_requested.connect(self.backup_now)
+        self.settings_view.restore_backup_requested.connect(self.restore_from)
         self.accounts_view.interest_requested.connect(lambda: self._activate_interest("accounts"))
         self.investment_view.interest_requested.connect(lambda: self._activate_interest("investments"))
         self.settings_view.reset_requested.connect(self.confirm_reset)
@@ -181,6 +185,7 @@ class MainWindow(QMainWindow):
         QShortcut(QKeySequence("Ctrl+F"), self, activated=self.focus_search)
         QShortcut(QKeySequence("Ctrl+K"), self, activated=self.open_palette)
         QShortcut(QKeySequence("F5"), self, activated=self.reload_current)
+        QShortcut(QKeySequence("Ctrl+L"), self, activated=self.lock_now)
         for i in range(len(self.PAGES)):
             QShortcut(QKeySequence(tr("Ctrl+{i}").format(i=i + 1)), self, activated=lambda i=i: self.navigate(i))
 
@@ -297,6 +302,8 @@ class MainWindow(QMainWindow):
             self.help_view.show_hub()          # al entrar en Ayuda siempre se ve el menu de secciones
         elif index == self.EXPORT:
             self.export_view.refresh()
+        elif index == self.SETTINGS:
+            self.refresh_backups()             # puede haber copias nuevas hechas solas desde la ultima vez
 
     def _fade_in(self, page: QWidget) -> None:
         """Aparicion suave de la pagina (140 ms). El efecto se quita al terminar: no deja coste de pintado."""
@@ -330,6 +337,8 @@ class MainWindow(QMainWindow):
             Command(tr("Recalcular la página"), "F5", self.reload_current, tr("actualizar refrescar")),
             Command(tr("Ver las novedades de esta versión"), tr("Novedades"), self.show_whats_new, tr("cambios nuevo versión")),
         ]
+        if self.secure_store is not None:
+            actions.append(Command(tr("Bloquear Kreix ahora"), "Ctrl+L", self.lock_now, tr("contraseña seguridad candado esconder")))
         if self._svc.transfer.summary().is_empty:
             actions.append(Command(tr("Probar con datos de ejemplo"), tr("Sin importar nada"), self.start_demo, tr("demo explorar")))
         elif self._demo:
@@ -556,11 +565,37 @@ class MainWindow(QMainWindow):
         elif snapshot is not None:
             self.feedback.remove(snapshot)
 
-    def attach_store(self, store) -> None:
-        """Guarda la referencia al almacen cifrado (None si se usa una base de pruebas sin cifrar)."""
+    def attach_store(self, store, backups=None) -> None:
+        """Guarda la referencia al almacen cifrado (None si se usa una base de pruebas sin cifrar) y, con el, las copias
+        de seguridad automaticas."""
         self.secure_store = store
+        self.backups = backups if store is not None else None
+        self.refresh_backups()
         self.settings_view.set_security(store is not None)
         self.export_view.set_sealer(store.seal_export if store is not None else None)
+
+    def refresh_backups(self) -> None:
+        """Pone al dia en Ajustes la carpeta, la lista de copias y el ultimo aviso."""
+        if self.backups is None:
+            return
+        service = self.backups
+        self.settings_view.show_backups(service.folder(), service.files(), service.last_error or service.last_note)
+
+    def backup_now(self) -> None:
+        if self.backups is None:
+            return
+        path = self.backups.create()
+        self.refresh_backups()
+        if path is None:
+            tell(self.feedback, tr("No se pudo hacer la copia: {reason}").format(reason=self.backups.last_error))
+        else:
+            tell(self.feedback, tr("Copia guardada: {name}").format(name=path.name))
+
+    def lock_now(self) -> None:
+        """Esconde todo y vuelve a pedir la contrasena (solo si hay almacen cifrado y bloqueo activo en la aplicacion)."""
+        lock = getattr(QApplication.instance(), "kreix_autolock", None)
+        if lock is not None and self.secure_store is not None:
+            lock.lock("manual")
 
     def change_password(self) -> None:
         if self.secure_store is None:
@@ -571,6 +606,8 @@ class MainWindow(QMainWindow):
                 self.secure_store.change_password(old, new)
             except WrongPasswordError:
                 return tr("La contraseña actual no es correcta.")
+            if self.backups is not None:                      # las copias tambien pasan a abrirse con la nueva
+                self.backups.rekey(old, self.secure_store.seal_export)
             return None
 
         if ChangePasswordDialog(apply, self).exec():
@@ -582,7 +619,7 @@ class MainWindow(QMainWindow):
         new = MainWindow(self._svc, self._db_path)
         new.eager = self.eager
         new.detect_language = self.detect_language
-        new.attach_store(self.secure_store)
+        new.attach_store(self.secure_store, self.backups)
         new.clock = self.clock
         new.dashboard.clock = lambda: new.clock()
         new.resize(self.size())
@@ -659,6 +696,8 @@ class MainWindow(QMainWindow):
             self.show_whats_new()
 
     def _after_undo(self) -> None:
+        self._svc.importer.reload_formats()               # los formatos de otros bancos viven en los ajustes: tambien se deshacen
+        self.import_view.refresh_formats()
         self._state = self._svc.settings.load_state()
         self._demo = self._state.get("demo") == "1" and not self._svc.transfer.summary().is_empty
         self.demo_banner.setVisible(self._demo)
@@ -735,6 +774,8 @@ class MainWindow(QMainWindow):
         if self._demo:
             self._set_demo(False)                                   # lo restaurado es de verdad
         self._settings = self._svc.settings.load()                 # los ajustes viajan con los datos
+        self._svc.importer.reload_formats()                        # y tambien los bancos que el usuario enseno a leer
+        self.import_view.refresh_formats()
         self._sync_language()                                       # y con ellos, el idioma
         self.settings_view.set_settings(self._settings)
         self.dashboard.set_user_name(self._settings.user_name)       # el nombre viaja con los datos
@@ -804,7 +845,15 @@ class MainWindow(QMainWindow):
         self.dashboard.update_greeting()
 
     def _on_settings_changed(self, settings: AppSettings) -> None:
+        previous = self._settings
         self._settings = replace(settings, theme=self._settings.theme)
         self._svc.settings.save(self._settings)
+        if self.backups is not None:
+            if self._settings.backup_folder != previous.backup_folder:
+                self.backups.folder_changed()                 # la carpeta nueva recibe una copia enseguida
+            if self._settings.backup_keep != previous.backup_keep:
+                self.backups.prune()
+            self.backups.run_if_due()
+            self.refresh_backups()
         self._apply_ambient()
         self.refresh()

@@ -17,6 +17,7 @@ class FileKind(str, Enum):
     MYINVESTOR_OPERATIONS = "myinvestor_operaciones"
     MYINVESTOR_PORTFOLIO = "myinvestor_cartera"
     PRICE_HISTORY = "historico_precios"
+    BANK_STATEMENT = "extracto_otro_banco"      # extracto de otro banco, leido con las columnas que asigno el usuario
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,3 +82,5 @@ class ParseResult:
     positions: list[PositionSnapshot] = field(default_factory=list)
     prices: list[PricePointDraft] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)  # nada se descarta en silencio
+    ignored_rows: int = 0         # filas que no se pudieron leer y se saltaron (de cada una hay un aviso, al menos de las primeras)
+    format_name: str = ""        # extractos de otros bancos: nombre del formato con el que se leyeron

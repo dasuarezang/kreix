@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QPushButton, QVBox
 
 from core.i18n import tr
 from ui.widgets.brand_dialog import BrandDialog
+from ui.widgets.strength_meter import StrengthMeter
 from data.vault import MIN_PASSWORD
 
 # Aplica el cambio: devuelve None si fue bien o el mensaje de error que hay que mostrar.
@@ -32,6 +33,8 @@ class ChangePasswordDialog(BrandDialog):
         self.current = _field(tr("Contraseña actual"))
         self.new = _field(tr("Contraseña nueva"))
         self.again = _field(tr("Repite la contraseña nueva"))
+        self.meter = StrengthMeter()
+        self.new.textChanged.connect(self.meter.set_password)
         self.error = QLabel()
         self.error.setObjectName("LockError")
         self.error.setWordWrap(True)
@@ -50,7 +53,7 @@ class ChangePasswordDialog(BrandDialog):
         row.addWidget(self.ok)
         col = self.frame(tr("Cambiar contraseña maestra"),
                          tr("Tus datos se vuelven a cifrar con la contraseña nueva. Si la olvidas, no hay forma de recuperarlos."))
-        for w in (self.current, self.new, self.again, self.error):
+        for w in (self.current, self.new, self.meter, self.again, self.error):
             col.addWidget(w)
         col.addSpacing(4)
         col.addLayout(row)

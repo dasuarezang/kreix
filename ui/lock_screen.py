@@ -9,17 +9,19 @@ from __future__ import annotations
 from collections.abc import Callable
 from enum import Enum
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import (
     QApplication, QFrame, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QVBoxLayout, QWidget,
 )
 
-from core.i18n import tr
+from core.i18n import tr, trn
+from core.throttle import AttemptThrottle
 from data.vault import MIN_PASSWORD
 from ui import assets, theme
 from ui.widgets.brand_dialog import BrandDialog
 from ui.widgets.cards import StripeMark
+from ui.widgets.strength_meter import StrengthMeter
 
 
 class LockMode(Enum):
@@ -34,12 +36,20 @@ Attempt = Callable[[str], str | None]
 
 class LockDialog(BrandDialog):
     def __init__(self, mode: LockMode, attempt: Attempt, parent: QWidget | None = None,
-                 finish: Callable[[], None] | None = None) -> None:
-        """`finish` se ejecuta con la pantalla aun a la vista, una vez aceptada la contrasena (aqui se prepara la ventana)."""
+                 finish: Callable[[], None] | None = None, note: str = "", allow_reset: bool = True,
+                 throttle: AttemptThrottle | None = None) -> None:
+        """`finish` se ejecuta con la pantalla aun a la vista, una vez aceptada la contrasena (aqui se prepara la ventana).
+        `note` es un aviso extra bajo la explicacion (p. ej. "Se bloqueo por inactividad"); `allow_reset` ofrece o no borrar
+        los datos si se olvido la contrasena; `throttle` impone espera tras varios fallos (se comparte entre bloqueos)."""
         super().__init__(parent)
         self._mode = mode
         self._attempt = attempt
         self._finish = finish
+        self._note = note
+        self._throttle = throttle if throttle is not None else AttemptThrottle()
+        self._cooldown = QTimer(self)
+        self._cooldown.setInterval(250)
+        self._cooldown.timeout.connect(self._tick)
         self.reset_requested = False          # el usuario eligio borrar los datos y empezar de cero
         self.setWindowTitle("Kreix")
         self.setWindowIcon(assets.app_icon())
@@ -70,14 +80,18 @@ class LockDialog(BrandDialog):
         self.confirm.setEchoMode(QLineEdit.EchoMode.Password)
         self.confirm.setPlaceholderText(tr("Repite la contraseña"))
         self.confirm.setAccessibleName(tr("Repite la contraseña"))
+        self.meter = StrengthMeter()
+        self.password.textChanged.connect(self.meter.set_password)
         if not creating:
             self.confirm.hide()              # nunca setVisible(True) sin padre: abriria una ventana suelta
+            self.meter.hide()
         self.error = QLabel()
         self.error.setObjectName("LockError")
         self.error.setWordWrap(True)
         self.error.hide()
         self.status = QLabel(tr("Abriendo Kreix…"))
         self.status.setObjectName("Muted")
+        self.status.setWordWrap(True)
         self.status.hide()
 
         self.ok = QPushButton(tr("Crear y abrir") if creating else tr("Desbloquear"))
@@ -92,7 +106,7 @@ class LockDialog(BrandDialog):
         self.forgot = QPushButton(tr("He olvidado la contraseña"))
         self.forgot.setObjectName("LinkButton")
         self.forgot.setCursor(Qt.CursorShape.PointingHandCursor)
-        if mode is not LockMode.UNLOCK:
+        if mode is not LockMode.UNLOCK or not allow_reset:
             self.forgot.hide()
         self.forgot.clicked.connect(self._forgot)
 
@@ -111,6 +125,7 @@ class LockDialog(BrandDialog):
         form.addWidget(intro)
         form.addSpacing(4)
         form.addWidget(self.password)
+        form.addWidget(self.meter)
         form.addWidget(self.confirm)
         form.addWidget(self.error)
         form.addWidget(self.status)
@@ -129,10 +144,13 @@ class LockDialog(BrandDialog):
         col.addWidget(card)
         col.addWidget(footer)
         self.password.setFocus()
+        if self._throttle.wait_left() > 0:                  # un bloqueo anterior dejo una espera pendiente
+            self._start_cooldown()
 
     def _intro_text(self) -> str:
         if self._mode is LockMode.UNLOCK:
-            return tr("Tus datos están cifrados en este equipo. Escribe la contraseña maestra para abrirlos.")
+            text = tr("Tus datos están cifrados en este equipo. Escribe la contraseña maestra para abrirlos.")
+            return f"{self._note} {text}" if self._note else text
         base = tr("Cifraremos todos tus datos con ella. Solo tú podrás abrirlos y no hay forma de recuperarla: si la olvidas, los datos no se pueden recuperar.")
         if self._mode is LockMode.MIGRATE:
             return tr("Kreix ha encontrado datos sin cifrar de una versión anterior.") + " " + base
@@ -165,7 +183,31 @@ class LockDialog(BrandDialog):
             self.error.hide()
             QApplication.processEvents()
 
+    # ------------------------------------------------------------------ espera tras varios fallos
+    def _start_cooldown(self) -> None:
+        for widget in (self.password, self.ok):
+            widget.setEnabled(False)
+        self.status.setVisible(True)
+        self._tick()
+        self._cooldown.start()
+
+    def _tick(self) -> None:
+        left = self._throttle.wait_left()
+        if left <= 0:
+            self._cooldown.stop()
+            self.status.hide()
+            for widget in (self.password, self.ok):
+                widget.setEnabled(True)
+            self.password.setFocus()
+            return
+        seconds = max(1, round(left + 0.49))
+        self.status.setText(trn("Demasiados intentos. Podrás probar de nuevo en {n} segundo.",
+                                "Demasiados intentos. Podrás probar de nuevo en {n} segundos.", seconds).format(n=seconds))
+        self._fit_height()
+
     def _submit(self) -> None:
+        if self._throttle.wait_left() > 0:
+            return
         text = self.password.text()
         if self._mode is not LockMode.UNLOCK:
             if len(text) < MIN_PASSWORD:
@@ -183,7 +225,10 @@ class LockDialog(BrandDialog):
         finally:
             QGuiApplication.restoreOverrideCursor()
         if message is None:
+            self._throttle.succeeded()
             self.accept()
-        else:
-            self._busy(False)
-            self._show_error(message)
+            return
+        self._busy(False)
+        self._show_error(message)
+        if self._mode is LockMode.UNLOCK and self._throttle.failed() > 0:
+            self._start_cooldown()

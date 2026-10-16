@@ -12,8 +12,8 @@ HINTS: tuple[tuple[str, str, str], ...] = (
     (N_("solo importa extractos en csv o excel"), N_("Kreix no importa PDF."),
      N_("Descarga el extracto en CSV o Excel desde la web o la app de tu banco.")),
     (N_("formato no reconocido"), N_("No reconozco este archivo como un extracto de Imagin ni de MyInvestor."),
-     N_("Comprueba que es el extracto de movimientos de Imagin, o las operaciones o la cartera de MyInvestor, "
-        "descargado en CSV o Excel y sin editar.")),
+     N_("Si es el extracto de otro banco en CSV o Excel, pulsa «Asignar las columnas» y dime qué es cada una: lo recordaré. "
+        "Si es de Imagin o MyInvestor, descárgalo otra vez sin editarlo.")),
     (N_("faltan columnas"), N_("Al archivo le faltan columnas que Kreix necesita."),
      N_("Suele pasar si se ha editado o si es de otro tipo. Descárgalo otra vez desde tu banco sin modificarlo.")),
     (N_("no se pudo decodificar"), N_("No he podido leer el texto del archivo."),
@@ -26,6 +26,8 @@ HINTS: tuple[tuple[str, str, str], ...] = (
      N_("Elige el fondo en «Fondo del histórico», en esta misma página, y vuelve a soltar el archivo.")),
     (N_("ningún precio"), N_("No he encontrado precios en el archivo."),
      N_("Comprueba que tiene una columna de fecha y otra de precio (valor liquidativo, cierre...) y que no está vacío.")),
+    (N_("ningún movimiento"), N_("Con esas columnas no he podido leer ningún movimiento."),
+     N_("Revisa en el asistente qué columna es la fecha y cuál el importe, y el orden de la fecha y los decimales.")),
     (N_("cuenta de destino"), N_("La cuenta elegida ya no existe."), N_("Elige otra cuenta de destino y vuelve a importar.")),
 )
 GENERIC = (N_("No he podido leer este archivo."),
