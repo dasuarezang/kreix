@@ -15,7 +15,7 @@ def clean_name(raw: str | None) -> str:
     return " ".join((raw or "").split())[:MAX_NAME].strip()
 
 
-_SPECIAL = {"LAURA PADROS": "Petitona♥"}     # un detalle para alguien especial: se muestra este nombre, el guardado no cambia
+_SPECIAL = {"LAURA PADROS JARA": "Petitona♥"}     # un detalle para alguien especial: se muestra este nombre, el guardado no cambia
 
 
 def shown_name(name: str) -> str:

@@ -185,15 +185,16 @@ def test_a_special_name_is_greeted_differently_without_changing_what_is_saved():
 
     from core.greeting import greeting, shown_name
 
-    for typed in ("Laura Padros", "laura  PADRÓS", " Laura Padrós "):
+    for typed in ("Laura Padros Jara", "laura  PADRÓS   jara", " Laura Padrós Jara "):
         assert greeting(datetime(2026, 1, 1, 9), typed) == "Buenos días, Petitona♥."
         assert shown_name(typed) == "Petitona♥"
     assert greeting(datetime(2026, 1, 1, 9), "Laura") == "Buenos días, Laura."          # solo ese nombre completo
     assert greeting(datetime(2026, 1, 1, 9), "Padros") == "Buenos días, Padros."
+    assert greeting(datetime(2026, 1, 1, 9), "Laura Padros") == "Buenos días, Laura Padros."
     assert greeting(datetime(2026, 1, 1, 22), "") == "Buenas noches."
 
 
 def test_the_special_name_shows_on_home_but_settings_keep_what_was_typed(window):
-    window._apply_user_name("Laura Padros", announce=False)
+    window._apply_user_name("Laura Padros Jara", announce=False)
     assert "Petitona♥" in window.dashboard.header.title_label.text() if hasattr(window.dashboard.header, "title_label") else True
-    assert window._settings.user_name == "Laura Padros" and window.settings_view.name_edit.text() == "Laura Padros"
+    assert window._settings.user_name == "Laura Padros Jara" and window.settings_view.name_edit.text() == "Laura Padros Jara"
