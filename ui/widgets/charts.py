@@ -43,7 +43,11 @@ def nice_ticks(low: float, high: float, count: int = 5) -> list[float]:
 
 
 def axis_label(value: float) -> str:
-    """Etiqueta corta de eje: 1500 -> '1,5k'."""
+    """Etiqueta corta de eje: 1500 -> '1,5k'. En modo privacidad, solo puntos: los ejes tambien dicen cuanto dinero hay."""
+    from ui.format import is_private
+
+    if is_private():
+        return "••"
     sign = "−" if value < 0 else ""
     v = abs(value)
     if v >= 1_000_000:
@@ -872,6 +876,10 @@ class CategoryBarsChart(BaseChart):
 
     EMPTY_TEXT = N_("Sin gastos en este periodo")
     ROW_H = 40
+
+    @property
+    def row_h(self) -> int:
+        return fonts.scaled(self.ROW_H)
     category_clicked = Signal(object)      # TxCategory: el usuario quiere ver los movimientos de esa categoria
 
     def __init__(self) -> None:
@@ -880,7 +888,7 @@ class CategoryBarsChart(BaseChart):
         self._categories: list[object] = []                   # categoria de cada fila (None en "Otras categorias")
 
     def _row_at(self, pos: QPointF) -> int | None:
-        index = int((pos.y() - 8) // self.ROW_H)
+        index = int((pos.y() - 8) // self.row_h)
         return index if 0 <= index < len(self._items) else None
 
     def mouseMoveEvent(self, event) -> None:
@@ -907,7 +915,7 @@ class CategoryBarsChart(BaseChart):
             rows.append((tr("Otras categorías"), float(sum(i.amount for i in rest)), float(sum(i.share for i in rest))))
         self._items = rows
         self._categories = [i.category for i in shown] + ([None] if rest else [])
-        self.setMinimumHeight(max(300, 16 + self.ROW_H * len(rows)))
+        self.setMinimumHeight(max(300, 16 + self.row_h * len(rows)))
         self._restart_animation()
 
     def paint_chart(self, p: QPainter, pal: Palette) -> None:
@@ -922,19 +930,19 @@ class CategoryBarsChart(BaseChart):
         top = max(self._items, key=lambda r: r[1])[1]
         hover = None
         if self._mouse is not None:
-            index = int((self._mouse.y() - 8) // self.ROW_H)
+            index = int((self._mouse.y() - 8) // self.row_h)
             hover = index if 0 <= index < len(self._items) else None
 
         for i, (name, amount, share) in enumerate(self._items):
-            y = 8 + i * self.ROW_H
-            mid = y + self.ROW_H / 2
+            y = 8 + i * self.row_h
+            mid = y + self.row_h / 2
             if i == hover:
                 p.setPen(Qt.PenStyle.NoPen)
                 p.setBrush(color(pal, "hover"))
-                p.drawRoundedRect(QRectF(0, y + 2, self.width(), self.ROW_H - 4), 12, 12)
+                p.drawRoundedRect(QRectF(0, y + 2, self.width(), self.row_h - 4), 12, 12)
             p.setFont(label_font)
             p.setPen(color(pal, "text"))
-            p.drawText(QRectF(10, y, label_w - 10, self.ROW_H), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+            p.drawText(QRectF(10, y, label_w - 10, self.row_h), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
                        lfm.elidedText(name, Qt.TextElideMode.ElideRight, label_w - 10))
             track = QRectF(bar_left, mid - 3, max(bar_right - bar_left, 10), 6)
             p.setPen(Qt.PenStyle.NoPen)
@@ -953,9 +961,9 @@ class CategoryBarsChart(BaseChart):
             p.drawRoundedRect(fill, 3, 3)
             p.setFont(amount_font)
             p.setPen(color(pal, "text"))
-            p.drawText(QRectF(bar_right + 8, y, amount_w + 4, self.ROW_H), Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
+            p.drawText(QRectF(bar_right + 8, y, amount_w + 4, self.row_h), Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
                        fmt_eur(amount))
             p.setFont(fonts.qfont(fonts.BODY_MEDIUM, 12))
             p.setPen(color(pal, "muted"))
-            p.drawText(QRectF(self.width() - pct_w - 6, y, pct_w, self.ROW_H),
+            p.drawText(QRectF(self.width() - pct_w - 6, y, pct_w, self.row_h),
                        Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter, fmt_pct(share, 0))

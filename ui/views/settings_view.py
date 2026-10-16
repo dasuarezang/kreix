@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
 
 from data.repositories import RuleError
 from services.category_service import CategoryService
-from services.settings_service import BACKUP_KEEP, LOCK_MINUTES, AppSettings
+from services.settings_service import BACKUP_KEEP, LOCK_MINUTES, TEXT_SCALES, AppSettings
 from ui.dialogs import RuleDialog
 from ui.feedback import Feedback, snapshot_of, tell
 from ui.format import category_label
@@ -119,9 +119,11 @@ class SettingsView(QWidget):
     name_changed = Signal(str)          # el usuario ha guardado su nombre (vacio = quitarlo)
     interests_changed = Signal(bool, bool)   # (cuentas, inversiones)
     language_changed = Signal(str)           # "es" | "ca" | "en"
+    text_scale_changed = Signal(int)         # 100 | 110 | 125
     change_password_requested = Signal()
     lock_requested = Signal()
     backup_now_requested = Signal()
+    backup_check_requested = Signal()
     restore_backup_requested = Signal(str)     # ruta de la copia que se quiere restaurar
 
     def __init__(self, settings: AppSettings, db_path: str, categories: CategoryService | None = None, parent=None) -> None:
@@ -180,6 +182,15 @@ class SettingsView(QWidget):
         self.language = LanguagePicker(settings.language)
         self.language.changed.connect(self.language_changed)
 
+        text_hint = tr("Hace más grande la letra de toda la aplicación (menús, tablas y gráficos). Se aplica al momento.")
+        self.text_size = Combo()
+        self.text_size.setAccessibleName(tr("Tamaño del texto"))
+        self.text_size.setFixedWidth(300)
+        for percent, label in zip(TEXT_SCALES, (tr("Normal"), tr("Grande"), tr("Muy grande"))):
+            self.text_size.addItem(f"{label} ({percent} %)", percent)
+        self._select_text_size(settings.text_scale)
+        self.text_size.activated.connect(self._on_text_size)
+
         you = GroupCard()                                    # un grupo = una tarjeta; cada ajuste, una fila
         you.add_field(tr("Tu nombre"), name_hint, name_box)
         you.add_field(tr("Idioma"), language_hint, self.language)
@@ -187,6 +198,7 @@ class SettingsView(QWidget):
 
         self.rules = RulesList(categories) if categories is not None else None
         look = GroupCard()
+        look.add_field(tr("Tamaño del texto"), text_hint, self.text_size)
         look.add_setting(self.ambient)
         look.add_setting(self.p2p)
         look.add_setting(self.transfers)
@@ -243,6 +255,12 @@ class SettingsView(QWidget):
             settings.lock_on_minimize,
         )
         self.lock_minimize.switch.toggled.connect(lambda v: self._update(lock_on_minimize=v))
+        self.lock_session = SettingRow(
+            tr("Bloquear al bloquear o suspender Windows"),
+            tr("Si bloqueas Windows (Win+L) o el equipo se suspende, Kreix también se bloquea y pide la contraseña al volver."),
+            settings.lock_on_session,
+        )
+        self.lock_session.switch.toggled.connect(lambda v: self._update(lock_on_session=v))
 
         self.backup_enabled = SettingRow(
             tr("Copias de seguridad automáticas"),
@@ -262,11 +280,14 @@ class SettingsView(QWidget):
         self.backup_choose = QPushButton(tr("Cambiar carpeta…"))
         self.backup_open = QPushButton(tr("Abrir carpeta"))
         self.backup_now = QPushButton(tr("Hacer una copia ahora"))
-        for button in (self.backup_choose, self.backup_open, self.backup_now):
+        self.backup_check = QPushButton(tr("Comprobar la última copia"))
+        self.backup_check.setToolTip(tr("La abre de verdad con tu contraseña y mira que tenga tus datos: así sabes que sirve."))
+        for button in (self.backup_choose, self.backup_open, self.backup_now, self.backup_check):
             button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.backup_choose.clicked.connect(self.choose_backup_folder)
         self.backup_open.clicked.connect(self.open_backup_folder)
         self.backup_now.clicked.connect(self.backup_now_requested)
+        self.backup_check.clicked.connect(self.backup_check_requested)
         self.backup_keep = Combo()
         self.backup_keep.setAccessibleName(tr("Copias que se conservan"))
         self.backup_keep.setFixedWidth(300)
@@ -276,7 +297,7 @@ class SettingsView(QWidget):
         self.backup_keep.activated.connect(self._on_backup_keep)
         backup_buttons = QHBoxLayout()
         backup_buttons.setSpacing(10)
-        for button in (self.backup_choose, self.backup_open, self.backup_now):
+        for button in (self.backup_choose, self.backup_open, self.backup_now, self.backup_check):
             backup_buttons.addWidget(button)
         backup_buttons.addStretch(1)
         backup_box = QWidget()
@@ -308,7 +329,8 @@ class SettingsView(QWidget):
             tr("Si no tocas el equipo durante este tiempo, Kreix esconde tus datos y vuelve a pedir la contraseña."),
             self.lock_after)
         self.lock_minimize_card = app.add_setting(self.lock_minimize)
-        self._security_rows = (self.security_card, self.lock_card, self.lock_minimize_card)
+        self.lock_session_card = app.add_setting(self.lock_session)
+        self._security_rows = (self.security_card, self.lock_card, self.lock_minimize_card, self.lock_session_card)
         for row in self._security_rows:
             row.hide()
         app.add_field(tr("Tus datos"), tr("Todo se guarda solo en este equipo. Kreix no envía datos a ningún servidor."), data_box)
@@ -372,6 +394,12 @@ class SettingsView(QWidget):
     def _on_lock_after(self, index: int) -> None:
         self._update(auto_lock_minutes=int(self.lock_after.itemData(index)))
 
+    def _select_text_size(self, percent: int) -> None:
+        self.text_size.setCurrentIndex(TEXT_SCALES.index(percent) if percent in TEXT_SCALES else 0)
+
+    def _on_text_size(self, index: int) -> None:
+        self.text_scale_changed.emit(int(self.text_size.itemData(index)))
+
     def _select_backup_keep(self, keep: int) -> None:
         self.backup_keep.setCurrentIndex(BACKUP_KEEP.index(keep) if keep in BACKUP_KEEP else BACKUP_KEEP.index(10))
 
@@ -426,8 +454,10 @@ class SettingsView(QWidget):
         self.language.set_language(settings.language)
         self._select_lock_minutes(settings.auto_lock_minutes)
         self._select_backup_keep(settings.backup_keep)
+        self._select_text_size(settings.text_scale)
         for row, value in ((self.p2p, settings.include_p2p), (self.transfers, settings.transfers_in_as_income),
                            (self.ambient, settings.ambient), (self.lock_minimize, settings.lock_on_minimize),
+                           (self.lock_session, settings.lock_on_session),
                            (self.backup_enabled, settings.backup_enabled)):
             row.switch.blockSignals(True)
             row.switch.setChecked(value)

@@ -6,9 +6,29 @@ from PySide6.QtWidgets import QFrame, QLabel, QPushButton, QScrollArea, QVBoxLay
 from core.i18n import tr, N_
 from ui.widgets.brand_dialog import BrandDialog
 
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 
 RELEASES: dict[str, tuple[tuple[str, str], ...]] = {
+    "0.4.0": (
+        (N_("Modo privacidad"),
+         N_("El ojo de la barra lateral (o Ctrl+H) oculta todas las cantidades en euros, para mirar Kreix con alguien al lado o "
+            "compartir la pantalla.")),
+        (N_("Previsión a fin de mes"),
+         N_("Inicio calcula cuánto dinero tendrás a final de mes con tus pagos fijos, tus ingresos fijos y tu gasto de cada día.")),
+        (N_("Por clasificar"),
+         N_("Inicio te dice cuántos movimientos no tienen categoría y, si un comercio se repite, te propone una regla para "
+            "clasificarlos de una vez.")),
+        (N_("Traspasos entre tus cuentas"),
+         N_("Si mueves dinero de una cuenta tuya a otra, Kreix lo reconoce y no lo cuenta ni como gasto ni como ingreso.")),
+        (N_("Copias de seguridad a la vista"),
+         N_("Abajo a la izquierda ves cuándo se hizo la última copia, y en Ajustes puedes comprobar que se abre de verdad.")),
+        (N_("Se bloquea con Windows"),
+         N_("Si bloqueas Windows (Win+L) o el equipo se suspende, Kreix también se bloquea.")),
+        (N_("Tamaño del texto"),
+         N_("En Ajustes puedes hacer más grande la letra de toda la aplicación, también en la pantalla de la contraseña.")),
+        (N_("Cambio de tema más rápido"),
+         N_("Pasar del modo claro al oscuro, y al revés, tarda ahora aproximadamente una cuarta parte.")),
+    ),
     "0.3.0": (
         (N_("Importa de cualquier banco"),
          N_("Si Kreix no reconoce un CSV o Excel, te enseña sus primeras filas y te deja decir qué columna es la fecha, el "

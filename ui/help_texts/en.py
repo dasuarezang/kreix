@@ -340,14 +340,14 @@ HELP: dict[str, dict] = {
     },
     "Bloqueo automático": {
         "term": "Automatic lock",
-        "plain": "If you stop using the computer for a few minutes, or minimize the window, Kreix hides your data and asks for the master password again. You can also lock it by hand with Ctrl+L or from Settings.",
+        "plain": "If you stop using the computer for a few minutes, minimize the window, lock Windows (Win+L) or put the computer to sleep, Kreix hides your data and asks for the master password again. You can also lock it by hand with Ctrl+L or from Settings.",
         "how": "In Settings, under Security, you choose the time (or «Never») and whether it locks when minimized. After several wrong passwords in a row, Kreix makes you wait a few seconds before the next attempt, and the wait grows. A dialog you had open is closed when locking; your data was already saved. When you create or change the password, a meter tells you how hard it would be to guess: mix letters, numbers and symbols, or use a long phrase.",
         "keywords": ["lock", "locking", "inactivity", "minimize", "password", "security", "padlock"],
     },
     "Copias de seguridad automáticas": {
         "term": "Automatic backups",
         "plain": "Kreix saves an encrypted copy of your data in a folder on its own: when it opens, if there is none yet; after changes, at most once an hour; and when it closes. The last 3, 5, 10 or 20 are kept, and the oldest are deleted.",
-        "how": "Each backup is a .kreix file with the date in its name, encrypted with your master password. In Settings you choose the folder (for example an external drive or a synced folder). To recover one, press Restore next to it and type your master password: it replaces the current data and you can undo it. If you change the password, the backups are encrypted again with the new one.",
+        "how": "At the bottom left you can see when the last one was made. «Check the latest backup», in Settings, really opens it and tells you whether it works. Each backup is a .kreix file with the date in its name, encrypted with your master password. In Settings you choose the folder (for example an external drive or a synced folder). To recover one, press Restore next to it and type your master password: it replaces the current data and you can undo it. If you change the password, the backups are encrypted again with the new one.",
         "keywords": ["backup", "backups", "copy", "security", "restore", "recover", "folder"],
     },
     "Importar de otro banco": {
@@ -356,9 +356,40 @@ HELP: dict[str, dict] = {
         "how": "You see the first rows of the file and Kreix suggests the columns from their titles; you correct them. If the bank splits income and expenses into two columns, choose «Two columns». You also say whether decimals use a comma or a point and the order of the date. Before saving you see how many transactions are read and the first few, to check dates and amounts. The format is saved under the name you give it and only applies to later files; in Import you can forget it. CSV and Excel only, never PDF.",
         "keywords": ["another bank", "columns", "format", "import", "csv", "excel", "assistant"],
     },
+    "Previsión a fin de mes": {
+        "term": "End-of-month forecast",
+        "plain": "How much money you will have in your accounts on the last day of the month if everything goes on as it has so far.",
+        "how": "It starts from the money in your accounts on the last day with data. It subtracts the recurring payments still to be charged this month, adds the fixed income still to arrive (for example your salary) and subtracts day-to-day spending (what is not a fixed payment) at the pace of the last 60 days. It is an estimate, not a promise: it knows nothing about extraordinary expenses or income that does not repeat. With less than two weeks of data it does not estimate daily spending (it only counts fixed payments), and it shows nothing if the last day with data is already the last day of the month.",
+        "example": "You have €2,000 and 10 days are left: a €50 bill is still to come and you usually spend about €15 a day. Forecast: 2,000 - 50 - 150 = €1,800.",
+        "keywords": ["forecast", "end of month", "projection", "estimate", "future balance"],
+    },
+    "Traspasos entre tus cuentas": {
+        "term": "Transfers between your accounts",
+        "plain": "If you move money from one of your accounts to another, Kreix recognises it and counts it neither as an expense nor as income: the money has only changed place.",
+        "how": "It joins an outgoing and an incoming movement of the same amount, in different accounts and less than four days apart, when at least one of them is a transfer. Each movement forms a pair only once. In the transactions table they appear as «Transfer between your accounts». If you look at only one of the two accounts, the transfer does count according to your setting for incoming transfers.",
+        "keywords": ["transfer", "transfers", "between accounts", "own accounts", "pairing"],
+    },
+    "Modo privacidad": {
+        "term": "Privacy mode",
+        "plain": "The eye in the sidebar (or Ctrl+H) hides every amount in euros: it replaces each figure with dots. It is useful when someone is next to you or when you share your screen.",
+        "how": "The amounts in figures, charts (including their axes), tables and notices are hidden. Percentages are still shown. It is remembered when you close and open Kreix. The dialogs where you type an amount (budgets, goals) show what you type.",
+        "keywords": ["privacy", "hide", "figures", "eye", "money", "screen", "share"],
+    },
+    "Por clasificar y reglas sugeridas": {
+        "term": "To classify and suggested rules",
+        "plain": "On Home, «To classify» tells you how many transactions still have no category and, if the same merchant repeats, suggests a rule to classify them all at once.",
+        "how": "Press «Create rule…» next to a merchant: the new rule dialog opens with its word already typed and you only have to choose the category. The rule applies to every transaction containing that word, including the ones you import later. «See the transactions» opens Accounts filtered by «No category».",
+        "keywords": ["classify", "category", "no category", "rule", "rules", "suggestion", "merchant"],
+    },
+    "Tamaño del texto": {
+        "term": "Text size",
+        "plain": "In Settings you can make the text of the whole app bigger: normal, large (110%) or extra large (125%).",
+        "how": "It changes menus, tables, charts and dialogs, and applies immediately. It also applies to the password screen. If something is hard to read, try a bigger size.",
+        "keywords": ["size", "font", "text", "accessibility", "large", "zoom"],
+    },
     "Atajos de teclado": {
         "term": "Keyboard shortcuts",
-        "plain": "Ctrl+1 Home, Ctrl+2 Accounts, Ctrl+3 Investments, Ctrl+4 Import, Ctrl+5 Export, Ctrl+6 Settings, Ctrl+7 Help. Ctrl+T switches between light and dark mode, Ctrl+K searches everything, Ctrl+F searches your transactions, Ctrl+L locks Kreix and F5 recalculates the page.",
+        "plain": "Ctrl+1 Home, Ctrl+2 Accounts, Ctrl+3 Investments, Ctrl+4 Import, Ctrl+5 Export, Ctrl+6 Settings, Ctrl+7 Help. Ctrl+T switches between light and dark mode, Ctrl+K searches everything, Ctrl+F searches your transactions, Ctrl+L locks Kreix, Ctrl+H hides the amounts and F5 recalculates the page.",
         "keywords": ["keyboard", "ctrl"],
     },
 }

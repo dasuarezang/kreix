@@ -32,6 +32,7 @@ class TransactionDraft:
     source_file: str
     account_id: int | None = None   # lo rellena la capa de datos al leer de la base
     is_manual: bool = False         # categoria elegida por el usuario: ninguna regla la cambia
+    paired_with: int | None = None  # traspaso entre cuentas propias: la cuenta de la otra mitad (lo rellena `core.transfers`)
 
 
 @dataclass(frozen=True, slots=True)

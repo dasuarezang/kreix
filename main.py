@@ -17,7 +17,7 @@ from PySide6.QtWidgets import QApplication
 
 from core import i18n
 from core.i18n import tr
-from data.paths import default_db_path, default_vault_path, legacy_db_path, read_language_hint
+from data.paths import default_db_path, default_vault_path, legacy_db_path, read_language_hint, read_scale_hint
 from data.vault import CorruptVaultError, WrongPasswordError
 from ui import assets, fonts, theme
 from ui.lock_screen import LockDialog, LockMode
@@ -109,6 +109,7 @@ def unlock_store(path: Path, legacy: Path, parent=None, on_open=None):
         mode, attempt = LockMode.UNLOCK, unlock
     else:
         mode, attempt = (LockMode.MIGRATE if legacy.is_file() else LockMode.CREATE), create
+    fonts.set_scale(read_scale_hint())                       # el tamano de letra elegido tambien vale para esta pantalla
     i18n.set_language(read_language_hint() or system_language())     # el idioma elegido esta dentro de los datos cifrados: aun no se conoce
     finish = (lambda: on_open(opened[0])) if on_open else None
     dialog = LockDialog(mode, attempt, parent, finish)
@@ -134,7 +135,8 @@ def wire_store(app, window, store, autosave_ms: int = 2000, save_on_quit: bool =
     transfer = window._svc.transfer
     backups = BackupService(lambda target: transfer.export_to(target, store.seal_export),
                             lambda: config_from(app.kreix_window._settings), default_backup_folder(),
-                            is_empty=lambda: transfer.summary().is_empty)
+                            is_empty=lambda: transfer.summary().is_empty,
+                            inspect=lambda path: transfer.inspect(path, unseal=store.unseal_export))
     store.on_saved(backups.note_saved)                      # cada guardado en disco cuenta como "hay cambios sin copiar"
 
     def persist() -> None:
@@ -156,6 +158,12 @@ def wire_store(app, window, store, autosave_ms: int = 2000, save_on_quit: bool =
     lock = AutoLock(store, lambda: app.kreix_window._settings, lambda: app.kreix_window, app)
     app.kreix_autolock = lock                               # bloqueo por inactividad y al minimizar (sigue a la ventana vigente)
     lock.start()
+    from ui.session_watch import SessionWatcher
+
+    watcher = SessionWatcher(lock.session_event)             # y al bloquear Windows (Win+L) o suspender el equipo
+    app.installNativeEventFilter(watcher)
+    watcher.start()
+    app.kreix_session = watcher
     app.kreix_persist, app.kreix_autosave = persist, autosave      # (las pruebas los usan en lugar de esperar al reloj)
     return backups, lock
 
@@ -227,7 +235,7 @@ def main(argv: list[str] | None = None) -> int:
     app.setWindowIcon(assets.app_icon())
     install_keyboard_rings(app)
     brand_message.install()                                # avisos y cuadros de texto con la cara de Kreix, no los de Windows
-    app.setStyleSheet(theme.stylesheet(theme.DARK))        # la pantalla de bloqueo ya sale con el estilo de la app
+    app.setStyleSheet(theme.base_stylesheet())             # (la pantalla de bloqueo y cada ventana llevan su propia hoja)
     if args.selftest:
         return selftest(Path(args.selftest))
     db = args.db or os.environ.get("KREIX_DB")

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from core.entities import OperationDraft, PositionSnapshot, PricePointDraft, TransactionDraft
 from core.enums import Bank, TxCategory
+from core.transfers import pair_transfers
 from data.models import SCALE, Account, Investment, InvestmentOperation, PricePoint, Valuation
 
 
@@ -26,7 +27,7 @@ def load_transactions(session: Session) -> list[TransactionDraft]:
     # movimientos, pasar por la capa de tipos de SQLAlchemy fila a fila era lo que mas tardaba.
     scale = Decimal(SCALE)
     from_iso = date.fromisoformat
-    return [
+    return pair_transfers([
         TransactionDraft(
             bank=_BANKS[bank], booking_date=from_iso(day), description=desc,
             amount=Decimal(amount) / scale, balance_after=None if balance is None else Decimal(balance) / scale,
@@ -35,7 +36,7 @@ def load_transactions(session: Session) -> list[TransactionDraft]:
         )
         for bank, day, desc, amount, balance, category, tx_hash, source, account_id, manual
         in session.connection().exec_driver_sql(_TX_SQL).fetchall()       # de golpe: iterar el cursor fila a fila cuesta mas
-    ]
+    ])                                                                    # y los traspasos entre cuentas propias, emparejados
 
 
 def load_operations(session: Session) -> list[OperationDraft]:

@@ -26,6 +26,20 @@ FALLBACK = "Segoe UI"
 _FILES = ("MontserratExtraBold", "MontserratBold", "MontserratSemiBold", "DMSans", "DMSansMedium", "DMSansBold")
 _loaded: bool | None = None
 
+TEXT_SCALES = (100, 110, 125)      # tamanos del texto que se pueden elegir (en %)
+SCALE = 1.0                        # el que esta en uso
+
+
+def set_scale(percent: int) -> None:
+    """Fija el tamano del texto de toda la aplicacion (100, 110 o 125 %). Se aplica a lo que se cree a partir de ahora."""
+    global SCALE
+    SCALE = (percent if percent in TEXT_SCALES else 100) / 100
+
+
+def scaled(px: float) -> int:
+    """Un tamano en pixeles (de letra, o de una fila que la contiene) ajustado al tamano del texto elegido."""
+    return round(px * SCALE)
+
 
 def load_fonts() -> bool:
     """Registra las fuentes incluidas. Seguro de llamar varias veces."""
@@ -46,7 +60,7 @@ def family(preferred: str) -> str:
 def qfont(name: str, px: int, spacing: float = 0.0, tabular: bool = False) -> QFont:
     """Una fuente lista para pintar. `spacing` es el tracking en pixeles; `tabular` activa cifras de ancho fijo."""
     font = QFont(family(name))
-    font.setPixelSize(px)
+    font.setPixelSize(scaled(px))
     if spacing:
         font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, spacing)
     if tabular:
@@ -62,4 +76,11 @@ def stack(preferred: str) -> str:
 def setup_application(app) -> None:
     """Carga las fuentes y fija DM Sans como tipografia por defecto de la aplicacion."""
     load_fonts()
-    app.setFont(qfont(BODY, 14))
+    apply_default_font(app)
+
+
+def apply_default_font(app) -> None:
+    """La letra de lo que no lleva tamano propio (controles, desplegables...) sigue el tamano del texto elegido."""
+    font = qfont(BODY, 14)
+    if app.font().pixelSize() != font.pixelSize() or app.font().family() != font.family():
+        app.setFont(font)

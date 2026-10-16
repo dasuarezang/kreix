@@ -81,17 +81,20 @@ def test_views_are_reused_until_the_data_changes(tmp_path):
 
 
 def test_theme_change_applies_the_stylesheet_once_or_not_at_all(window, monkeypatch):
+    """La hoja va en la ventana, no en toda la aplicacion (cambiarla en la aplicacion obliga a Qt a repulir TODO y tarda ~4 veces mas)."""
     app = QApplication.instance()
-    calls = []
-    real = app.setStyleSheet
-    monkeypatch.setattr(app, "setStyleSheet", lambda s: calls.append(1) or real(s))
+    app_calls, calls = [], []
+    real_app, real = app.setStyleSheet, window.setStyleSheet
+    monkeypatch.setattr(app, "setStyleSheet", lambda s: app_calls.append(1) or real_app(s))
+    monkeypatch.setattr(window, "setStyleSheet", lambda s: calls.append(1) or real(s))
     window.apply_theme("light")
     assert len(calls) == 1
     window.apply_theme("light")
-    assert len(calls) == 1                                               # misma hoja: no se vuelve a repulir toda la interfaz
+    assert len(calls) == 1                                               # misma hoja: no se vuelve a repulir la interfaz
     window.theme_switch.toggle()                                         # el usuario cambia a oscuro: una sola aplicacion
     assert len(calls) == 2
     assert window.theme_switch.isChecked()
+    assert app_calls == []                                               # y nunca se toca la hoja de toda la aplicacion
 
 
 def test_table_columns_get_a_fixed_width_once_instead_of_resizing_to_contents(window):

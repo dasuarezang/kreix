@@ -40,7 +40,7 @@ DB_ENTRY, MANIFEST_ENTRY = "kreix.db", "manifest.json"
 MAX_DB_BYTES = 1 << 30            # 1 GB
 MAX_MANIFEST_BYTES = 1 << 20      # 1 MB
 REQUIRED_TABLES = {"accounts", "transactions", "investments", "investment_operations", "valuations", "settings"}
-APP_VERSION = "0.3.0"
+APP_VERSION = "0.4.0"
 
 
 class TransferError(ValueError):
@@ -193,11 +193,20 @@ class TransferService:
 
     # ------------------------------------------------------------------ leer un archivo
     @contextmanager
-    def _opened(self, path: str | Path, password: str | None = None) -> Iterator[tuple[dict, Path, DataSummary]]:
+    def _opened(self, path: str | Path, password: str | None = None,
+                unseal=None) -> Iterator[tuple[dict, Path, DataSummary]]:
         source: Path | io.BytesIO = Path(path)
         if not source.is_file():
             raise TransferError(tr("Este archivo no es una exportación de Kreix."))
         if is_encrypted(source):
+            if unseal is not None:                     # una copia propia: se abre con la clave del almacen, sin pedir contrasena
+                try:
+                    source = io.BytesIO(unseal(source.read_bytes()))
+                except WrongPasswordError as exc:
+                    raise WrongImportPassword(tr("La copia no se abre con tu contraseña actual.")) from exc
+                except CorruptVaultError as exc:
+                    raise TransferError(tr("El archivo está dañado.")) from exc
+        if isinstance(source, Path) and is_encrypted(source):
             if not password:
                 raise PasswordRequired(tr("El archivo está cifrado: hace falta la contraseña maestra con la que se exportó."))
             try:
@@ -239,8 +248,10 @@ class TransferService:
         finally:
             shutil.rmtree(workdir, ignore_errors=True)
 
-    def inspect(self, path: str | Path, password: str | None = None) -> BackupInfo:
-        with self._opened(path, password) as (manifest, _db, summary):
+    def inspect(self, path: str | Path, password: str | None = None, unseal=None) -> BackupInfo:
+        """Lee una exportacion sin restaurarla. `unseal` (la funcion del almacen) la abre sin pedir contrasena: asi se comprueba
+        una copia de seguridad propia."""
+        with self._opened(path, password, unseal) as (manifest, _db, summary):
             return BackupInfo(str(manifest.get("exported_at", "")), str(manifest.get("app_version", "")), summary)
 
     # ------------------------------------------------------------------ restaurar

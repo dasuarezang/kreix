@@ -11,7 +11,9 @@ from core import metrics
 from core.account_metrics import expense_breakdown
 from core.budget import BudgetLine, budget_lines
 from core.metrics import AllocationSlice, FlowOptions, MonthlyFlow, WealthPoint
+from core.forecast import MonthForecast, forecast_month_end
 from core.recurring import Recurring, detect_recurring
+from core.suggestions import RuleSuggestion, suggest_rules, uncategorized
 from data.database import session_scope
 from data.tracker import tracker_for
 from core.goals import Goal
@@ -46,6 +48,10 @@ class DashboardData:
     net_worth_change: Decimal | None = None   # frente al cierre del mes anterior (None si aun no hay dos meses de datos)
     goals: list[Goal] = field(default_factory=list)               # metas de ahorro
     last_update: date | None = None      # cuando se actualizaron los datos por ultima vez
+    forecast: MonthForecast | None = None                           # lo que se espera tener en las cuentas a fin de mes
+    uncategorized_count: int = 0                                    # movimientos que aun no tienen categoria
+    uncategorized_total: Decimal = Decimal(0)
+    suggestions: list[RuleSuggestion] = field(default_factory=list)    # comercios repetidos entre ellos: reglas de un clic
     has_transactions: bool = False
     has_operations: bool = False
     has_portfolio: bool = False
@@ -104,9 +110,13 @@ class DashboardService:
                 data.month_income, data.month_expenses = current.income, current.expenses
                 data.month_savings_rate = current.savings_rate
             last_day = max(t.booking_date for t in txs)
-            data.upcoming = sorted(
-                (r for r in detect_recurring(txs, marks=marks) if (r.next_date - last_day).days <= UPCOMING_DAYS),
-                key=lambda r: r.next_date)
+            recurring = detect_recurring(txs, marks=marks)
+            data.upcoming = sorted((r for r in recurring if (r.next_date - last_day).days <= UPCOMING_DAYS), key=lambda r: r.next_date)
+            data.forecast = forecast_month_end(txs, options, recurring=recurring, marks=marks)
+            pending = uncategorized(txs)
+            data.uncategorized_count = len(pending)
+            data.uncategorized_total = sum((abs(t.amount) for t in pending), Decimal(0))
+            data.suggestions = suggest_rules(txs)
             data.has_budgets = bool(budgets)
             this_month = [t for t in txs if metrics.month_start(t.booking_date) == data.report_month]
             data.budgets = budget_lines(budgets, expense_breakdown(this_month, options))

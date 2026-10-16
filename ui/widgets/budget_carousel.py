@@ -41,7 +41,7 @@ class SlideView(QWidget):
 
     def __init__(self) -> None:
         super().__init__()
-        self.setMinimumHeight(SLIDE_HEIGHT)
+        self.setMinimumHeight(fonts.scaled(SLIDE_HEIGHT))
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self._lines: list[BudgetLine] = []
         self._index = 0
@@ -56,7 +56,7 @@ class SlideView(QWidget):
         self._anim.valueChanged.connect(self._on_progress)
 
     def sizeHint(self) -> QSize:
-        return QSize(320, SLIDE_HEIGHT)
+        return QSize(320, fonts.scaled(SLIDE_HEIGHT))
 
     @property
     def animating(self) -> bool:

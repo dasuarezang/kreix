@@ -27,14 +27,14 @@ class GoalBars(QWidget):
     def set_goals(self, goals: list[Goal], today: date | None = None) -> None:
         self._goals = goals
         self._today = today or date.today()
-        self.setMinimumHeight(len(goals) * ROW_H + 4)
+        self.setMinimumHeight(len(goals) * fonts.scaled(ROW_H) + 4)
         self.updateGeometry()
         self.update()
         self.setAccessibleDescription("; ".join(
             f"{g.name}: " + tr("{spent} de {budget}").format(spent=fmt_eur(g.saved), budget=fmt_eur(g.target)) for g in goals))
 
     def sizeHint(self) -> QSize:
-        return QSize(300, len(self._goals) * ROW_H + 4)
+        return QSize(300, len(self._goals) * fonts.scaled(ROW_H) + 4)
 
     def note(self, goal: Goal) -> str:
         """La linea de ayuda de una meta (publica para poder probarla)."""
@@ -58,7 +58,7 @@ class GoalBars(QWidget):
         name_font = fonts.qfont(fonts.BODY_MEDIUM, 13)
         note_font = fonts.qfont(fonts.BODY, 12)
         for i, goal in enumerate(self._goals):
-            top = i * ROW_H
+            top = i * fonts.scaled(ROW_H)
             tone = QColor(pal.green if goal.reached else pal.accent)
             p.setFont(name_font)
             p.setPen(QColor(pal.text))

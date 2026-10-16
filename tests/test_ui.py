@@ -76,7 +76,7 @@ def test_theme_switch_applies_and_persists(window):
     assert theme.current() is theme.DARK
     window.theme_switch.setChecked(False)
     assert theme.current() is theme.LIGHT
-    assert theme.LIGHT.bg in QApplication.instance().styleSheet()          # se aplico la hoja del modo claro
+    assert theme.LIGHT.bg in window.styleSheet()          # se aplico la hoja del modo claro
     assert window._svc.settings.load().theme == "light"
     window.theme_switch.setChecked(True)
     assert theme.current() is theme.DARK

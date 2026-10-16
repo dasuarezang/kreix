@@ -126,6 +126,27 @@ ENTRIES: tuple[HelpEntry, ...] = (
         keywords=("ahorro", "porcentaje de ahorro"),
     ),
     HelpEntry(
+        S_ACCOUNTS, "Previsión a fin de mes",
+        "Cuánto dinero tendrás en tus cuentas el último día del mes si todo sigue como hasta ahora.",
+        "Parte del dinero de tus cuentas el último día con datos. Resta los pagos recurrentes que aún faltan por cobrar este mes, "
+        "suma los ingresos fijos que aún faltan por llegar (por ejemplo, la nómina) y resta el gasto del día a día (lo que no es "
+        "un pago fijo) al ritmo de los últimos 60 días. Es una estimación, no una promesa: no sabe de gastos extraordinarios ni de "
+        "ingresos que no se repiten. Con menos de dos semanas de datos no estima el gasto diario (solo cuenta los pagos fijos) y "
+        "no sale nada si el último día con datos ya es el último del mes.",
+        "Tienes 2.000 € y quedan 10 días: falta un recibo de 50 € y sueles gastar unos 15 € al día. Previsión: 2.000 - 50 - 150 = 1.800 €.",
+        keywords=("previsión", "prevision", "fin de mes", "proyección", "estimación", "saldo futuro"),
+    ),
+    HelpEntry(
+        S_ACCOUNTS, "Traspasos entre tus cuentas",
+        "Si mueves dinero de una cuenta tuya a otra, Kreix lo reconoce y no lo cuenta ni como gasto ni como ingreso: el dinero solo "
+        "ha cambiado de sitio.",
+        "Une una salida y una entrada del mismo importe, en cuentas distintas y con menos de cuatro días de diferencia, cuando al "
+        "menos una es un traspaso. Cada movimiento forma pareja una sola vez. En la tabla de movimientos se ven como «Traspaso entre "
+        "tus cuentas». Si miras solo una de las dos cuentas, el traspaso sí cuenta según tu ajuste de traspasos entrantes.",
+        "",
+        keywords=("traspaso", "traspasos", "entre cuentas", "cuentas propias", "emparejar"),
+    ),
+    HelpEntry(
         S_ACCOUNTS, "Gasto medio mensual y diario",
         "Cuánto gastas de media. En la vista global se muestra por mes; si eliges un mes, por día.",
         "Gastos del periodo ÷ meses transcurridos (o ÷ días transcurridos). En el mes en curso se cuenta hasta el "
@@ -498,8 +519,8 @@ ENTRIES: tuple[HelpEntry, ...] = (
     ),
     HelpEntry(
         S_USE, "Bloqueo automático",
-        "Si dejas de usar el equipo unos minutos, o minimizas la ventana, Kreix esconde tus datos y vuelve a pedir la "
-        "contraseña maestra. También puedes bloquearlo a mano con Ctrl+L o desde Ajustes.",
+        "Si dejas de usar el equipo unos minutos, minimizas la ventana, bloqueas Windows (Win+L) o suspendes el equipo, Kreix "
+        "esconde tus datos y vuelve a pedir la contraseña maestra. También puedes bloquearlo a mano con Ctrl+L o desde Ajustes.",
         "En Ajustes, en Seguridad, eliges el tiempo (o «Nunca») y si quieres que se bloquee al minimizar. Tras varias "
         "contraseñas incorrectas seguidas, Kreix te hace esperar unos segundos antes del siguiente intento, y la espera "
         "crece. Un cuadro que tuvieras abierto se cierra al bloquear; tus datos ya estaban guardados. Al crear o cambiar la "
@@ -511,7 +532,8 @@ ENTRIES: tuple[HelpEntry, ...] = (
         S_USE, "Copias de seguridad automáticas",
         "Kreix guarda solo una copia cifrada de tus datos en una carpeta: al abrir, si aún no hay ninguna; después de hacer "
         "cambios, como mucho una por hora; y al cerrar. Se conservan las últimas 3, 5, 10 o 20, y las más viejas se borran.",
-        "Cada copia es un archivo .kreix con la fecha en el nombre, cifrado con tu contraseña maestra. En Ajustes eliges la "
+        "Abajo a la izquierda ves cuándo se hizo la última. «Comprobar la última copia», en Ajustes, la abre de verdad y te dice si "
+        "sirve. Cada copia es un archivo .kreix con la fecha en el nombre, cifrado con tu contraseña maestra. En Ajustes eliges la "
         "carpeta (por ejemplo, un disco externo o una carpeta sincronizada). Para recuperar una, pulsa Restaurar junto a ella "
         "y escribe tu contraseña maestra: sustituye los datos actuales y puedes deshacerlo. Si cambias la contraseña, las "
         "copias se vuelven a cifrar con la nueva.",
@@ -531,6 +553,34 @@ ENTRIES: tuple[HelpEntry, ...] = (
         keywords=("otro banco", "columnas", "formato", "importar", "csv", "excel", "asistente"),
     ),
     HelpEntry(
+        S_USE, "Modo privacidad",
+        "El ojo de la barra lateral (o Ctrl+H) oculta todas las cantidades en euros: sustituye cada importe por puntos. Sirve para "
+        "mirar Kreix con alguien al lado o compartir la pantalla.",
+        "Se ocultan los importes de las cifras, los gráficos (incluidos sus ejes), las tablas y los avisos. Los porcentajes se "
+        "siguen viendo. Se recuerda al cerrar y abrir Kreix. Los cuadros donde tú escribes un importe (presupuestos, metas) "
+        "muestran lo que escribes.",
+        "",
+        keywords=("privacidad", "ocultar", "cifras", "ojo", "dinero", "pantalla", "compartir"),
+    ),
+    HelpEntry(
+        S_USE, "Por clasificar y reglas sugeridas",
+        "En Inicio, «Por clasificar» te dice cuántos movimientos aún no tienen categoría y, si un mismo comercio se repite, te propone "
+        "una regla para clasificarlos de una vez.",
+        "Pulsa «Crear regla…» junto a un comercio: se abre el cuadro de nueva regla con su palabra ya escrita y solo tienes que elegir "
+        "la categoría. La regla se aplica a todos los movimientos con esa palabra, también a los que importes después. «Ver los "
+        "movimientos» abre Cuentas filtrado por «Sin categoría».",
+        "",
+        keywords=("clasificar", "categoría", "sin categoría", "regla", "reglas", "sugerencia", "comercio"),
+    ),
+    HelpEntry(
+        S_USE, "Tamaño del texto",
+        "En Ajustes puedes hacer más grande la letra de toda la aplicación: normal, grande (110 %) o muy grande (125 %).",
+        "Cambia menús, tablas, gráficos y cuadros, y se aplica al momento. También vale para la pantalla de la contraseña. Si algo "
+        "no se lee bien, prueba con un tamaño mayor.",
+        "",
+        keywords=("tamaño", "letra", "texto", "accesibilidad", "grande", "zoom"),
+    ),
+    HelpEntry(
         S_USE, "Privacidad",
         "Todo se guarda solo en tu ordenador. Kreix no usa internet, no tiene cuentas y no envía datos a ningún servidor.",
         "",
@@ -541,7 +591,7 @@ ENTRIES: tuple[HelpEntry, ...] = (
         S_USE, "Atajos de teclado",
         "Ctrl+1 Inicio, Ctrl+2 Cuentas, Ctrl+3 Inversiones, Ctrl+4 Importar, Ctrl+5 Exportar, Ctrl+6 Ajustes, "
         "Ctrl+7 Ayuda. Ctrl+T cambia entre modo claro y oscuro, Ctrl+K busca en todo, Ctrl+F busca en tus movimientos, "
-        "Ctrl+L bloquea Kreix y F5 recalcula la página.",
+        "Ctrl+L bloquea Kreix, Ctrl+H oculta las cantidades y F5 recalcula la página.",
         "",
         "",
         keywords=("teclado", "ctrl"),

@@ -7,6 +7,7 @@ Montserrat ExtraBold para titulos y cifras, DM Sans para el texto.
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 from ui import fonts as F
@@ -100,7 +101,37 @@ def rgba(color: str, alpha: float) -> str:
     return f"rgba({r}, {g}, {b}, {alpha:.2f})"
 
 
+def base_stylesheet() -> str:
+    """Lo unico que se pone a nivel de aplicacion y no cambia nunca: los consejos emergentes (que no cuelgan de ninguna
+    ventana). El resto del estilo va en la ventana principal (y en cada cuadro suelto): cambiar la hoja de TODA la
+    aplicacion obliga a Qt a repulir todos sus widgets y tarda unas cuatro veces mas."""
+    return f"""
+QToolTip {{
+    background: {DARK.surface_alt}; color: {DARK.text}; border: 1px solid {DARK.field_edge}; padding: 7px 10px;
+    font-family: {F.stack(F.BODY_MEDIUM)}; font-size: 12px;
+}}
+"""
+
+
+_SCALED = re.compile(r"(font-size|min-height|max-height|min-width|max-width):\s*(\d+)px")
+
+
+def _scale_sheet(css: str, scale: float) -> str:
+    """Escala los tamanos de letra (y las medidas de las cajas de 12 px o mas, que las contienen) de una hoja de estilos."""
+    def fix(match: re.Match) -> str:
+        prop, value = match.group(1), int(match.group(2))
+        if prop != "font-size" and value < 12:
+            return match.group(0)                        # los filos finos (1 px) no crecen
+        return f"{prop}: {round(value * scale)}px"
+    return _SCALED.sub(fix, css)
+
+
 def stylesheet(p: Palette) -> str:
+    css = _stylesheet(p)
+    return css if F.SCALE == 1.0 else _scale_sheet(css, F.SCALE)
+
+
+def _stylesheet(p: Palette) -> str:
     body, medium = F.stack(F.BODY), F.stack(F.BODY_MEDIUM)
     display, display_bold, label = F.stack(F.DISPLAY), F.stack(F.DISPLAY_BOLD), F.stack(F.LABEL)
     # Jerarquia estricta: negrita y extranegrita SOLO para las cifras principales (Montserrat). Todo lo demas, DM Sans en
@@ -146,8 +177,16 @@ QPushButton#NavButton:checked, QPushButton#PillButton:checked {{
     background: {p.accent}; color: {p.on_accent}; border: 2px solid {p.accent_edge};
 }}
 QPushButton#NavButton[kbd="true"]:focus, QPushButton#PillButton[kbd="true"]:focus {{ border: 2px solid {p.text}; }}
+QPushButton#EyeButton {{
+    min-width: 44px; max-width: 44px; min-height: 44px; max-height: 44px; padding: 0; border-radius: 22px;
+    background: {p.surface_alt}; border: 1px solid {p.border}; outline: none;
+}}
+QPushButton#EyeButton:hover {{ background: {p.hover}; border-color: {p.muted}; }}
+QPushButton#EyeButton:checked {{ background: {p.accent}; border: 2px solid {p.accent_edge}; }}
+QPushButton#EyeButton[kbd="true"]:focus {{ border: 2px solid {p.text}; }}
 QFrame#SidebarRule {{ background: {p.border}; border: none; min-height: 1px; max-height: 1px; }}
 QLabel#SidebarFoot {{ color: {p.muted}; font-size: 12px; }}
+QLabel#SidebarFoot[tone="warn"] {{ color: {p.accent_text}; }}
 
 /* ---------------------------------------------------------------- tarjetas */
 QFrame#Card {{ background: {p.surface}; border: 1px solid {p.border}; border-radius: 22px; }}

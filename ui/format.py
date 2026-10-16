@@ -29,10 +29,27 @@ def _number(value: Decimal | float, decimals: int) -> str:
 _es_number = _number      # nombre antiguo
 
 
+HIDDEN = "••••"
+_private = False          # modo privacidad: ninguna cantidad en euros se muestra
+
+
+def set_private(on: bool) -> None:
+    """Activa o desactiva el modo privacidad (ocultar las cantidades). Las vistas se vuelven a pintar al recargarse."""
+    global _private
+    _private = bool(on)
+
+
+def is_private() -> bool:
+    return _private
+
+
 def fmt_eur(value: Decimal | float | None, decimals: int = 2) -> str:
-    """5781.2 -> '5.781,20 €' (castellano y catalan) o '€5,781.20' (ingles). Los negativos usan el signo menos."""
+    """5781.2 -> '5.781,20 €' (castellano y catalan) o '€5,781.20' (ingles). Los negativos usan el signo menos.
+    En modo privacidad, '•••• €' (o '€••••'): nada que ensenar a quien mire la pantalla."""
     if value is None:
         return EMPTY
+    if _private:
+        return f"{HIDDEN}{NBSP}€" if i18n.decimal_comma() else f"€{HIDDEN}"
     sign = MINUS if value < 0 and round(abs(value), decimals) != 0 else ""
     if i18n.decimal_comma():
         return f"{sign}{_number(value, decimals)}{NBSP}€"
@@ -73,6 +90,23 @@ def fmt_datetime_long(moment: datetime) -> str:
     return f"{weekday} {moment.day} {particle}{month} del {moment.year} - {clock}h"
 
 
+def fmt_ago(moment: datetime, now: datetime) -> str:
+    """Hace cuanto fue algo, en palabras sencillas: 'ahora mismo', 'hace 5 min', 'hace 3 h', 'ayer', 'hace 4 días'."""
+    seconds = (now - moment).total_seconds()
+    if seconds < 90:
+        return tr("ahora mismo")
+    minutes = round(seconds / 60)
+    if minutes < 60:
+        return tr("hace {n} min").format(n=minutes)
+    hours = round(seconds / 3600)
+    if hours < 24:
+        return tr("hace {n} h").format(n=hours)
+    days = (now.date() - moment.date()).days
+    if days <= 1:
+        return tr("ayer")
+    return tr("hace {n} días").format(n=days)
+
+
 CATEGORY_LABELS = {
     TxCategory.INCOME: N_("Ingresos"),
     TxCategory.GROCERIES: N_("Supermercado"),
@@ -100,6 +134,13 @@ OPERATION_LABELS = {
 
 def category_label(category: TxCategory) -> str:
     return tr(CATEGORY_LABELS.get(category, category.value))
+
+
+def movement_category(t) -> str:
+    """La categoria de un movimiento tal como se ve: un traspaso entre dos cuentas propias lo dice."""
+    if getattr(t, "paired_with", None) is not None:
+        return tr("Traspaso entre tus cuentas")
+    return category_label(t.category)
 
 
 def operation_label(op_type: OperationType) -> str:

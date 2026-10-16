@@ -53,10 +53,15 @@ class FlowOptions:
 
     include_p2p: bool = True                # Bizum
     transfers_in_as_income: bool = True     # traspasos que entran (p. ej. de otra cuenta propia)
+    scope: frozenset[int] | None = None     # cuentas que se estan mirando (None: todas): un traspaso entre dos de ellas no cuenta
 
 
-def counts_as_flow(category: TxCategory, amount: Decimal, options: FlowOptions = FlowOptions()) -> bool:
-    """Si un movimiento entra en ingresos/gastos."""
+def counts_as_flow(category: TxCategory, amount: Decimal, options: FlowOptions = FlowOptions(),
+                   paired_with: int | None = None) -> bool:
+    """Si un movimiento entra en ingresos/gastos. `paired_with` es la cuenta de la otra mitad si es un traspaso entre cuentas
+    propias: si esa cuenta tambien se esta mirando, el dinero solo ha cambiado de sitio y no es ni ingreso ni gasto."""
+    if paired_with is not None and (options.scope is None or paired_with in options.scope):
+        return False
     if category is TxCategory.INVESTMENT_TRANSFER:
         return False  # las aportaciones se calculan desde las operaciones de MyInvestor
     if category is TxCategory.TRANSFER:
@@ -84,7 +89,7 @@ def monthly_cashflow(
     contributions: dict[date, Decimal] = defaultdict(Decimal)
 
     for t in transactions:
-        if not counts_as_flow(t.category, t.amount, options):
+        if not counts_as_flow(t.category, t.amount, options, t.paired_with):
             continue
         m = month_start(t.booking_date)
         if t.amount >= 0:

@@ -339,14 +339,14 @@ HELP: dict[str, dict] = {
     },
     "Bloqueo automático": {
         "term": "Bloqueig automàtic",
-        "plain": "Si deixes d'usar l'equip uns minuts, o minimitzes la finestra, Kreix amaga les teves dades i torna a demanar la contrasenya mestra. També el pots bloquejar a mà amb Ctrl+L o des de Configuració.",
+        "plain": "Si deixes d'usar l'equip uns minuts, minimitzes la finestra, bloqueges Windows (Win+L) o suspens l'equip, Kreix amaga les teves dades i torna a demanar la contrasenya mestra. També el pots bloquejar a mà amb Ctrl+L o des de Configuració.",
         "how": "A Configuració, a Seguretat, tries el temps (o «Mai») i si vols que es bloquegi en minimitzar. Després de diverses contrasenyes incorrectes seguides, Kreix et fa esperar uns segons abans del següent intent, i l'espera creix. Un quadre que tinguessis obert es tanca en bloquejar; les teves dades ja estaven desades. En crear o canviar la contrasenya, un mesurador et diu com de difícil seria endevinar-la: barreja lletres, números i símbols, o usa una frase llarga.",
         "keywords": ["bloqueig", "bloquejar", "inactivitat", "minimitzar", "contrasenya", "seguretat", "cadenat"],
     },
     "Copias de seguridad automáticas": {
         "term": "Còpies de seguretat automàtiques",
         "plain": "Kreix desa sol una còpia xifrada de les teves dades en una carpeta: en obrir, si encara no n'hi ha cap; després de fer canvis, com a molt una per hora; i en tancar. Es conserven les últimes 3, 5, 10 o 20, i les més velles s'esborren.",
-        "how": "Cada còpia és un arxiu .kreix amb la data al nom, xifrat amb la teva contrasenya mestra. A Configuració tries la carpeta (per exemple, un disc extern o una carpeta sincronitzada). Per recuperar-ne una, prem Restaura al costat i escriu la teva contrasenya mestra: substitueix les dades actuals i ho pots desfer. Si canvies la contrasenya, les còpies es tornen a xifrar amb la nova.",
+        "how": "A baix a l'esquerra veus quan es va fer l'última. «Comprova l'última còpia», a Configuració, l'obre de debò i et diu si serveix. Cada còpia és un arxiu .kreix amb la data al nom, xifrat amb la teva contrasenya mestra. A Configuració tries la carpeta (per exemple, un disc extern o una carpeta sincronitzada). Per recuperar-ne una, prem Restaura al costat i escriu la teva contrasenya mestra: substitueix les dades actuals i ho pots desfer. Si canvies la contrasenya, les còpies es tornen a xifrar amb la nova.",
         "keywords": ["còpia", "còpies", "backup", "seguretat", "restaurar", "recuperar", "carpeta"],
     },
     "Importar de otro banco": {
@@ -355,9 +355,40 @@ HELP: dict[str, dict] = {
         "how": "Veus les primeres files de l'arxiu i Kreix proposa les columnes pels seus títols; tu les corregeixes. Si el banc separa ingressos i despeses en dues columnes, tries «Dues columnes». També indiques si els decimals porten coma o punt i l'ordre de la data. Abans de desar veus quants moviments es llegeixen i els primers, per comprovar dates i imports. El format es desa amb el nom que li posis i s'aplica només als arxius següents; a Importar el pots oblidar. Només CSV i Excel, mai PDF.",
         "keywords": ["un altre banc", "columnes", "format", "importar", "csv", "excel", "assistent"],
     },
+    "Previsión a fin de mes": {
+        "term": "Previsió a final de mes",
+        "plain": "Quants diners tindràs als teus comptes l'últim dia del mes si tot continua com fins ara.",
+        "how": "Parteix dels diners dels teus comptes l'últim dia amb dades. Resta els pagaments recurrents que encara falten per cobrar aquest mes, suma els ingressos fixos que encara han d'arribar (per exemple, la nòmina) i resta la despesa del dia a dia (el que no és un pagament fix) al ritme dels últims 60 dies. És una estimació, no una promesa: no sap de despeses extraordinàries ni d'ingressos que no es repeteixen. Amb menys de dues setmanes de dades no estima la despesa diària (només compta els pagaments fixos) i no surt res si l'últim dia amb dades ja és l'últim del mes.",
+        "example": "Tens 2.000 € i queden 10 dies: falta un rebut de 50 € i sols gastar uns 15 € al dia. Previsió: 2.000 - 50 - 150 = 1.800 €.",
+        "keywords": ["previsió", "final de mes", "projecció", "estimació", "saldo futur"],
+    },
+    "Traspasos entre tus cuentas": {
+        "term": "Traspassos entre els teus comptes",
+        "plain": "Si mous diners d'un compte teu a un altre, Kreix ho reconeix i no ho compta ni com a despesa ni com a ingrés: els diners només han canviat de lloc.",
+        "how": "Uneix una sortida i una entrada del mateix import, en comptes diferents i amb menys de quatre dies de diferència, quan almenys una és un traspàs. Cada moviment forma parella només una vegada. A la taula de moviments es veuen com «Traspàs entre els teus comptes». Si mires només un dels dos comptes, el traspàs sí que compta segons el teu ajust de traspassos entrants.",
+        "keywords": ["traspàs", "traspassos", "entre comptes", "comptes propis", "aparellar"],
+    },
+    "Modo privacidad": {
+        "term": "Mode privacitat",
+        "plain": "L'ull de la barra lateral (o Ctrl+H) amaga totes les quantitats en euros: substitueix cada import per punts. Serveix per mirar Kreix amb algú al costat o compartir la pantalla.",
+        "how": "S'amaguen els imports de les xifres, els gràfics (inclosos els seus eixos), les taules i els avisos. Els percentatges es continuen veient. Es recorda en tancar i obrir Kreix. Els quadres on escrius un import (pressupostos, metes) mostren el que escrius.",
+        "keywords": ["privacitat", "amagar", "xifres", "ull", "diners", "pantalla", "compartir"],
+    },
+    "Por clasificar y reglas sugeridas": {
+        "term": "Per classificar i regles suggerides",
+        "plain": "A Inici, «Per classificar» et diu quants moviments encara no tenen categoria i, si un mateix comerç es repeteix, et proposa una regla per classificar-los d'un cop.",
+        "how": "Prem «Crea una regla…» al costat d'un comerç: s'obre el quadre de nova regla amb la seva paraula ja escrita i només has de triar la categoria. La regla s'aplica a tots els moviments amb aquesta paraula, també als que importis després. «Veure els moviments» obre Comptes filtrat per «Sense categoria».",
+        "keywords": ["classificar", "categoria", "sense categoria", "regla", "regles", "suggeriment", "comerç"],
+    },
+    "Tamaño del texto": {
+        "term": "Mida del text",
+        "plain": "A Configuració pots fer més gran la lletra de tota l'aplicació: normal, gran (110 %) o molt gran (125 %).",
+        "how": "Canvia menús, taules, gràfics i quadres, i s'aplica a l'instant. També val per a la pantalla de la contrasenya. Si alguna cosa no es llegeix bé, prova amb una mida més gran.",
+        "keywords": ["mida", "lletra", "text", "accessibilitat", "gran", "zoom"],
+    },
     "Atajos de teclado": {
         "term": "Dreceres de teclat",
-        "plain": "Ctrl+1 Inici, Ctrl+2 Comptes, Ctrl+3 Inversions, Ctrl+4 Importar, Ctrl+5 Exportar, Ctrl+6 Configuració, Ctrl+7 Ajuda. Ctrl+T canvia entre mode clar i fosc, Ctrl+K ho cerca tot, Ctrl+F cerca als teus moviments, Ctrl+L bloqueja Kreix i F5 recalcula la pàgina.",
+        "plain": "Ctrl+1 Inici, Ctrl+2 Comptes, Ctrl+3 Inversions, Ctrl+4 Importar, Ctrl+5 Exportar, Ctrl+6 Configuració, Ctrl+7 Ajuda. Ctrl+T canvia entre mode clar i fosc, Ctrl+K ho cerca tot, Ctrl+F cerca als teus moviments, Ctrl+L bloqueja Kreix, Ctrl+H amaga les quantitats i F5 recalcula la pàgina.",
         "keywords": ["teclat", "ctrl"],
     },
 }

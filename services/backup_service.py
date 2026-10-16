@@ -28,6 +28,10 @@ DEFAULT_KEEP = 10
 INTERVAL = timedelta(hours=1)
 
 
+class NoBackupError(Exception):
+    """Aun no hay ninguna copia que abrir."""
+
+
 @dataclass(frozen=True, slots=True)
 class BackupConfig:
     enabled: bool
@@ -68,8 +72,10 @@ class BackupService:
     """`export(ruta)` escribe una copia cifrada en esa ruta; `config()` da los ajustes vigentes; `is_empty()` evita copiar nada."""
 
     def __init__(self, export: Callable[[Path], object], config: Callable[[], BackupConfig], default_folder: Path,
-                 is_empty: Callable[[], bool] = lambda: False, clock: Callable[[], datetime] = datetime.now) -> None:
+                 is_empty: Callable[[], bool] = lambda: False, clock: Callable[[], datetime] = datetime.now,
+                 inspect: Callable[[Path], object] | None = None) -> None:
         self._export = export
+        self._inspect = inspect                  # abre una copia y dice que contiene (o lanza el motivo si no se puede)
         self._config = config
         self._default_folder = default_folder
         self._is_empty = is_empty
@@ -96,6 +102,18 @@ class BackupService:
             if moment is not None and entry.is_file():
                 found.append(BackupFile(entry, moment, entry.stat().st_size))
         return sorted(found, key=lambda b: (b.moment, b.path.name), reverse=True)
+
+    def latest(self) -> BackupFile | None:
+        found = self.files()
+        return found[0] if found else None
+
+    def check_latest(self):
+        """Abre la copia mas reciente de verdad (la descifra y mira que tenga datos validos). Devuelve (copia, lo que contiene);
+        si no hay copia lanza `NoBackupError`; si no se abre, el error de lectura con el motivo."""
+        backup = self.latest()
+        if backup is None or self._inspect is None:
+            raise NoBackupError()
+        return backup, self._inspect(backup.path)
 
     # ------------------------------------------------------------------ cuando copiar
     def note_saved(self) -> None:

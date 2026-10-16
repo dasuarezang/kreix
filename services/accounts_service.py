@@ -1,7 +1,7 @@
 """Caso de uso de la pestana Cuentas: varias cuentas, metricas y movimientos por periodo."""
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import replace, dataclass, field
 from datetime import date
 from decimal import Decimal
 
@@ -121,6 +121,8 @@ class AccountsService:
         accounts = self.accounts()
         valid = {a.id for a in accounts}
         selected = [i for i in (account_ids if account_ids is not None else sorted(valid)) if i in valid]
+        if set(selected) != valid:                  # mirando solo algunas cuentas: el traspaso a otra cuenta que no se mira si cuenta
+            options = replace(options, scope=frozenset(selected))
         txs = [t for t in cached_transactions(self._factory) if t.account_id in selected]
         with session_scope(self._factory) as s:
             budgets = get_budgets(s)

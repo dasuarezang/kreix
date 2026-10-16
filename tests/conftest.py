@@ -58,6 +58,7 @@ def _language_hint_in_a_temp_folder(tmp_path, monkeypatch):
     import data.paths
 
     monkeypatch.setattr(data.paths, "language_hint_path", lambda: tmp_path / "idioma.txt")
+    monkeypatch.setattr(data.paths, "scale_hint_path", lambda: tmp_path / "texto.txt")
 
 
 @pytest.fixture(autouse=True)
@@ -65,6 +66,12 @@ def _spanish_by_default():
     """Cada prueba empieza (y termina) en castellano: el idioma es un estado global."""
     from core import i18n
 
+    from ui import fonts, format as formatting
+
     i18n.set_language("es")
+    fonts.set_scale(100)
+    formatting.set_private(False)
     yield
     i18n.set_language("es")
+    fonts.set_scale(100)
+    formatting.set_private(False)

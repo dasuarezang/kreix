@@ -99,6 +99,10 @@ class SecureStore:
         """Comprueba la contrasena maestra sin tocar el disco (desbloqueo tras un bloqueo automatico)."""
         return self._vault.check(password)
 
+    def unseal_export(self, blob: bytes) -> bytes:
+        """Lo contrario de `seal_export`: abre una exportacion o copia de seguridad hecha con esta contrasena."""
+        return self._vault.open_blob(blob)
+
     def seal_export(self, plain: bytes) -> bytes:
         """Cifra el contenido de una exportacion con la contrasena maestra (se abre con ella en cualquier equipo)."""
         return self._vault.seal(plain)

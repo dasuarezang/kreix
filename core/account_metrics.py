@@ -53,7 +53,7 @@ def expense_breakdown(
     """Gasto por categoria, de mayor a menor. Solo cuenta lo que cuenta como gasto."""
     totals: dict[TxCategory, Decimal] = defaultdict(Decimal)
     for t in transactions:
-        if t.amount < 0 and counts_as_flow(t.category, t.amount, options):
+        if t.amount < 0 and counts_as_flow(t.category, t.amount, options, t.paired_with):
             totals[t.category] += -t.amount
     grand = sum(totals.values(), ZERO)
     ranked = sorted(totals.items(), key=lambda kv: kv[1], reverse=True)
@@ -70,8 +70,8 @@ def summarize_account(
     """Resumen de las cuentas dadas en un periodo. El saldo es el del cierre del periodo,
     aunque el periodo sea un mes (por eso recibe todos los movimientos, no solo los del mes)."""
     inside = [t for t in transactions if period.contains(t.booking_date)]
-    income = sum((t.amount for t in inside if t.amount > 0 and counts_as_flow(t.category, t.amount, options)), ZERO)
-    expenses = sum((-t.amount for t in inside if t.amount < 0 and counts_as_flow(t.category, t.amount, options)), ZERO)
+    income = sum((t.amount for t in inside if t.amount > 0 and counts_as_flow(t.category, t.amount, options, t.paired_with)), ZERO)
+    expenses = sum((-t.amount for t in inside if t.amount < 0 and counts_as_flow(t.category, t.amount, options, t.paired_with)), ZERO)
 
     avg_daily = avg_monthly = None
     if inside:
@@ -82,7 +82,7 @@ def summarize_account(
         avg_daily = expenses / days
         avg_monthly = expenses / max(months, 1)
 
-    spending = [t for t in inside if t.amount < 0 and counts_as_flow(t.category, t.amount, options)]
+    spending = [t for t in inside if t.amount < 0 and counts_as_flow(t.category, t.amount, options, t.paired_with)]
     breakdown = expense_breakdown(inside, options)
     return AccountSummary(
         balance=total_cash(transactions, as_of=period.end),

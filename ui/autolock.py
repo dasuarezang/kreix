@@ -42,12 +42,23 @@ class AutoLock(QObject):
         self._timer = QTimer(self)
         self._timer.setInterval(CHECK_MS)
         self._timer.timeout.connect(self.check)
+        self._deferred = QTimer(self)                  # el aviso de Windows llega dentro de su filtro: se bloquea un instante despues
+        self._deferred.setSingleShot(True)
+        self._deferred.timeout.connect(self._lock_for_session)
 
     def start(self) -> None:
         self._timer.start()
 
     def stop(self) -> None:
         self._timer.stop()
+
+    def session_event(self) -> None:
+        """Windows se ha bloqueado o el equipo se suspende: si esta activado, Kreix tambien se bloquea."""
+        if self._settings().lock_on_session and not self.locked:
+            self._deferred.start(0)
+
+    def _lock_for_session(self) -> None:
+        self.lock("session")
 
     # ------------------------------------------------------------------ cuando bloquear
     def idle_for(self) -> float:
@@ -111,7 +122,8 @@ class AutoLock(QObject):
         except Exception:                               # pragma: no cover - disco lleno: el bloqueo no debe fallar por eso
             pass
         notes = {"idle": tr("Kreix se bloqueó porque llevabas un rato sin usarlo."),
-                 "minimize": tr("Kreix se bloqueó al minimizarlo."), "manual": ""}
+                 "minimize": tr("Kreix se bloqueó al minimizarlo."),
+                 "session": tr("Kreix se bloqueó porque Windows se bloqueó o el equipo se suspendió."), "manual": ""}
         window = self._main_window()
         was_minimized = window is not None and window.isMinimized()
         dialog = LockDialog(LockMode.UNLOCK, self._attempt, None, note=notes.get(reason, ""), allow_reset=False,

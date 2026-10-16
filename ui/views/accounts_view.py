@@ -24,7 +24,7 @@ from ui.dialogs import ALL_CATEGORIES as CATEGORY_CHOICES
 from ui.dialogs import BudgetDialog, RuleDialog
 from ui.feedback import Feedback, snapshot_of, tell
 from ui.headlines import balance_headline, category_headline, monthly_headline
-from ui.format import category_label, fmt_date, fmt_eur, fmt_pct, month_long, month_short
+from ui.format import category_label, movement_category, fmt_date, fmt_eur, fmt_pct, month_long, month_short
 from ui.widgets.account_picker import AccountPicker
 from ui.widgets.cards import flatten, ChartCard, PageHeader, StatBand, StatCard
 from ui.widgets.charts_period import BalanceChart, CategoryBarsChart, IncomeExpenseChart
@@ -187,7 +187,7 @@ class AccountsView(QWidget):
             Column(tr("FECHA"), lambda t: fmt_date(t.booking_date), lambda t: t.booking_date),
             Column(tr("CUENTA"), lambda t: self._names.get(t.account_id, ""), tone=lambda t: "muted"),
             Column(tr("CONCEPTO"), lambda t: t.description, lambda t: t.description.lower(), stretch=True),
-            Column(tr("CATEGORÍA"), lambda t: category_label(t.category), lambda t: category_label(t.category)),
+            Column(tr("CATEGORÍA"), lambda t: movement_category(t), lambda t: movement_category(t)),
             Column(tr("IMPORTE"), lambda t: signed_eur(t.amount), lambda t: t.amount, RIGHT,
                    tone=lambda t: "negative" if t.amount < 0 else "positive"),
             Column(tr("SALDO"), lambda t: fmt_eur(t.balance_after), lambda t: t.balance_after or Decimal(0), RIGHT,

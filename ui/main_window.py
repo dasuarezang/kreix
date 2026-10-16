@@ -19,18 +19,20 @@ from services.data_service import DataService
 from services.demo_service import DemoService
 from services.import_service import ImportService
 from services.investment_service import InvestmentService
+from services.backup_service import NoBackupError
 from services.settings_service import AppSettings, SettingsService
 from services.transfer_service import PasswordRequired, TransferError, TransferService, WrongImportPassword
-from ui import assets, icons, theme
+from ui import assets, fonts, icons, theme
 from core import i18n
 from core.greeting import clean_name
 from ui.command_palette import Command, CommandPalette
-from ui.dialogs import WelcomeDialog, system_language
+from ui.dialogs import RuleDialog, WelcomeDialog, system_language
 from data.vault import WrongPasswordError
 from ui.password_dialog import ChangePasswordDialog
 from ui.goals_dialog import GoalsDialog
 from ui.feedback import Feedback, snapshot_of, tell
-from ui.format import category_label, fmt_date, fmt_eur
+from ui import format as formatting
+from ui.format import category_label, fmt_ago, fmt_date, fmt_eur
 from ui.help_content import localized_entries, localized_term
 from ui.views.accounts_view import AccountsView
 from ui.views.dashboard_view import DashboardView
@@ -42,11 +44,15 @@ from ui.views.settings_view import VERSION, SettingsView
 from ui.whats_new import WhatsNewDialog
 from ui.widgets import charts
 from ui.widgets.ambient import AmbientLight, hour_of
+from ui.widgets.cards import repolish
 from ui.widgets.data_menu import DataFlyout, DataMenuButton
 from ui.widgets.nav_button import NavButton, install_keyboard_rings
 from ui.widgets.switch import ThemeToggle
 from ui.widgets.toast import Toast
 from core.i18n import tr, N_
+
+
+STALE_BACKUP_DAYS = 3          # una copia mas vieja que esto se avisa en tono de aviso
 
 
 class Backdrop(QWidget):
@@ -105,6 +111,9 @@ class MainWindow(QMainWindow):
         self.eager = False          # True: refresh() recarga todas las paginas (pruebas y capturas)
         self._settings = services.settings.load()
         i18n.set_language(self._settings.language)         # antes de crear ningun texto: todo sale en este idioma
+        fonts.set_scale(self._settings.text_scale)         # y con este tamano de letra
+        fonts.apply_default_font(QApplication.instance())
+        formatting.set_private(self._settings.privacy_mode)   # y las cantidades ocultas o no, segun lo ultimo que se eligio
         self._db_path = db_path
         self.rebuilding = False
         self.secure_store = None
@@ -141,16 +150,19 @@ class MainWindow(QMainWindow):
         self.dashboard.navigate_requested.connect(self._go_from_setup)
         self.dashboard.setup_dismissed.connect(self._dismiss_setup)
         self.dashboard.category_clicked.connect(self._show_category_in_accounts)
+        self.dashboard.rule_requested.connect(self._create_rule_for)
         self.settings_view.settings_changed.connect(self._on_settings_changed)
         self.settings_view.rules_changed.connect(self.refresh)
         self.settings_view.whats_new_requested.connect(self.show_whats_new)
         self.settings_view.name_changed.connect(self._apply_user_name)
         self.settings_view.interests_changed.connect(self._on_interests_picked)
         self.settings_view.language_changed.connect(self._on_language_picked)
+        self.settings_view.text_scale_changed.connect(self._on_text_scale_picked)
         self.dashboard.goals_requested.connect(self.open_goals)
         self.settings_view.change_password_requested.connect(self.change_password)
         self.settings_view.lock_requested.connect(self.lock_now)
         self.settings_view.backup_now_requested.connect(self.backup_now)
+        self.settings_view.backup_check_requested.connect(self.check_backup)
         self.settings_view.restore_backup_requested.connect(self.restore_from)
         self.accounts_view.interest_requested.connect(lambda: self._activate_interest("accounts"))
         self.investment_view.interest_requested.connect(lambda: self._activate_interest("investments"))
@@ -187,6 +199,7 @@ class MainWindow(QMainWindow):
         QShortcut(QKeySequence("Ctrl+K"), self, activated=self.open_palette)
         QShortcut(QKeySequence("F5"), self, activated=self.reload_current)
         QShortcut(QKeySequence("Ctrl+L"), self, activated=self.lock_now)
+        QShortcut(QKeySequence("Ctrl+H"), self, activated=lambda: self.set_privacy(not formatting.is_private(), announce=True))
         for i in range(len(self.PAGES)):
             QShortcut(QKeySequence(tr("Ctrl+{i}").format(i=i + 1)), self, activated=lambda i=i: self.navigate(i))
 
@@ -279,8 +292,27 @@ class MainWindow(QMainWindow):
         self.theme_switch = ThemeToggle(self._settings.theme == "dark")
         self.theme_switch.setToolTip(tr("Cambiar entre modo oscuro y claro (Ctrl+T)"))
         self.theme_switch.toggled.connect(lambda on: self.apply_theme("dark" if on else "light", persist=True))
-        col.addWidget(self.theme_switch, 0, Qt.AlignmentFlag.AlignHCenter)
+        self.privacy_button = NavButton()                                       # el ojo: oculta o muestra todas las cantidades
+        self.privacy_button.setObjectName("EyeButton")
+        self.privacy_button.setCheckable(True)
+        self.privacy_button.setChecked(self._settings.privacy_mode)
+        self.privacy_button.setIconSize(QSize(20, 20))
+        self.privacy_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.privacy_button.clicked.connect(lambda on: self.set_privacy(on, announce=True))
+        tools = QHBoxLayout()
+        tools.setSpacing(8)
+        tools.addStretch(1)
+        tools.addWidget(self.theme_switch)
+        tools.addWidget(self.privacy_button)
+        tools.addStretch(1)
+        col.addLayout(tools)
         col.addSpacing(8)
+        self.backup_foot = QLabel()                                              # "Ultima copia: hace 2 h": se ve de un vistazo
+        self.backup_foot.setObjectName("SidebarFoot")
+        self.backup_foot.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        self.backup_foot.setWordWrap(True)
+        self.backup_foot.hide()
+        col.addWidget(self.backup_foot)
         foot = QLabel(tr("Kreix {VERSION}  ·  datos solo en tu equipo").format(VERSION=VERSION))
         foot.setObjectName("SidebarFoot")
         foot.setAlignment(Qt.AlignmentFlag.AlignHCenter)
@@ -327,6 +359,8 @@ class MainWindow(QMainWindow):
         actions = [
             Command(tr("Cambiar entre modo claro y oscuro"), "Ctrl+T", self.theme_switch.toggle,
                     tr("tema aspecto color noche día"), tr("Acciones")),
+            Command(tr("Ocultar o mostrar las cantidades"), "Ctrl+H", lambda: self.set_privacy(not formatting.is_private(), announce=True),
+                    tr("privacidad ocultar cifras dinero ojo pantalla"), tr("Acciones")),
             Command(tr("Buscar en mis movimientos"), "Ctrl+F", self.focus_search, tr("concepto pagos gastos")),
             Command(tr("Cambiar mi nombre"), tr("Ajustes"), self._edit_name, tr("usuario saludo perfil")),
             Command(tr("Gestionar mis metas de ahorro"), tr("Inicio"), self.open_goals, tr("objetivo ahorrar vacaciones meta")),
@@ -382,6 +416,16 @@ class MainWindow(QMainWindow):
     def _edit_interests(self) -> None:
         self.navigate(self.SETTINGS)
         self.settings_view.focus_interests()
+
+    def _create_rule_for(self, keyword: str) -> None:
+        """Desde "Por clasificar": el cuadro de nueva regla ya con la palabra del comercio; solo falta elegir la categoria."""
+        if self.settings_view.rules is None:
+            return
+        dialog = RuleDialog(keyword, None, self)
+        accepted = dialog.exec() == RuleDialog.DialogCode.Accepted
+        if accepted:
+            self.settings_view.rules.add(*dialog.result_rule())
+        dialog.deleteLater()
 
     def _new_rule(self) -> None:
         self.navigate(self.SETTINGS)
@@ -532,6 +576,41 @@ class MainWindow(QMainWindow):
         if code != self._settings.language:
             self._apply_language(code)
 
+    # ------------------------------------------------------------------ modo privacidad
+    def set_privacy(self, on: bool, announce: bool = False) -> None:
+        """Oculta (o vuelve a mostrar) todas las cantidades en euros. Se recuerda al volver a abrir Kreix."""
+        on = bool(on)
+        formatting.set_private(on)
+        self._settings = replace(self._settings, privacy_mode=on)
+        self._svc.settings.save(self._settings)
+        self.privacy_button.blockSignals(True)
+        self.privacy_button.setChecked(on)
+        self.privacy_button.blockSignals(False)
+        self._refresh_privacy_look()
+        self._stale = set(self.DATA_PAGES)                      # las cifras ya calculadas se vuelven a escribir, ocultas o no
+        self._load_if_stale(self.stack.currentIndex())
+        if self.eager:
+            self.load_all()
+        self.settings_view.set_settings(self._settings)
+        if announce:
+            tell(self.feedback, tr("Cantidades ocultas. Pulsa el ojo o Ctrl+H para verlas.") if on else tr("Cantidades visibles."))
+
+    def _refresh_privacy_look(self) -> None:
+        on = formatting.is_private()
+        self.privacy_button.setIcon(icons.button_icon("eye_off" if on else "eye", theme.current(), 20))
+        self.privacy_button.setToolTip(tr("Mostrar las cantidades (Ctrl+H)") if on else tr("Ocultar las cantidades (Ctrl+H)"))
+        self.privacy_button.setAccessibleName(tr("Ocultar las cantidades"))
+
+    def _on_text_scale_picked(self, percent: int) -> None:
+        """Guarda el tamano del texto y rehace la ventana con el (como al cambiar de idioma): todo lo que lleva letra se vuelve a medir."""
+        if percent == self._settings.text_scale:
+            return
+        self._settings = replace(self._settings, text_scale=percent)
+        self._svc.settings.save(self._settings)
+        fonts.set_scale(percent)
+        self.rebuilding = True
+        self._later(0, self.rebuild)
+
     def _apply_language(self, code: str, immediate: bool = False) -> None:
         """Guarda el idioma y rehace la ventana para que todo salga en el nuevo (los datos y la pagina se conservan).
         `immediate`: la ventana aun no se ha mostrado; se rehace ya, sin ensenar nada y sin el aviso de cambio de idioma."""
@@ -588,9 +667,10 @@ class MainWindow(QMainWindow):
         self.secure_store = store
         self.backups = backups if store is not None else None
         if store is not None:
-            from data.paths import write_language_hint
+            from data.paths import write_language_hint, write_scale_hint
 
             write_language_hint(self._settings.language)           # la proxima pantalla de contrasena sale en este idioma
+            write_scale_hint(self._settings.text_scale)            # y con este tamano de letra
         self.refresh_backups()
         self.settings_view.set_security(store is not None)
         self.export_view.set_sealer(store.seal_export if store is not None else None)
@@ -601,6 +681,44 @@ class MainWindow(QMainWindow):
             return
         service = self.backups
         self.settings_view.show_backups(service.folder(), service.files(), service.last_error or service.last_note)
+        self.update_backup_foot()
+
+    def update_backup_foot(self) -> None:
+        """La linea de la barra lateral con el estado de las copias (en tono de aviso si no hay o son viejas)."""
+        label = self.backup_foot
+        if self.backups is None:
+            label.hide()
+            return
+        latest = self.backups.latest() if self._settings.backup_enabled else None
+        now = self.clock()
+        if not self._settings.backup_enabled:
+            text, tone = tr("Copias de seguridad desactivadas"), "warn"
+        elif latest is None:
+            text, tone = tr("Aún sin copias de seguridad"), "warn"
+        else:
+            text = tr("Última copia: {when}").format(when=fmt_ago(latest.moment, now))
+            tone = "warn" if (now - latest.moment).days >= STALE_BACKUP_DAYS else "ok"
+        label.setText(text)
+        if label.property("tone") != tone:
+            label.setProperty("tone", tone)
+            repolish(label)
+        label.show()
+
+    def check_backup(self) -> None:
+        """Abre de verdad la ultima copia (con la clave del almacen) y dice si sirve."""
+        if self.backups is None:
+            return
+        try:
+            backup, info = self.backups.check_latest()
+        except NoBackupError:
+            tell(self.feedback, tr("Todavía no hay ninguna copia que comprobar."))
+            return
+        except TransferError as exc:
+            QMessageBox.warning(self, tr("La última copia no se abre"), str(exc))
+            return
+        s = info.summary
+        tell(self.feedback, tr("La copia del {when} se abre bien: {transactions} movimientos y {accounts} cuentas.").format(
+            when=fmt_date(backup.moment.date()) + f" {backup.moment:%H:%M}", transactions=s.transactions, accounts=s.accounts))
 
     def backup_now(self) -> None:
         if self.backups is None:
@@ -818,8 +936,8 @@ class MainWindow(QMainWindow):
         app = QApplication.instance()
         install_keyboard_rings(app)
         sheet = theme.stylesheet(palette)
-        if app.styleSheet() != sheet:                    # repulir toda la interfaz es lo mas caro del cambio de tema: solo si cambia
-            app.setStyleSheet(sheet)
+        if self.styleSheet() != sheet:                   # repulir los widgets es lo mas caro del cambio de tema: solo si cambia, y solo
+            self.setStyleSheet(sheet)                    # los de esta ventana (cambiar la hoja de toda la aplicacion tarda ~4 veces mas)
         self.centralWidget().update()
         self._logo.setPixmap(assets.wordmark(palette, 46))
         for button, icon_name in self._nav_icons.values():
@@ -830,6 +948,7 @@ class MainWindow(QMainWindow):
         for pill, icon_name in self._pill_buttons.values():
             pill.setIcon(icons.button_icon(icon_name, palette))
         self.theme_switch.set_dark(name == "dark")       # sin volver a disparar el cambio de tema
+        self._refresh_privacy_look()
         self.dashboard.refresh_theme()
         self.accounts_view.refresh_theme()
         self.investment_view.refresh_theme()
@@ -867,6 +986,7 @@ class MainWindow(QMainWindow):
         """Pone al dia el saludo, el astro del cielo y la luz ambiente con la hora actual."""
         self.ambient.set_hour(hour_of(self.clock()))
         self.dashboard.update_greeting()
+        self.update_backup_foot()                  # "hace 2 h" se va poniendo al dia
 
     def _on_settings_changed(self, settings: AppSettings) -> None:
         previous = self._settings

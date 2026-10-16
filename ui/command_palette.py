@@ -9,7 +9,7 @@ from PySide6.QtCore import QEvent, QPoint, QSize, Qt, QTimer
 from PySide6.QtWidgets import QDialog, QFrame, QLabel, QLineEdit, QListWidget, QListWidgetItem, QVBoxLayout, QWidget
 
 from core.categorizer import normalize
-from ui import theme
+from ui import fonts, theme
 from ui.widgets.cards import repolish
 from core.i18n import tr, N_
 
@@ -112,7 +112,7 @@ class CommandPalette(QDialog):
             label.setTextFormat(Qt.TextFormat.RichText)
             label.setObjectName("PaletteRow")
             label.setContentsMargins(12, 0, 12, 0)
-            item.setSizeHint(QSize(label.sizeHint().width(), ROW_HEIGHT))
+            item.setSizeHint(QSize(label.sizeHint().width(), fonts.scaled(ROW_HEIGHT)))
             self.list.addItem(item)
             self.list.setItemWidget(item, label)
         if found:

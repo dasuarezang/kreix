@@ -53,6 +53,29 @@ def write_language_hint(code: str) -> None:
         pass
 
 
+def scale_hint_path() -> Path:
+    """Como `idioma.txt`: el tamano del texto (100, 110 o 125) para la pantalla de contrasena, que sale antes de leer los datos."""
+    return default_db_path().parent / "texto.txt"
+
+
+def read_scale_hint() -> int:
+    try:
+        value = int(scale_hint_path().read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return 100
+    return value if value in (100, 110, 125) else 100
+
+
+def write_scale_hint(percent: int) -> None:
+    try:
+        path = scale_hint_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if percent in (100, 110, 125) and (not path.exists() or path.read_text(encoding="utf-8").strip() != str(percent)):
+            path.write_text(str(percent), encoding="utf-8")
+    except OSError:
+        pass
+
+
 def legacy_db_path() -> Path:
     """La base sin cifrar de versiones anteriores (se migra la primera vez)."""
     return default_db_path()

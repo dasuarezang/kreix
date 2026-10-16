@@ -80,6 +80,19 @@ class Vault:
         except InvalidToken as exc:
             raise WrongPasswordError("wrong password or altered file") from exc
 
+    def open_blob(self, blob: bytes) -> bytes:
+        """Descifra un archivo hecho con ESTE almacen (misma sal y vueltas: una exportacion o una copia de seguridad) con la
+        clave que ya tiene, sin pedir la contrasena. Lanza `WrongPasswordError` si es de otra clave o esta alterado."""
+        if len(blob) <= _HEADER or not blob.startswith(MAGIC):
+            raise CorruptVaultError("not a Kreix vault")
+        (iterations,) = struct.unpack(">I", blob[len(MAGIC):len(MAGIC) + 4])
+        if iterations != self._iterations or blob[len(MAGIC) + 4:_HEADER] != self._salt:
+            raise WrongPasswordError("sealed with another key")
+        try:
+            return self._fernet.decrypt(blob[_HEADER:])
+        except InvalidToken as exc:
+            raise WrongPasswordError("wrong key or altered file") from exc
+
     # ------------------------------------------------------------------ archivo
     def write(self, path: Path, plain: bytes) -> None:
         """Guarda cifrado y de forma atomica; conserva la version anterior como `.bak` (tambien cifrada)."""

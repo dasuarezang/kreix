@@ -11,6 +11,11 @@ from ui.widgets.cards import BrandRule
 class BrandDialog(QDialog):
     """Todos los cuadros comparten la misma cara: fondo de la app, titulo grande, explicacion y una tarjeta redondeada."""
 
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        if parent is None:                                  # un cuadro suelto (sin ventana madre) no hereda el estilo de nadie
+            self.setStyleSheet(theme.stylesheet(theme.current()))
+
     def paintEvent(self, _event) -> None:
         pal = theme.current()
         painter = QPainter(self)

@@ -40,6 +40,8 @@ _SHAPES = {
                for a in (math.radians(d) for d in range(0, 360, 45))
            ),
     "moon": '<path d="M20.5 14.2A8.5 8.5 0 1 1 9.8 3.5a6.7 6.7 0 0 0 10.7 10.7z"/>',
+    "eye": '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    "eye_off": '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path d="M4 4l16 16"/>',
     # secciones de la ayuda
     "pie": '<circle cx="12" cy="12" r="9.5"/><path d="M12 2.5V12h9.5"/><path d="M12 12l-6.7 6.7"/>',
     "card": '<rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 10h19"/><path d="M6.5 15h4"/>',

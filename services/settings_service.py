@@ -15,6 +15,7 @@ from core.i18n import normalize_language
 THEMES = ("dark", "light")
 LOCK_MINUTES = (0, 1, 2, 5, 10, 15, 30)       # 0 = nunca se bloquea solo
 DEFAULT_LOCK_MINUTES = 5
+TEXT_SCALES = (100, 110, 125)                 # tamano del texto (en %)
 BACKUP_KEEP = (3, 5, 10, 20)                  # cuantas copias automaticas se conservan
 DEFAULT_BACKUP_KEEP = 10
 
@@ -32,6 +33,9 @@ class AppSettings:
     name_asked: bool = False        # ya se le pregunto el nombre (para no volver a pedirlo si dijo "ahora no")
     auto_lock_minutes: int = DEFAULT_LOCK_MINUTES   # minutos sin tocar el equipo antes de pedir de nuevo la contrasena (0 = nunca)
     lock_on_minimize: bool = True   # pedir la contrasena al minimizar la ventana
+    lock_on_session: bool = True    # y cuando Windows se bloquea (Win+L) o el equipo se suspende
+    privacy_mode: bool = False      # ocultar todas las cantidades en euros (para mirar Kreix con alguien al lado)
+    text_scale: int = 100           # tamano del texto en toda la aplicacion (100, 110 o 125 %)
     backup_enabled: bool = True     # copias de seguridad automaticas cifradas
     backup_keep: int = DEFAULT_BACKUP_KEEP          # cuantas se conservan
     backup_folder: str = ""         # carpeta elegida ("" = la de por defecto, junto a los datos)
@@ -62,12 +66,19 @@ class SettingsService:
             backup_keep = int(stored.get("backup_keep", DEFAULT_BACKUP_KEEP))
         except ValueError:
             backup_keep = DEFAULT_BACKUP_KEEP
+        try:
+            text_scale = int(stored.get("text_scale", 100))
+        except ValueError:
+            text_scale = 100
         return AppSettings(
+            privacy_mode=stored.get("privacy_mode", "0") == "1",
+            text_scale=text_scale if text_scale in TEXT_SCALES else 100,
             backup_enabled=stored.get("backup_enabled", "1") == "1",
             backup_keep=backup_keep if backup_keep in BACKUP_KEEP else DEFAULT_BACKUP_KEEP,
             backup_folder=stored.get("backup_folder", "").strip(),
             auto_lock_minutes=lock_minutes if lock_minutes in LOCK_MINUTES else DEFAULT_LOCK_MINUTES,
             lock_on_minimize=stored.get("lock_on_minimize", "1") == "1",
+            lock_on_session=stored.get("lock_on_session", "1") == "1",
             theme=theme if theme in THEMES else default.theme,
             include_p2p=stored.get("include_p2p", "1") == "1",
             transfers_in_as_income=stored.get("transfers_in_as_income", "1") == "1",
@@ -106,6 +117,9 @@ class SettingsService:
             "ambient": "1" if settings.ambient else "0",
             "auto_lock_minutes": str(settings.auto_lock_minutes if settings.auto_lock_minutes in LOCK_MINUTES else DEFAULT_LOCK_MINUTES),
             "lock_on_minimize": "1" if settings.lock_on_minimize else "0",
+            "lock_on_session": "1" if settings.lock_on_session else "0",
+            "privacy_mode": "1" if settings.privacy_mode else "0",
+            "text_scale": str(settings.text_scale if settings.text_scale in TEXT_SCALES else 100),
             "backup_enabled": "1" if settings.backup_enabled else "0",
             "backup_keep": str(settings.backup_keep if settings.backup_keep in BACKUP_KEEP else DEFAULT_BACKUP_KEEP),
             "backup_folder": settings.backup_folder.strip(),

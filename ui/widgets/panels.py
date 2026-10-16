@@ -29,7 +29,7 @@ class BudgetBars(QWidget):
         self.setMouseTracking(True)
 
     def _line_at(self, pos: QPointF) -> BudgetLine | None:
-        index = int(pos.y() // ROW_H)
+        index = int(pos.y() // fonts.scaled(ROW_H))
         return self._lines[index] if 0 <= index < len(self._lines) else None
 
     def mouseMoveEvent(self, event) -> None:
@@ -44,14 +44,14 @@ class BudgetBars(QWidget):
 
     def set_lines(self, lines: list[BudgetLine]) -> None:
         self._lines = lines
-        self.setMinimumHeight(len(lines) * ROW_H + 4)
+        self.setMinimumHeight(len(lines) * fonts.scaled(ROW_H) + 4)
         self.updateGeometry()
         self.update()
         self.setAccessibleDescription("; ".join(
             f"{category_label(line.category)}: " + tr("{spent} de {budget}").format(spent=fmt_eur(line.spent), budget=fmt_eur(line.budget)) for line in lines))
 
     def sizeHint(self) -> QSize:
-        return QSize(300, len(self._lines) * ROW_H + 4)
+        return QSize(300, len(self._lines) * fonts.scaled(ROW_H) + 4)
 
     def paintEvent(self, _event) -> None:
         pal = theme.current()
@@ -61,7 +61,7 @@ class BudgetBars(QWidget):
                                              fonts.qfont(fonts.BODY, 12))
         tones = {"ok": pal.green, "warn": pal.accent, "over": pal.red}
         for i, line in enumerate(self._lines):
-            top = i * ROW_H
+            top = i * fonts.scaled(ROW_H)
             p.setFont(name_font)
             p.setPen(QColor(pal.text))
             p.drawText(QRectF(0, top, self.width() * 0.45, 20), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,

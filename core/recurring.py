@@ -73,24 +73,51 @@ def detect_recurring(transactions: Iterable[TransactionDraft], today: date | Non
             if item is not None:
                 found.append(item)
             continue
-        months = {(t.booking_date.year, t.booking_date.month) for t in rows}
-        if len(rows) < MIN_OCCURRENCES or len(months) < MIN_OCCURRENCES:
-            continue
-        gaps = [(b.booking_date - a.booking_date).days for a, b in zip(rows, rows[1:])]
-        typical_gap = median(gaps)
-        if not MONTHLY_GAP[0] <= typical_gap <= MONTHLY_GAP[1]:
-            continue
-        amounts = [-t.amount for t in rows]
-        typical = Decimal(median(amounts))
-        if any(abs(a - typical) > typical * AMOUNT_TOLERANCE for a in amounts):
-            continue
-        last = rows[-1]
-        if (reference - last.booking_date).days > ACTIVE_WITHIN_DAYS:
-            continue
-        found.append(Recurring(
-            name=last.description, amount=typical, occurrences=len(rows), last_date=last.booking_date,
-            next_date=last.booking_date + timedelta(days=round(typical_gap)), category=last.category,
-        ))
+        item = _regular(rows, reference)
+        if item is not None:
+            found.append(item)
+    return sorted(found, key=lambda r: r.amount, reverse=True)
+
+
+def _regular(rows: list[TransactionDraft], reference: date) -> Recurring | None:
+    """Si estos movimientos (de un mismo comercio, por orden de fecha) se repiten como un pago mensual estable y activo."""
+    months = {(t.booking_date.year, t.booking_date.month) for t in rows}
+    if len(rows) < MIN_OCCURRENCES or len(months) < MIN_OCCURRENCES:
+        return None
+    gaps = [(b.booking_date - a.booking_date).days for a, b in zip(rows, rows[1:])]
+    typical_gap = median(gaps)
+    if not MONTHLY_GAP[0] <= typical_gap <= MONTHLY_GAP[1]:
+        return None
+    amounts = [abs(t.amount) for t in rows]
+    typical = Decimal(median(amounts))
+    if any(abs(a - typical) > typical * AMOUNT_TOLERANCE for a in amounts):
+        return None
+    last = rows[-1]
+    if (reference - last.booking_date).days > ACTIVE_WITHIN_DAYS:
+        return None
+    return Recurring(
+        name=last.description, amount=typical, occurrences=len(rows), last_date=last.booking_date,
+        next_date=last.booking_date + timedelta(days=round(typical_gap)), category=last.category,
+    )
+
+
+def detect_recurring_income(transactions: Iterable[TransactionDraft], today: date | None = None) -> list[Recurring]:
+    """Ingresos que llegan cada mes por un importe parecido (la nomina): el mismo criterio que los pagos, al reves. Un traspaso
+    entre cuentas propias nunca cuenta como ingreso."""
+    txs = list(transactions)
+    if not txs:
+        return []
+    reference = today or max(t.booking_date for t in txs)
+    groups: dict[str, list[TransactionDraft]] = defaultdict(list)
+    for t in txs:
+        if t.amount > 0 and t.category is TxCategory.INCOME and t.paired_with is None and (key := merchant_key(t.description)):
+            groups[key].append(t)
+    found = []
+    for rows in groups.values():
+        rows.sort(key=lambda t: t.booking_date)
+        item = _regular(rows, reference)
+        if item is not None:
+            found.append(item)
     return sorted(found, key=lambda r: r.amount, reverse=True)
 
 

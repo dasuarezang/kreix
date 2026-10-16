@@ -146,9 +146,9 @@ class DataTable(QTableView):
         self.setWordWrap(False)
         self.setMinimumHeight(min_height)
         self.verticalHeader().setVisible(False)
-        self.verticalHeader().setDefaultSectionSize(ROW_HEIGHT)
+        self.verticalHeader().setDefaultSectionSize(fonts.scaled(ROW_HEIGHT))
         self.horizontalHeader().setHighlightSections(False)
-        self.horizontalHeader().setFixedHeight(HEADER_HEIGHT)
+        self.horizontalHeader().setFixedHeight(fonts.scaled(HEADER_HEIGHT))
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.horizontalHeader().setSortIndicatorShown(True)
         self.setSortingEnabled(True)
@@ -249,8 +249,8 @@ class DataTable(QTableView):
             self.resizeRowsToContents()
             body = sum(self.rowHeight(r) for r in range(min(count, max_rows)))
         else:
-            body = min(max(count, 1), max_rows) * ROW_HEIGHT
-        height = HEADER_HEIGHT + body + 4
+            body = min(max(count, 1), max_rows) * fonts.scaled(ROW_HEIGHT)
+        height = fonts.scaled(HEADER_HEIGHT) + body + 4
         if height != self.minimumHeight() or height != self.maximumHeight():
             self.setMinimumHeight(height)
             self.setMaximumHeight(height if count <= max_rows else 16777215)

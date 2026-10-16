@@ -25,8 +25,10 @@ from ui.widgets.onboarding import Onboarding, SetupPanel
 from ui.widgets.budget_carousel import BudgetCarousel
 from ui.widgets.goals_panel import GoalsPanel
 from ui.widgets.panels import UpcomingPanel
+from ui.widgets.review_panel import ReviewPanel
 from ui.widgets.sky import SkyWidget
 from ui.widgets.ambient import hour_of
+from core.enums import TxCategory
 from core.i18n import tr, trn
 
 
@@ -36,6 +38,7 @@ class DashboardView(QWidget):
     navigate_requested = Signal(str)      # "import" | "accounts": acceso directo desde los primeros pasos
     setup_dismissed = Signal()
     category_clicked = Signal(object)     # desde un presupuesto de Inicio: ver esos movimientos en Cuentas
+    rule_requested = Signal(str)          # desde "Por clasificar": crear una regla con esta palabra
     goals_requested = Signal()            # abrir la gestion de metas de ahorro
 
     def __init__(self, parent=None) -> None:
@@ -93,10 +96,12 @@ class DashboardView(QWidget):
         self.card_net = HeroCard(tr("Patrimonio neto")).set_help("Patrimonio neto")
         self.card_return = StatCard(tr("Rendimiento global")).set_help("Rentabilidad global")
         self.card_savings = StatCard(tr("Tasa de ahorro del mes")).set_help("Tasa de ahorro")
+        self.card_forecast = StatCard(tr("Previsión a fin de mes")).set_help("Previsión a fin de mes")
         side = QVBoxLayout()
         side.setSpacing(28)
         side.addWidget(self.card_return, 1)
         side.addWidget(self.card_savings, 1)
+        side.addWidget(self.card_forecast, 1)
         top = QHBoxLayout()
         top.setSpacing(28)
         top.addWidget(self.card_net, 6)
@@ -116,6 +121,11 @@ class DashboardView(QWidget):
         attention.addWidget(self.budgets, 5)
         root.addLayout(attention)
         self.budgets.category_clicked.connect(self.category_clicked)
+        self.review = ReviewPanel()                         # movimientos por clasificar y las reglas que se proponen
+        self.review.rule_requested.connect(self.rule_requested)
+        self.review.review_requested.connect(lambda: self.category_clicked.emit(TxCategory.UNCATEGORIZED))
+        self.review.hide()
+        root.addWidget(self.review)
         self.goals = GoalsPanel()
         self.goals.manage_requested.connect(self.goals_requested)
         root.addWidget(self.goals)
@@ -227,6 +237,9 @@ class DashboardView(QWidget):
             steps.append((tr("Define un presupuesto mensual en Cuentas"), d.has_budgets, "accounts"))
         self.setup.set_steps(steps)
         self.setup.setVisible(not self._setup_hidden and not all(done for _, done, _ in steps))
+        self._render_forecast(d)
+        self.review.set_data(d.uncategorized_count, d.uncategorized_total, d.suggestions)
+        self.review.setVisible(accounts and d.uncategorized_count > 0)
         self.upcoming.set_items(d.upcoming)
         self.budgets.set_state(d.budgets, d.has_budgets)
         self.goals.set_goals(d.goals, self.clock().date())
@@ -237,6 +250,21 @@ class DashboardView(QWidget):
         self.flow.set_data(shown.flows, contributions=investments)               # sin inversiones, no hay aportaciones
         self.wealth.set_data(shown.points, value_line=accounts and investments, contributions=investments)
 
+    def _render_forecast(self, d: DashboardData) -> None:
+        """La tarjeta de la prevision de fin de mes (se oculta si aun no se puede calcular o no le interesan las cuentas)."""
+        f = d.forecast
+        self.card_forecast.setVisible(bool(f) and self._interests[0])
+        if not f:
+            return
+        parts = [tr("Pagos fijos que quedan: {fixed}").format(fixed=fmt_eur(f.fixed_due))] if f.fixed_due else [tr("Sin pagos fijos pendientes")]
+        if f.income_due:
+            parts.append(tr("ingresos fijos: {income}").format(income=fmt_eur(f.income_due)))
+        if f.reliable_variable:
+            parts.append(tr("gasto diario habitual: {daily}").format(daily=fmt_eur(f.daily_spend)))
+        self.card_forecast.set_content(
+            fmt_eur(f.projected), "  ·  ".join(parts) + "  ·  " + tr("con datos hasta el {date}").format(date=fmt_date(f.as_of)),
+            negative=f.projected < 0, positive=False)
+
     def set_interests(self, accounts: bool, investments: bool) -> None:
         """Muestra solo lo que le interesa al usuario: sin inversiones no hay rendimiento ni reparto de activos; sin
         cuentas no hay tasa de ahorro, flujo de caja, pagos recurrentes ni presupuestos."""
@@ -245,6 +273,7 @@ class DashboardView(QWidget):
         self.card_return.setVisible(investments)
         self.allocation_card.setVisible(accounts and investments)               # liquidez frente a inversion: con las dos
         self.card_savings.setVisible(accounts)
+        self.card_forecast.setVisible(accounts and bool(getattr(getattr(self, "_data", None), "forecast", None)))
         self.flow_card.setVisible(accounts)
         self.upcoming.setVisible(accounts)
         self.budgets.setVisible(accounts)
