@@ -78,6 +78,7 @@ class SkyWidget(QWidget):
     # El resplandor del sol llega mas lejos que el dibujo (radio 26 + el latido): si el widget acabara donde acaba el dibujo,
     # la luz se cortaria en un cuadrado invisible. Por eso el widget es mas grande que el cielo y el cielo se pinta con este
     # margen: la luz se apaga del todo antes de llegar al borde.
+    ARC_X0, ARC_X1 = 14.0, 33.0     # el astro recorre solo la parte izquierda: la derecha es de Blitzen y Black (no se tapan)
     PAD_X, PAD_TOP = 17, 12         # margen a izquierda/derecha y arriba (en coordenadas logicas)
 
     def __init__(self) -> None:
@@ -176,7 +177,7 @@ class SkyWidget(QWidget):
         edge = self.BASE + 1.0
         high = 18.0
         inside = max(0.0, min(1.0, progress))
-        x = 12 + inside * (self.W - 24) + (progress - inside) * span_hours * 3.0
+        x = self.ARC_X0 + inside * (self.ARC_X1 - self.ARC_X0) + (progress - inside) * span_hours * 3.0
         y = edge - math.sin(math.pi * inside) ** 0.85 * (edge - high)
         y += abs(progress - inside) * span_hours * (RADIUS * 1.7 / LEAD_H)      # al alejarse del recorrido, se hunde
         return QPointF(x, y)
@@ -203,12 +204,12 @@ class SkyWidget(QWidget):
     GROUND = BASE + 1.2                # donde pisan los perros: justo sobre la linea del horizonte
 
     def _paint_dogs(self, p: QPainter, pal, t: float) -> None:
-        """De dia, Blitzen sentado y Black tumbado junto al horizonte, mirando al sol; de noche, los dos hechos un ovillo."""
+        """De dia, Blitzen y Black sentados junto al horizonte, de cara; de noche, los dos hechos un ovillo."""
         dark = pal.name == "dark"
         if self.kind == "sun":
-            dogs.paint_day(p, dark, t, self.GROUND, blitzen_x=84.0, black_x=59.0)
+            dogs.paint_day(p, dark, t, self.GROUND, center_x=77.0)
         else:
-            dogs.paint_night(p, dark, t, self.GROUND, center_x=72.0)
+            dogs.paint_night(p, dark, t, self.GROUND, center_x=77.0)
 
     def _paint_horizon(self, p: QPainter, pal) -> None:
         pen = QPen(_alpha(QColor(pal.muted), 0.35), 1.6)
@@ -280,7 +281,7 @@ class SkyWidget(QWidget):
         # al anochecer y al amanecer hay menos estrellas, pero no ninguna: asi se intuye que la noche llega
         night_fade = presence * max(0.25, min(1.0, math.sin(math.pi * inside) * 2.4))
 
-        stars = ((14, 12, 0.0), (30, 22, 1.7), (58, 9, 3.1), (76, 21, 4.4), (68, 38, 2.3), (22, 36, 5.2))
+        stars = ((6, 10, 0.0), (38, 10, 1.7), (52, 6, 3.1), (45, 22, 4.4), (38, 32, 5.2))
         for x, y, shift in stars:
             twinkle = 0.25 + 0.75 * (0.5 + 0.5 * math.sin(t * 1.8 + shift)) ** 2
             size = 1.6 + 0.9 * twinkle

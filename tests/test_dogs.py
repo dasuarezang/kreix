@@ -5,7 +5,7 @@ from PySide6.QtWidgets import QWidget
 
 from ui import theme
 from ui.widgets import charts, dogs
-from ui.widgets.sky import SkyWidget
+from ui.widgets.sky import SkyWidget, sky_state
 
 
 def test_smooth_curves_are_closed_and_pass_through_their_points():
@@ -23,15 +23,20 @@ def test_every_pose_draws_something_at_any_moment_in_both_themes(qapp):
                 image.fill(0)
                 p = QPainter(image)
                 p.scale(8, 8)
-                (dogs.paint_day(p, dark, t, 30, 30, 12) if kind == "day" else dogs.paint_night(p, dark, t, 30, 25))
+                (dogs.paint_day(p, dark, t, 40, 30) if kind == "day" else dogs.paint_night(p, dark, t, 40, 30))
                 p.end()
                 assert any(image.pixelColor(x, y).alpha() > 200 for x in range(0, 400, 7) for y in range(0, 300, 7)), (dark, kind, t)
 
 
-def test_the_dogs_wear_the_brand_fire_and_black_and_the_dark_theme_gets_a_rim_to_stand_out():
-    dark, light = dogs.colors(True), dogs.colors(False)
-    assert dark.fire.red() > 200 and dark.fire.green() < 130 and dark.coat.lightness() < 25 and light.coat.lightness() < 40
-    assert dark.rim.alpha() > 0 and light.rim.alpha() == 0                 # sobre fondo oscuro, un filo claro los separa del fondo
+def test_the_dogs_wear_the_brand_fire_and_black_and_the_outline_follows_the_theme():
+    dark, light = dogs.look(True), dogs.look(False)
+    assert dark.fire.red() > 200 and dark.fire.green() < 130 and dark.coat.lightness() < 60 and light.coat.lightness() < 60
+    assert dark.line.lightness() > 200 and light.line.lightness() < 60       # el contorno los separa del fondo en cada tema
+
+
+def test_blinks_are_brief_and_the_still_sky_keeps_the_eyes_open():
+    assert dogs._blink(0.0, 0.0) == 0.0
+    assert [dogs._blink(t / 10, 0.0) for t in range(0, 44)].count(1.0) <= 2
 
 
 def sky_image(sky: SkyWidget) -> QImage:
@@ -84,4 +89,16 @@ def test_the_dogs_never_touch_the_edge_of_the_sky_widget(qapp, monkeypatch, name
                    [image.pixelColor(0, y).alpha() for y in range(image.height())]
             assert max(edge) <= 3, (name, hour, phase)
     theme.set_current(theme.DARK)
+    sky.deleteLater()
+
+
+def test_the_sun_and_the_moon_never_cross_the_dogs_at_any_hour(qapp):
+    """El astro recorre solo la parte izquierda; el dibujo de los perros empieza mas a la derecha (con sus rayos incluidos)."""
+    sky = SkyWidget()
+    left_of_dogs = 77.0 - 28.0                                   # donde empieza el dibujo de Blitzen y Black
+    for hour in [h / 4 for h in range(0, 96)]:
+        state = sky_state(hour)
+        span = 15.0 if state.kind == "sun" else 9.0
+        x = sky._arc_point(state.progress, span).x()
+        assert x + 8.5 + 3.5 + 6.1 <= left_of_dogs + 4, (hour, x)       # disco + separacion de los rayos + su alcance
     sky.deleteLater()

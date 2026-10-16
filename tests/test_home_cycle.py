@@ -146,7 +146,7 @@ def test_the_sun_and_the_moon_rise_and_set_half_out_so_the_cycle_has_no_blind_sp
         assert edge.y() - RADIUS < horizon - RADIUS * 0.6 and edge.y() < horizon
     assert middle.y() < start.y() - 25 and start.x() < middle.x() < end.x()
     assert sky._arc_point(1.0 + 0.08).y() > end.y() and sky._arc_point(-0.08).y() > start.y()    # fuera del recorrido se hunden
-    assert abs(middle.x() - SkyWidget.W / 2) < 1                                   # a mediodia, en lo alto y en el centro
+    assert abs(middle.x() - (SkyWidget.ARC_X0 + SkyWidget.ARC_X1) / 2) < 1         # a mediodia, en lo alto del arco (la parte izquierda: la derecha es de los perros)
     sky.deleteLater()
 
 
