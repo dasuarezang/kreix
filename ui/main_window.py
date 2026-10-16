@@ -109,6 +109,7 @@ class MainWindow(QMainWindow):
         self.rebuilding = False
         self.secure_store = None
         self.backups = None                 # BackupService (solo con almacen cifrado)
+        self.replacement: "MainWindow | None" = None    # la ventana que la sustituyo al cambiar de idioma antes de mostrarse
         self.detect_language = False        # True (lo activa main): la primera vez se propone el idioma del sistema
         self.setWindowTitle("Kreix")
         self.setWindowIcon(assets.app_icon())
@@ -493,14 +494,26 @@ class MainWindow(QMainWindow):
         tell(self.feedback, tr("Lista de primeros pasos oculta."))
 
     # ------------------------------------------------------------------ nombre de usuario
-    def ask_name_if_needed(self) -> bool:
+    def needs_welcome(self) -> bool:
+        """True la primera vez: aun no se le ha preguntado el nombre ni lo que quiere gestionar."""
+        return not self._settings.name_asked
+
+    def welcome_before_show(self) -> "MainWindow":
+        """La bienvenida de la primera vez, ANTES de ensenar la ventana: asi Inicio aparece ya con su nombre, sus intereses
+        y su idioma, sin la ventana vacia detras ni el salto de reconstruirse. Devuelve la ventana que hay que mostrar
+        (otra distinta si cambio de idioma)."""
+        self.ask_name_if_needed(before_show=True)
+        return self.replacement or self
+
+    def ask_name_if_needed(self, before_show: bool = False) -> bool:
         """La primera vez, pregunta como llamar al usuario y que quiere gestionar (cuentas, inversiones o ambas).
         Si dice "ahora no", se queda con ambas y no se le vuelve a insistir."""
         if self._settings.name_asked:
             return False
         language = system_language() if self.detect_language else self._settings.language
         dialog = WelcomeDialog(self._settings.user_name,
-                               (self._settings.interest_accounts, self._settings.interest_investments), self, language)
+                               (self._settings.interest_accounts, self._settings.interest_investments),
+                               None if before_show else self, language)      # sin ventana detras: se centra en la pantalla
         accepted = dialog.exec() == WelcomeDialog.DialogCode.Accepted
         if accepted:
             accounts, investments = dialog.result_interests()
@@ -509,7 +522,7 @@ class MainWindow(QMainWindow):
         self._sync_interests()
         chosen = dialog.result_language()                 # el idioma elegido se queda aunque diga "ahora no"
         if chosen != self._settings.language:
-            self._apply_language(chosen)
+            self._apply_language(chosen, immediate=before_show)
         else:
             i18n.set_language(self._settings.language)
         return accepted
@@ -519,12 +532,16 @@ class MainWindow(QMainWindow):
         if code != self._settings.language:
             self._apply_language(code)
 
-    def _apply_language(self, code: str) -> None:
-        """Guarda el idioma y rehace la ventana para que todo salga en el nuevo (los datos y la pagina se conservan)."""
+    def _apply_language(self, code: str, immediate: bool = False) -> None:
+        """Guarda el idioma y rehace la ventana para que todo salga en el nuevo (los datos y la pagina se conservan).
+        `immediate`: la ventana aun no se ha mostrado; se rehace ya, sin ensenar nada y sin el aviso de cambio de idioma."""
         code = i18n.normalize_language(code)
         self._settings = replace(self._settings, language=code)
         self._svc.settings.save(self._settings)
         i18n.set_language(code)
+        if immediate:
+            self.replacement = self.rebuild(show=False, announce=False)
+            return
         self.rebuilding = True
         self._later(0, self.rebuild)
 
@@ -617,8 +634,9 @@ class MainWindow(QMainWindow):
         if ChangePasswordDialog(apply, self).exec():
             tell(self.feedback, tr("Contraseña maestra cambiada."))
 
-    def rebuild(self) -> "MainWindow":
-        """Sustituye esta ventana por otra igual construida en el idioma activo: mismos datos, misma pagina y tamano."""
+    def rebuild(self, show: bool = True, announce: bool = True) -> "MainWindow":
+        """Sustituye esta ventana por otra igual construida en el idioma activo: mismos datos, misma pagina y tamano.
+        Con `show=False` la nueva no se muestra (lo hace quien la pidio); con `announce=False` no avisa del cambio."""
         self._persist_state()
         new = MainWindow(self._svc, self._db_path)
         new.eager = self.eager
@@ -627,11 +645,12 @@ class MainWindow(QMainWindow):
         new.clock = self.clock
         new.dashboard.clock = lambda: new.clock()
         new.resize(self.size())
-        if self.isMaximized():
-            new.showMaximized()
-        else:
-            new.move(self.pos())
-            new.show()
+        if show:
+            if self.isMaximized():
+                new.showMaximized()
+            else:
+                new.move(self.pos())
+                new.show()
         new.navigate(self.stack.currentIndex())
         app = QApplication.instance()
         app.kreix_window = new                           # la ventana principal viva (evita que se recoja)
@@ -639,7 +658,8 @@ class MainWindow(QMainWindow):
         self.hide()
         self.deleteLater()
         new._later(0, new.announce_new_version)
-        tell(new.feedback, tr("Idioma cambiado a {language}.").format(language=i18n.NAMES[i18n.language()]))
+        if announce:
+            tell(new.feedback, tr("Idioma cambiado a {language}.").format(language=i18n.NAMES[i18n.language()]))
         return new
 
     # ------------------------------------------------------------------ lo que le interesa al usuario

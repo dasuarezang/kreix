@@ -12,7 +12,7 @@ import sys
 import threading
 from pathlib import Path
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QEasingCurve, QPropertyAnimation, QTimer
 from PySide6.QtWidgets import QApplication
 
 from core import i18n
@@ -160,6 +160,19 @@ def wire_store(app, window, store, autosave_ms: int = 2000, save_on_quit: bool =
     return backups, lock
 
 
+def reveal(window, duration_ms: int = 280) -> None:
+    """Muestra la ventana con un fundido breve (la primera vez entra desde la bienvenida, no desde la pantalla de contrasena)."""
+    window.setWindowOpacity(0.0)
+    window.show()
+    fade = QPropertyAnimation(window, b"windowOpacity", window)
+    fade.setDuration(duration_ms)
+    fade.setStartValue(0.0)
+    fade.setEndValue(1.0)
+    fade.setEasingCurve(QEasingCurve.Type.OutCubic)
+    window._reveal_animation = fade                          # se guarda para que no se recoja a medias
+    fade.start()
+
+
 def settle_memory() -> None:
     """Lo creado al arrancar (ventana, widgets, modulos) vive hasta el final: se aparta del recolector de basura para que sus
     pasadas, durante cargas grandes, no lo recorran una y otra vez."""
@@ -229,8 +242,15 @@ def main(argv: list[str] | None = None) -> int:
         else:
             window = build_window(engine=store.engine, db_label=str(store.path))
             wire_store(app, window, store)
-        window.show()
-        window._later(400, window.start_up)                 # tras pintar la ventana: nombre y novedades
+        if window.needs_welcome():                          # la primera vez: la bienvenida va ANTES de ensenar la ventana
+            lock = QApplication.activeModalWidget()
+            if lock is not None and hasattr(lock, "release"):
+                lock.release()                              # la pantalla de contrasena cede su sitio a la bienvenida
+            window = window.welcome_before_show()           # (otra ventana, si en la bienvenida se cambio de idioma)
+            reveal(window)
+        else:
+            window.show()
+        window._later(400, window.start_up)                 # tras pintar la ventana: novedades
         window._later(2500, settle_memory)                  # y, ya asentada, se saca de la vigilancia del recolector todo lo de arranque
 
     if db:

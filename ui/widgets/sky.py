@@ -75,10 +75,14 @@ class SkyWidget(QWidget):
     W, H = 92, 50                   # tamano del dibujo en coordenadas logicas
     SCALE = 2.6                     # y cuanto se amplia en pantalla (rellena el hueco entre el saludo y las cuatro franjas)
     BASE = 46                       # la linea del horizonte
+    # El resplandor del sol llega mas lejos que el dibujo (radio 26 + el latido): si el widget acabara donde acaba el dibujo,
+    # la luz se cortaria en un cuadrado invisible. Por eso el widget es mas grande que el cielo y el cielo se pinta con este
+    # margen: la luz se apaga del todo antes de llegar al borde.
+    PAD_X, PAD_TOP = 17, 12         # margen a izquierda/derecha y arriba (en coordenadas logicas)
 
     def __init__(self) -> None:
         super().__init__()
-        self.setFixedSize(round(self.W * self.SCALE), round(self.H * self.SCALE))
+        self.setFixedSize(self._pixels(self.W + 2 * self.PAD_X), self._pixels(self.H + self.PAD_TOP))
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self._hour = 12.0
         self._animated = True
@@ -121,8 +125,21 @@ class SkyWidget(QWidget):
         self.setAccessibleDescription(text)
         self.setToolTip("")
 
+    @classmethod
+    def _pixels(cls, logical: float) -> int:
+        return round(logical * cls.SCALE)
+
+    @property
+    def inset_x(self) -> int:
+        """Pixeles de margen vacio a cada lado: quien lo coloque puede restarlos del espacio que deja alrededor."""
+        return self._pixels(self.PAD_X)
+
+    @property
+    def inset_top(self) -> int:
+        return self._pixels(self.PAD_TOP)
+
     def sizeHint(self) -> QSize:
-        return QSize(round(self.W * self.SCALE), round(self.H * self.SCALE))
+        return QSize(self._pixels(self.W + 2 * self.PAD_X), self._pixels(self.H + self.PAD_TOP))
 
     # -- animacion: solo corre mientras se ve ---------------------------------
     def _sync_timer(self) -> None:
@@ -169,9 +186,11 @@ class SkyWidget(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         p.scale(self.SCALE, self.SCALE)
+        p.translate(self.PAD_X, self.PAD_TOP)                  # el cielo, dentro de su margen
         t = self._phase if (self._animated and charts.ANIMATIONS) else 0.0
         self._paint_horizon(p, pal)
-        p.setClipRect(QRectF(0, 0, self.W, self.BASE + 2))     # lo que queda bajo el horizonte no se ve: sale y se pone
+        # lo que queda bajo el horizonte no se ve (sale y se pone); a los lados y arriba la luz tiene todo su margen
+        p.setClipRect(QRectF(-self.PAD_X, -self.PAD_TOP, self.W + 2 * self.PAD_X, self.BASE + 2 + self.PAD_TOP))
         for kind, progress, span, presence in sky_bodies(self._hour):
             if kind == "sun":
                 self._paint_sun(p, pal, progress, t, presence)

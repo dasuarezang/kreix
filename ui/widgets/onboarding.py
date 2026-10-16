@@ -46,7 +46,9 @@ class Onboarding(QWidget):
         title_row = QHBoxLayout()
         title_row.setSpacing(14)
         title_row.addStretch(1)
-        title_row.addWidget(title)
+        title_row.addSpacing(self.sky.inset_x - 14)                  # el cielo lleva margen vacio para su luz: se equilibra para que
+        title_row.addWidget(title)                              # lo que se ve siga centrado y a la misma distancia del titulo
+        title_row.addSpacing(-self.sky.inset_x - 14)
         title_row.addWidget(self.sky, 0, Qt.AlignmentFlag.AlignVCenter)
         title_row.addStretch(1)
         text = QLabel(tr("Bienvenido a Kreix: tus finanzas, en tu equipo y sin conexión. Así se empieza:"))

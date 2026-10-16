@@ -147,6 +147,11 @@ class LockDialog(BrandDialog):
         if self._throttle.wait_left() > 0:                  # un bloqueo anterior dejo una espera pendiente
             self._start_cooldown()
 
+    def release(self) -> None:
+        """Se aparta de la vista antes de acabar (la primera vez, la bienvenida ocupa su sitio); la contrasena ya esta aceptada."""
+        QGuiApplication.restoreOverrideCursor()
+        self.hide()
+
     def _intro_text(self) -> str:
         if self._mode is LockMode.UNLOCK:
             text = tr("Tus datos están cifrados en este equipo. Escribe la contraseña maestra para abrirlos.")

@@ -176,7 +176,7 @@ class PageHeader(QWidget):
     def add_title_accessory(self, widget: QWidget) -> None:
         """Coloca un elemento (p. ej. un dibujo animado) a la derecha del titulo, con holgura, alineado con su base. Como
         ocupa la misma altura que la etiqueta y el titulo juntos, no separa las lineas de texto de debajo."""
-        self._title_row.setSpacing(ACCESSORY_GAP)
+        self._title_row.setSpacing(max(0, ACCESSORY_GAP - getattr(widget, "inset_x", 0)))     # el margen vacio del dibujo ya cuenta
         self._title_row.insertWidget(1, widget, 0, Qt.AlignmentFlag.AlignBottom)
 
     def add_side_accessory(self, widget: QWidget) -> None:
@@ -184,7 +184,8 @@ class PageHeader(QWidget):
         alto como las lineas de texto juntas sin empujarlas. El bloque de texto deja de estirarse para que el dibujo quede pegado."""
         self._row.setStretch(0, 0)
         self._row.setAlignment(self._column, Qt.AlignmentFlag.AlignVCenter)      # las lineas de texto, juntas y centradas junto al dibujo
-        self._row.insertSpacing(1, ACCESSORY_GAP)
+        self._row.insertSpacing(1, max(0, ACCESSORY_GAP - getattr(widget, "inset_x", 0)))   # el margen vacio del dibujo ya cuenta
+        self._column.setContentsMargins(0, getattr(widget, "inset_top", 0), 0, 0)           # y el de arriba: el texto sigue centrado en lo que se ve
         self._row.insertWidget(2, widget, 0, Qt.AlignmentFlag.AlignVCenter)
         self._row.insertStretch(3, 1)
 

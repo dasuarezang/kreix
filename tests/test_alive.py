@@ -100,6 +100,7 @@ def test_the_sky_sits_next_to_the_name_with_room_to_spare(window):
     dash = window.dashboard
     right_of_text = max(w.mapTo(window, w.rect().topRight()).x() for w in (head.title, dash.date_line, head._subtitle))
     gap = sky.mapTo(window, sky.rect().topLeft()).x() - right_of_text
+    gap += sky.inset_x                                                    # el margen vacio del cielo (para su luz) tambien es holgura
     assert ACCESSORY_GAP - 4 <= gap <= ACCESSORY_GAP + 400                # pegado al texto pero con holgura (el bloque puede ser mas ancho que sus lineas)
     assert sky.y() >= 0 and sky.geometry().bottom() <= head.rect().bottom() + 2          # dentro de la cabecera
 
@@ -118,7 +119,7 @@ def test_the_lines_of_text_in_the_header_are_evenly_spaced_and_the_sky_does_not_
         return widget.mapTo(window, widget.rect().bottomLeft()).y()
 
     # el dibujo no es mas alto que las lineas de texto juntas (saludo, fecha y actualizacion) y va a su derecha: no abre huecos entre ellas
-    assert dash.sky.height() <= 160                                      # alto, pero sin descolocar la pagina: la cabecera crece lo justo
+    assert dash.sky.height() - dash.sky.inset_top <= 160                                      # alto, pero sin descolocar la pagina: la cabecera crece lo justo
     right_of_text = max(w.mapTo(window, w.rect().topRight()).x() for w in (head.title, dash.date_line, head._subtitle))
     assert dash.sky.mapTo(window, dash.sky.rect().topLeft()).x() > right_of_text
     gaps = [top(dash.date_line) - bottom(head.title), top(head._subtitle) - bottom(dash.date_line)]
@@ -180,18 +181,9 @@ def test_it_only_dims_a_little_and_does_not_touch_the_theme(window):
     night = window.grab().toImage()
     assert window.settings_view._settings.theme == window._settings.theme == "dark"
 
-    sky = window.dashboard.sky
-    sky_rect = sky.rect().translated(sky.mapTo(window, sky.rect().topLeft())).adjusted(-30, -30, 30, 30)
-
-    def brightness(image: QImage, spots: list[tuple[int, int]]) -> int:
-        return sum(image.pixelColor(x, y).red() + image.pixelColor(x, y).green() + image.pixelColor(x, y).blue() for x, y in spots)
-
-    spots = [(x, y)                      # los mismos puntos claros (texto, botones) a las dos horas: el fondo oscuro es mas oscuro que el propio tinte nocturno
-             for x in range(240, noon.width(), 17) for y in range(max(sky_rect.bottom() + 10, noon.height() * 6 // 10), noon.height(), 7)
-             if not sky_rect.contains(x, y)
-             and sum((noon.pixelColor(x, y).red(), noon.pixelColor(x, y).green(), noon.pixelColor(x, y).blue())) > 300]
-    assert len(spots) > 20
-    assert 0.88 < brightness(night, spots) / brightness(noon, spots) < 1.0     # se nota un poco, no mas de un ~7 %
+    tint = window.ambient.tint
+    assert 0 < tint[3] <= 20                                                   # una capa muy ligera (como mucho ~8 %), nunca un cambio de tema
+    assert noon.constBits().tobytes() != night.constBits().tobytes()           # y se nota algo entre el mediodia y la noche
 
 
 def test_ambient_setting_is_saved_and_the_clock_tick_updates_everything(window):

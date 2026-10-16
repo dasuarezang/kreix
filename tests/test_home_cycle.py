@@ -155,7 +155,7 @@ def _visible_pixels(sky: SkyWidget) -> int:
     image = QImage(sky.size(), QImage.Format.Format_ARGB32)
     image.fill(0)
     sky.render(image, renderFlags=QWidget.RenderFlag.DrawChildren)
-    y_limit = int((SkyWidget.BASE - 1) * SkyWidget.SCALE)
+    y_limit = int((SkyWidget.BASE - 1) * SkyWidget.SCALE) + sky.inset_top
     return sum(1 for y in range(y_limit) for x in range(image.width()) if image.pixelColor(x, y).alpha() > 12)
 
 
@@ -304,3 +304,32 @@ def test_the_day_night_loop_never_leaves_the_sky_empty(qapp):
         least = pixels if least is None else min(least, pixels)
     assert least > 100 and noon is not None and least > noon * 0.2                  # ni a las 21:00 ni a las 6:00 queda vacio
     sky.deleteLater()
+
+
+def test_the_light_of_the_sun_and_moon_fades_out_before_the_edge_of_the_widget(qapp, monkeypatch):
+    """Antes el widget acababa donde acababa el dibujo y el resplandor se cortaba en un cuadrado invisible."""
+    from ui.widgets import charts
+
+    monkeypatch.setattr(charts, "ANIMATIONS", True)
+    sky = SkyWidget()
+    for name in ("dark", "light"):
+        theme.set_current(theme.PALETTES[name])
+        for hour in (6.0, 7.5, 9.0, 12.0, 14.0, 17.0, 20.5, 21.5, 23.0, 3.0, 5.5):
+            for phase in (0.0, 1.4, 2.9):                                   # y a cualquier punto del latido del brillo
+                sky.set_hour(hour)
+                sky._phase = phase
+                image = QImage(sky.size(), QImage.Format.Format_ARGB32)
+                image.fill(0)
+                sky.render(image, renderFlags=QWidget.RenderFlag.DrawChildren)
+                top = [image.pixelColor(x, 0).alpha() for x in range(image.width())]
+                left = [image.pixelColor(0, y).alpha() for y in range(image.height() - int(2.6 * 8))]
+                right = [image.pixelColor(image.width() - 1, y).alpha() for y in range(image.height() - int(2.6 * 8))]
+                assert max(top + left + right) <= 3, (name, hour, phase)
+    theme.set_current(theme.DARK)
+    sky.deleteLater()
+
+
+def test_the_sky_margin_does_not_move_the_header_of_home(window):
+    sky = window.dashboard.sky
+    assert sky.width() > SkyWidget.W * SkyWidget.SCALE and sky.inset_x == round(SkyWidget.PAD_X * SkyWidget.SCALE)
+    assert window.dashboard.sky.inset_top > 0

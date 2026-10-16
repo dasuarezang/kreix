@@ -71,6 +71,7 @@ class DashboardView(QWidget):
         self.header = PageHeader(greeting(datetime.now()), eyebrow=tr("Inicio"))
         self.sky = SkyWidget()                              # sol o luna animados, a la derecha del nombre
         self.header.add_side_accessory(self.sky)
+        root.setContentsMargins(48, max(0, 40 - self.sky.inset_top), 48, 48)     # el margen vacio del cielo (para su luz) ocupa parte del de la pagina
         self.date_line = QLabel("")                         # el dia y la hora, siempre al dia
         self.date_line.setObjectName("DateLine")
         self.header.add_line(self.date_line)
