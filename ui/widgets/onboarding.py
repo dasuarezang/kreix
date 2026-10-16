@@ -5,7 +5,7 @@ from PySide6.QtCore import QPointF, QRectF, QSize, Qt, Signal
 from PySide6.QtGui import QColor, QLinearGradient, QPainter, QPen, QRadialGradient
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
-from ui import theme
+from ui import assets, theme
 from ui.widgets.cards import StripeMark, flatten
 from ui.widgets.panels import Panel
 from ui.widgets.sky import SkyWidget
@@ -31,6 +31,10 @@ class Onboarding(QWidget):
         super().__init__()
         self.setObjectName("Page")
         stripes = StripeMark(112, 58, centered=True)
+        self.logo = QLabel()                                   # la K de Kreix, justo encima de las cuatro barras
+        self.logo.setPixmap(assets.mark(60))
+        self.logo.setAccessibleName("Kreix")
+        self.logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.title = QLabel(tr("Bienvenido a Kreix"))
         title = self.title
         title.setObjectName("H1")
@@ -81,6 +85,7 @@ class Onboarding(QWidget):
         column.setContentsMargins(48, 28, 48, 28)
         column.setSpacing(14)
         column.addStretch(1)
+        column.addWidget(self.logo, 0, Qt.AlignmentFlag.AlignCenter)
         column.addWidget(stripes, 0, Qt.AlignmentFlag.AlignCenter)
         column.addLayout(title_row)
         column.addWidget(self.date_line)
