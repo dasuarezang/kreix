@@ -5,7 +5,6 @@ TEXTS: dict[str, str] = {
     'Buscar o ir a': 'Cercar o anar a',
     '↑ ↓ para moverte  ·  Intro para elegir  ·  Esc para cerrar': "↑ ↓ per moure't  ·  Intro per triar  ·  Esc per tancar",
     'No encuentro nada con esas palabras.': 'No trobo res amb aquestes paraules.',
-    "<b>{title}</b>  <span style='opacity:0.65'>{subtitle}</span>": "<b>{title}</b>  <span style='opacity:0.65'>{subtitle}</span>",
     'Cancelar': 'Cancel·lar',
     'Nueva regla de categoría': 'Nova regla de categoria',
     'Todos los movimientos cuyo concepto contenga esta palabra irán a la categoría elegida, también los que importes en el futuro. Los que hayas clasificado tú a mano no se tocan.': 'Tots els moviments el concepte dels quals contingui aquesta paraula aniran a la categoria triada, també els que importis en el futur. Els que hagis classificat tu a mà no es toquen.',
@@ -819,4 +818,9 @@ TEXTS: dict[str, str] = {
     'Al crear o cambiar la contraseña maestra, un medidor te dice lo difícil que sería adivinarla y cómo mejorarla.': 'En crear o canviar la contrasenya mestra, un mesurador et diu com de difícil seria endevinar-la i com millorar-la.',
     'Kreix como programa de Windows': 'Kreix com a programa de Windows',
     'Ahora se instala con un instalador, con su acceso directo en el menú Inicio y en el escritorio. Ya no hace falta tener Python.': "Ara s'instal·la amb un instal·lador, amb el seu accés directe al menú Inici i a l'escriptori. Ja no cal tenir Python.",
+    'Sí': 'Sí',
+    'No': 'No',
+    'Aceptar': "D'acord",
+    'Cerrar': 'Tanca',
+    'Descartar': 'Descarta',
 }

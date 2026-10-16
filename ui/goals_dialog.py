@@ -29,7 +29,7 @@ class GoalEditDialog(BrandDialog):
     def __init__(self, goal: Goal | None = None, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle(tr("Editar meta") if goal else tr("Nueva meta"))
-        self.setMinimumWidth(420)
+        self.setMinimumWidth(520)
         self.name = QLineEdit(goal.name if goal else "")
         self.name.setMaxLength(MAX_NAME)
         self.name.setPlaceholderText(tr("Por ejemplo: Vacaciones"))
@@ -60,6 +60,7 @@ class GoalEditDialog(BrandDialog):
         self.deadline.setEnabled(self.has_deadline.isChecked())
         self.has_deadline.toggled.connect(self.deadline.setEnabled)
         form = QFormLayout()
+        form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)    # los campos ocupan todo el ancho
         form.setSpacing(10)
         form.addRow(tr("Nombre"), self.name)
         form.addRow(tr("Quiero llegar a"), self.target)

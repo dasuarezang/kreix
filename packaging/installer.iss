@@ -24,7 +24,10 @@ UninstallDisplayIcon={app}\Kreix.exe
 UninstallDisplayName=Kreix
 Compression=lzma2/max
 SolidCompression=yes
-WizardStyle=modern
+WizardStyle=modern dark
+DisableWelcomePage=no
+WizardImageFile=art\panel-100.bmp,art\panel-150.bmp,art\panel-200.bmp
+WizardSmallImageFile=art\icono-100.bmp,art\icono-150.bmp,art\icono-200.bmp
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 CloseApplications=yes
@@ -36,6 +39,14 @@ VersionInfoProductName=Kreix
 Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 Name: "catalan"; MessagesFile: "compiler:Languages\Catalan.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
+
+[Messages]
+spanish.WelcomeLabel2=Esto instalará [name/ver] en tu equipo.%n%nKreix guarda tus datos cifrados, solo en este ordenador: no usa internet ni envía nada a ningún sitio. Si ya lo tienes instalado, se actualiza sin tocar tus datos.
+catalan.WelcomeLabel2=Això instal·larà [name/ver] al teu equip.%n%nKreix desa les teves dades xifrades, només en aquest ordinador: no usa internet ni envia res enlloc. Si ja el tens instal·lat, s'actualitza sense tocar les teves dades.
+english.WelcomeLabel2=This will install [name/ver] on your computer.%n%nKreix keeps your data encrypted, only on this computer: it does not use the internet or send anything anywhere. If you already have it installed, it is updated without touching your data.
+spanish.FinishedLabel=Kreix ya está instalado. Puedes abrirlo desde el menú Inicio o desde el escritorio.
+catalan.FinishedLabel=Kreix ja està instal·lat. El pots obrir des del menú Inici o des de l'escriptori.
+english.FinishedLabel=Kreix is now installed. You can open it from the Start menu or from the desktop.
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"

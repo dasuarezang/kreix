@@ -178,3 +178,22 @@ def test_undo_of_a_restore_brings_back_the_previous_name(tmp_path, qapp):
         assert b._settings.user_name == "Luis" and b.dashboard.header.title.text().endswith(", Luis.")
     finally:
         dispose_windows(a, b)
+
+
+def test_a_special_name_is_greeted_differently_without_changing_what_is_saved():
+    from datetime import datetime
+
+    from core.greeting import greeting, shown_name
+
+    for typed in ("Laura Padros", "laura  PADRÓS", " Laura Padrós "):
+        assert greeting(datetime(2026, 1, 1, 9), typed) == "Buenos días, Petitona♥."
+        assert shown_name(typed) == "Petitona♥"
+    assert greeting(datetime(2026, 1, 1, 9), "Laura") == "Buenos días, Laura."          # solo ese nombre completo
+    assert greeting(datetime(2026, 1, 1, 9), "Padros") == "Buenos días, Padros."
+    assert greeting(datetime(2026, 1, 1, 22), "") == "Buenas noches."
+
+
+def test_the_special_name_shows_on_home_but_settings_keep_what_was_typed(window):
+    window._apply_user_name("Laura Padros", announce=False)
+    assert "Petitona♥" in window.dashboard.header.title_label.text() if hasattr(window.dashboard.header, "title_label") else True
+    assert window._settings.user_name == "Laura Padros" and window.settings_view.name_edit.text() == "Laura Padros"

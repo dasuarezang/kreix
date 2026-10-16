@@ -57,6 +57,7 @@ class RuleDialog(BrandDialog):
         self.category = category_combo(category)
         self.category.setAccessibleName(tr("Categoría"))
         form = QFormLayout()
+        form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)    # los campos ocupan todo el ancho
         form.setSpacing(10)
         form.addRow(tr("Si el concepto contiene"), self.keyword)
         form.addRow(tr("Va a la categoría"), self.category)
@@ -167,6 +168,7 @@ class BudgetDialog(BrandDialog):
         self.setWindowTitle(tr("Presupuestos mensuales"))
         self.setMinimumWidth(480)
         form = QFormLayout()
+        form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)    # los campos ocupan todo el ancho
         form.setSpacing(8)
         self.spins: dict[TxCategory, QDoubleSpinBox] = {}
         for cat in BUDGETABLE:

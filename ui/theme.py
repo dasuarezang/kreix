@@ -270,7 +270,7 @@ QFrame#PaletteCard QLabel {{ background: transparent; }}
 QListWidget#PaletteList {{ background: transparent; border: none; outline: none; }}
 QListWidget#PaletteList::item {{ border-radius: 10px; padding: 0; margin: 1px 0; }}
 QListWidget#PaletteList::item:selected {{ background: {p.accent}; }}
-QListWidget#PaletteList::item:selected QLabel {{ color: {p.on_accent}; }}
+QLabel#PaletteRow[selected="true"] {{ color: {p.on_accent}; }}
 QListWidget#PaletteList::item:hover:!selected {{ background: {p.hover}; }}
 QLabel#PaletteRow {{ font-family: {medium}; font-size: 13px; }}
 

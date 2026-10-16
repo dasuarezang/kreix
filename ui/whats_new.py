@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QDialog, QFrame, QLabel, QPushButton, QScrollArea, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QFrame, QLabel, QPushButton, QScrollArea, QVBoxLayout, QWidget
 from core.i18n import tr, N_
+from ui.widgets.brand_dialog import BrandDialog
 
 VERSION = "0.3.0"
 
@@ -68,20 +69,17 @@ def notes_for(version: str) -> tuple[tuple[str, str], ...]:
     return tuple((tr(heading), tr(text)) for heading, text in RELEASES.get(version, ()))
 
 
-class WhatsNewDialog(QDialog):
+class WhatsNewDialog(BrandDialog):
     def __init__(self, version: str = VERSION, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setWindowTitle(tr("Novedades de Kreix {version}").format(version=version))
-        self.setMinimumSize(560, 520)
-        title = QLabel(tr("Novedades de Kreix {version}").format(version=version))
-        title.setObjectName("H1")
-        intro = QLabel(tr("Esto es lo que hay de nuevo desde la última vez:"))
-        intro.setObjectName("Muted")
+        heading_text = tr("Novedades de Kreix {version}").format(version=version)
+        self.setWindowTitle(heading_text)
+        self.setMinimumSize(600, 600)
         body = QWidget()
         body.setObjectName("Page")
         column = QVBoxLayout(body)
-        column.setContentsMargins(0, 0, 8, 0)
-        column.setSpacing(14)
+        column.setContentsMargins(0, 0, 12, 0)
+        column.setSpacing(16)
         for heading, text in notes_for(version):
             name = QLabel(heading)
             name.setObjectName("H2")
@@ -99,10 +97,6 @@ class WhatsNewDialog(QDialog):
         ok.setObjectName("Primary")
         ok.setCursor(Qt.CursorShape.PointingHandCursor)
         ok.clicked.connect(self.accept)
-        root = QVBoxLayout(self)
-        root.setContentsMargins(28, 24, 28, 22)
-        root.setSpacing(10)
-        root.addWidget(title)
-        root.addWidget(intro)
-        root.addWidget(scroll, 1)
-        root.addWidget(ok, 0, Qt.AlignmentFlag.AlignRight)
+        col = self.frame(heading_text, tr("Esto es lo que hay de nuevo desde la última vez:"))
+        col.addWidget(scroll, 1)
+        col.addWidget(ok, 0, Qt.AlignmentFlag.AlignRight)

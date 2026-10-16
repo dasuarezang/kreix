@@ -9,6 +9,8 @@ from PySide6.QtCore import QEvent, QPoint, QSize, Qt, QTimer
 from PySide6.QtWidgets import QDialog, QFrame, QLabel, QLineEdit, QListWidget, QListWidgetItem, QVBoxLayout, QWidget
 
 from core.categorizer import normalize
+from ui import theme
+from ui.widgets.cards import repolish
 from core.i18n import tr, N_
 
 MAX_SHOWN = 9
@@ -86,6 +88,7 @@ class CommandPalette(QDialog):
         self._timer.timeout.connect(self._refresh)
         self.input.textChanged.connect(self._on_text)
         self.input.installEventFilter(self)
+        self.list.currentRowChanged.connect(self._mark_selected)
         self.list.itemActivated.connect(self._on_item)
         self.list.itemClicked.connect(self._on_item)
         self._refresh()
@@ -105,7 +108,7 @@ class CommandPalette(QDialog):
         self.list.clear()
         for cmd in found:
             item = QListWidgetItem()
-            label = QLabel(tr("<b>{title}</b>  <span style='opacity:0.65'>{subtitle}</span>").format(title=_escape(cmd.title), subtitle=_escape(cmd.subtitle)))
+            label = QLabel(_row_html(cmd, selected=False))
             label.setTextFormat(Qt.TextFormat.RichText)
             label.setObjectName("PaletteRow")
             label.setContentsMargins(12, 0, 12, 0)
@@ -118,6 +121,15 @@ class CommandPalette(QDialog):
             empty = QListWidgetItem(tr("No encuentro nada con esas palabras."))
             empty.setFlags(Qt.ItemFlag.NoItemFlags)
             self.list.addItem(empty)
+
+    def _mark_selected(self, row: int) -> None:
+        """La fila elegida lleva el texto sobre el amarillo; las demas, el texto normal (el estilo de Qt no sabe distinguirlas)."""
+        for index in range(min(self.list.count(), len(self._shown))):
+            label = self.list.itemWidget(self.list.item(index))
+            if label is not None and bool(label.property("selected")) != (index == row):
+                label.setProperty("selected", index == row)
+                label.setText(_row_html(self._shown[index], selected=index == row))
+                repolish(label)
 
     def _on_item(self, _item) -> None:
         self.run_selected()
@@ -149,6 +161,13 @@ class CommandPalette(QDialog):
         self.move(top_left)
         self.input.setFocus()
         self.exec()
+
+
+def _row_html(cmd: Command, selected: bool) -> str:
+    """Titulo en negrita y, al lado, el atajo o la pagina en gris (sobre el amarillo, en el color del texto del boton)."""
+    pal = theme.current()
+    side = pal.on_accent if selected else pal.muted
+    return f"<b>{_escape(cmd.title)}</b>&nbsp;&nbsp;<span style='color:{side}; font-weight:normal'>{_escape(cmd.subtitle)}</span>"
 
 
 def _escape(text: str) -> str:

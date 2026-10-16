@@ -227,7 +227,7 @@ data/                   modelos SQLAlchemy, repositorios idempotentes, migracion
                         tracker.py: detector de cambios reales y caché de resultados)
 core/                   lógica pura: métricas (generales, por cuenta y de inversión),
                         periodos, categorizador, pagos recurrentes, presupuestos, entidades, enumeraciones
-packaging/              PyInstaller (kreix.spec), instalador de Inno Setup (installer.iss) y build.ps1
+packaging/              PyInstaller (kreix.spec), instalador de Inno Setup (installer.iss, imágenes en art/) y build.ps1
 logo-mejorado/          logotipos e iconos de la marca (SVG como fuente; `tools/build_logos.py` regenera PNG e .ico)
 assets/fonts/           tipografías incluidas (Montserrat y DM Sans, licencia OFL)
 tools/                  capturas, benchmark de rendimiento, generador de fuentes y atajo para los datos de demostración
@@ -256,6 +256,7 @@ Decisiones de diseño relevantes:
 - **Menos cajas, más marca:** en Inicio, Cuentas e Inversiones las secciones ya no van dentro de tarjetas: se apoyan directamente en la página, separadas por un filo fino que arranca con un trazo del amarillo al rojo del logotipo (la marca como estructura, no como adorno). Solo llevan caja la cifra principal (Patrimonio neto, con el radio mayor) y las piezas con las que se interactúa (el carrusel de presupuestos y los primeros pasos), con un radio menor.
 - **Navegación unificada:** la barra lateral tiene un solo estilo (icono y texto; la página actual en amarillo con un filo más hondo) y el aro de foco solo sale al moverte con el teclado. Ajustes agrupa sus opciones en una tarjeta por tema con filas separadas, la Ayuda es una lista de temas y Exportar es una sola tarjeta con tres filas.
 - **Importar, diálogos y bienvenida con el mismo lenguaje:** Importar reúne sus ajustes en una tarjeta con filas y muestra los resultados como filas planas; los cuadros de diálogo y los pasos de bienvenida usan solo el filo de marca, sin cajas dentro de cajas. Los botones también muestran el aro de foco solo con el teclado, el detalle de los gráficos lleva sombra y el trazo de marca, y los avisos entran con un fundido breve.
+- **Ningún cuadro es genérico:** los avisos, las preguntas y los cuadros que piden un dato (nombre de una cuenta, contraseña de un archivo, importe de una meta) son propios, con el mismo fondo, título y filo de marca que el resto, los botones en el idioma de la aplicación y la acción destructiva en rojo; el instalador de Windows lleva también la marca (tema oscuro, logotipo y franjas en la columna de bienvenida, textos en los tres idiomas). `tools/build_installer_art.py` dibuja sus imágenes.
 - **Aire y geometría:** márgenes generosos, esquinas muy redondeadas, líneas y barras finas con degradados casi transparentes e iconos lineales de trazo fino.
 - **Estructura:** Ajustes y Ayuda agrupan la información en tarjetas con cabecera tintada, separadores finos y rótulos de grupo, para que cada bloque se vea aislado. Una cifra principal grande en Inicio y bandas de cifras en Cuentas e Inversiones, en lugar de muchas cajas iguales.
 

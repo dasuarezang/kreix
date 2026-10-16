@@ -23,6 +23,7 @@ from ui import assets, fonts, theme
 from ui.lock_screen import LockDialog, LockMode
 from ui.widgets.nav_button import install_keyboard_rings
 from ui.system_language import system_language
+from ui.widgets import brand_message
 
 
 def build_window(db_url: str | None = None, db_label: str | None = None, engine=None):
@@ -212,6 +213,7 @@ def main(argv: list[str] | None = None) -> int:
     app.setApplicationName("Kreix")
     app.setWindowIcon(assets.app_icon())
     install_keyboard_rings(app)
+    brand_message.install()                                # avisos y cuadros de texto con la cara de Kreix, no los de Windows
     app.setStyleSheet(theme.stylesheet(theme.DARK))        # la pantalla de bloqueo ya sale con el estilo de la app
     if args.selftest:
         return selftest(Path(args.selftest))

@@ -5,7 +5,6 @@ TEXTS: dict[str, str] = {
     'Buscar o ir a': 'Search or go to',
     '↑ ↓ para moverte  ·  Intro para elegir  ·  Esc para cerrar': '↑ ↓ to move  ·  Enter to choose  ·  Esc to close',
     'No encuentro nada con esas palabras.': "I can't find anything with those words.",
-    "<b>{title}</b>  <span style='opacity:0.65'>{subtitle}</span>": "<b>{title}</b>  <span style='opacity:0.65'>{subtitle}</span>",
     'Cancelar': 'Cancel',
     'Nueva regla de categoría': 'New category rule',
     'Todos los movimientos cuyo concepto contenga esta palabra irán a la categoría elegida, también los que importes en el futuro. Los que hayas clasificado tú a mano no se tocan.': 'Every transaction whose description contains this word will go to the chosen category, including the ones you import in the future. The ones you have classified by hand are not touched.',
@@ -819,4 +818,9 @@ TEXTS: dict[str, str] = {
     'Al crear o cambiar la contraseña maestra, un medidor te dice lo difícil que sería adivinarla y cómo mejorarla.': 'When you create or change the master password, a meter tells you how hard it would be to guess and how to improve it.',
     'Kreix como programa de Windows': 'Kreix as a Windows program',
     'Ahora se instala con un instalador, con su acceso directo en el menú Inicio y en el escritorio. Ya no hace falta tener Python.': 'It now installs with an installer, with its shortcut in the Start menu and on the desktop. You no longer need Python.',
+    'Sí': 'Yes',
+    'No': 'No',
+    'Aceptar': 'OK',
+    'Cerrar': 'Close',
+    'Descartar': 'Discard',
 }
