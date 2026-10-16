@@ -570,6 +570,10 @@ class MainWindow(QMainWindow):
         de seguridad automaticas."""
         self.secure_store = store
         self.backups = backups if store is not None else None
+        if store is not None:
+            from data.paths import write_language_hint
+
+            write_language_hint(self._settings.language)           # la proxima pantalla de contrasena sale en este idioma
         self.refresh_backups()
         self.settings_view.set_security(store is not None)
         self.export_view.set_sealer(store.seal_export if store is not None else None)

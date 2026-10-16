@@ -124,3 +124,40 @@ def test_the_autosave_and_lock_survive_rebuilding_the_window_for_another_languag
     assert lock._main_window() is new
     new.settings_view.set_security(True)
     assert not new.settings_view.backup_group.isHidden()
+
+
+def test_the_chosen_language_is_remembered_for_the_next_password_screen(rig, qapp, tmp_path):
+    import data.paths as paths
+
+    store, window, _backups, _lock, _tmp = rig
+    assert paths.read_language_hint() == "es"                    # al enlazar el almacen se anota el idioma de la ventana
+    paths.write_language_hint("ca")
+    assert paths.read_language_hint() == "ca" and paths.language_hint_path().read_text(encoding="utf-8").strip() == "ca"
+    paths.write_language_hint("xx")                              # un valor raro no se guarda
+    assert paths.read_language_hint() == "ca"
+    paths.language_hint_path().write_text("basura", encoding="utf-8")
+    assert paths.read_language_hint() is None
+
+
+def test_the_lock_screen_uses_the_remembered_language_before_the_system_one(tmp_path, monkeypatch, qapp):
+    import data.paths as paths
+    from core import i18n
+
+    shown = {}
+
+    class Stub:
+        def __init__(self, mode, attempt, parent=None, finish=None, **kw):
+            shown["language"] = i18n.language()
+
+        def exec(self):
+            return 0
+
+        reset_requested = False
+
+    monkeypatch.setattr(main, "LockDialog", Stub)
+    monkeypatch.setattr(main, "system_language", lambda: "en")
+    main.unlock_store(tmp_path / "x.krx", tmp_path / "x.db")
+    assert shown["language"] == "en"                              # sin archivo de idioma, el del sistema
+    paths.write_language_hint("ca")
+    main.unlock_store(tmp_path / "x.krx", tmp_path / "x.db")
+    assert shown["language"] == "ca"

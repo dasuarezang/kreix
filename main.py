@@ -17,7 +17,7 @@ from PySide6.QtWidgets import QApplication
 
 from core import i18n
 from core.i18n import tr
-from data.paths import default_db_path, default_vault_path, legacy_db_path
+from data.paths import default_db_path, default_vault_path, legacy_db_path, read_language_hint
 from data.vault import CorruptVaultError, WrongPasswordError
 from ui import assets, fonts, theme
 from ui.lock_screen import LockDialog, LockMode
@@ -109,7 +109,7 @@ def unlock_store(path: Path, legacy: Path, parent=None, on_open=None):
         mode, attempt = LockMode.UNLOCK, unlock
     else:
         mode, attempt = (LockMode.MIGRATE if legacy.is_file() else LockMode.CREATE), create
-    i18n.set_language(system_language())                   # el idioma elegido esta dentro de los datos cifrados: aun no se conoce
+    i18n.set_language(read_language_hint() or system_language())     # el idioma elegido esta dentro de los datos cifrados: aun no se conoce
     finish = (lambda: on_open(opened[0])) if on_open else None
     dialog = LockDialog(mode, attempt, parent, finish)
     dialog.exec()

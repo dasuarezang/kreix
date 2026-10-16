@@ -48,6 +48,21 @@ spanish.FinishedLabel=Kreix ya está instalado. Puedes abrirlo desde el menú In
 catalan.FinishedLabel=Kreix ja està instal·lat. El pots obrir des del menú Inici o des de l'escriptori.
 english.FinishedLabel=Kreix is now installed. You can open it from the Start menu or from the desktop.
 
+spanish.ConfirmUninstall=¿Quieres quitar %1 de este equipo?%n%nTus datos no se borran: seguirán guardados, cifrados, por si lo vuelves a instalar.
+catalan.ConfirmUninstall=Vols treure %1 d'aquest equip?%n%nLes teves dades no s'esborren: continuaran desades, xifrades, per si el tornes a instal·lar.
+english.ConfirmUninstall=Do you want to remove %1 from this computer?%n%nYour data is not deleted: it stays saved, encrypted, in case you install it again.
+spanish.UninstalledAll=Kreix se ha quitado de este equipo. Gracias por usarlo.
+catalan.UninstalledAll=Kreix s'ha tret d'aquest equip. Gràcies per fer-lo servir.
+english.UninstalledAll=Kreix has been removed from this computer. Thank you for using it.
+spanish.UninstallStatusLabel=Quitando Kreix de tu equipo…
+catalan.UninstallStatusLabel=Traient Kreix del teu equip…
+english.UninstallStatusLabel=Removing Kreix from your computer…
+
+[CustomMessages]
+spanish.DeleteDataPrompt=¿Quieres borrar también tus datos de Kreix (movimientos, cuentas y las copias de seguridad guardadas junto a ellos)?%n%nNo se puede deshacer. Si no estás seguro, elige No: tus datos seguirán ahí si vuelves a instalar Kreix.
+catalan.DeleteDataPrompt=Vols esborrar també les teves dades de Kreix (moviments, comptes i les còpies de seguretat desades al costat)?%n%nNo es pot desfer. Si no n'estàs segur, tria No: les teves dades continuaran allà si tornes a instal·lar Kreix.
+english.DeleteDataPrompt=Do you also want to delete your Kreix data (transactions, accounts and the backups saved next to them)?%n%nThis cannot be undone. If you are not sure, choose No: your data will still be there if you install Kreix again.
+
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
@@ -60,3 +75,46 @@ Name: "{autodesktop}\Kreix"; Filename: "{app}\Kreix.exe"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\Kreix.exe"; Description: "{cm:LaunchProgram,Kreix}"; Flags: nowait postinstall skipifsilent
+
+[Code]
+// El idioma elegido en el instalador pasa a la aplicacion: Kreix lo usa en la pantalla de contrasena, que sale antes de
+// poder leer los datos cifrados. Solo se escribe si aun no hay uno (un idioma elegido dentro de Kreix manda).
+function ChosenLanguage(): String;
+begin
+  if ActiveLanguage = 'catalan' then
+    Result := 'ca'
+  else if ActiveLanguage = 'english' then
+    Result := 'en'
+  else
+    Result := 'es';
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  Folder, HintFile: String;
+begin
+  if CurStep = ssPostInstall then
+  begin
+    Folder := ExpandConstant('{userappdata}\Kreix');
+    HintFile := Folder + '\idioma.txt';
+    if not FileExists(HintFile) then
+    begin
+      ForceDirectories(Folder);
+      SaveStringToFile(HintFile, ChosenLanguage() + #13#10, False);
+    end;
+  end;
+end;
+
+// Al desinstalar se ofrece, sin marcar por defecto, borrar tambien los datos del usuario. Un desinstalado silencioso nunca los toca.
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  Folder: String;
+begin
+  if (CurUninstallStep = usPostUninstall) and (not UninstallSilent()) then
+  begin
+    Folder := ExpandConstant('{userappdata}\Kreix');
+    if DirExists(Folder) then
+      if MsgBox(CustomMessage('DeleteDataPrompt'), mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES then
+        DelTree(Folder, True, True, True);
+  end;
+end;

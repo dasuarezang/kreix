@@ -53,6 +53,14 @@ def _freeze_garbage_after_each_test():
 
 
 @pytest.fixture(autouse=True)
+def _language_hint_in_a_temp_folder(tmp_path, monkeypatch):
+    """Las pruebas nunca escriben el archivo de idioma de verdad (el del usuario, en %APPDATA%)."""
+    import data.paths
+
+    monkeypatch.setattr(data.paths, "language_hint_path", lambda: tmp_path / "idioma.txt")
+
+
+@pytest.fixture(autouse=True)
 def _spanish_by_default():
     """Cada prueba empieza (y termina) en castellano: el idioma es un estado global."""
     from core import i18n
