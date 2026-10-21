@@ -46,22 +46,6 @@ def test_sleeping_closes_the_eyes_and_leaves_the_rest_of_the_dog_as_it_is(qapp):
         assert awake.pixelColor(x, awake.height() - 30) == asleep.pixelColor(x, asleep.height() - 30)
 
 
-def test_tilting_the_head_moves_the_head_and_never_the_paws(qapp):
-    def frame(tilt: float) -> QImage:
-        image = QImage(700, 600, QImage.Format.Format_ARGB32)
-        image.fill(0)
-        p = QPainter(image)
-        p.scale(0.4, 0.4)
-        p.translate(-100, -100)
-        dogs._paint_bent(p, dogs.BLITZEN, dogs._layer("blitzen", 0.4), 0.4, tilt)
-        p.end()
-        return image
-    still, tilted = frame(0.0), frame(7.0)
-    head_row, paw_row = round((500 - 100) * 0.4), round((1700 - 100) * 0.4)
-    row = lambda image, y: [image.pixelColor(x, y).rgba() for x in range(image.width())]   # noqa: E731
-    assert row(still, head_row) != row(tilted, head_row) and row(still, paw_row) == row(tilted, paw_row)
-
-
 def test_blinks_are_brief_and_the_still_sky_keeps_the_eyes_open():
     assert dogs._blink(0.0, 0.0) == 0.0
     assert [dogs._blink(t / 10, 0.0) for t in range(0, 44)].count(1.0) <= 2

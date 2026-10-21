@@ -3,9 +3,9 @@
 `tools/build_dogs.py` recorta a cada perro por su contorno crema de pegatina y guarda en `assets/dogs/` sus capas: el perro
 con los ojos abiertos y con los ojos cerrados, las orejas aparte, la lengua de Blitzen y los dos durmiendo. Aqui se animan:
 
-* De dia, sentados: parpadean, ladean la cabeza (la imagen se dobla por encima del cuello) y mueven las orejas. Blitzen
-  jadea con la lengua y de vez en cuando se relame; Black menea la cola (dibujada con el mismo estilo de pegatina, porque
-  la ilustracion no la ensena).
+* De dia, sentados y tal cual su ilustracion: solo se mueven sus partes. Parpadean y mueven las orejas; Blitzen jadea con
+  la lengua y de vez en cuando se relame; Black menea la cola (dibujada con el mismo estilo de pegatina, porque la
+  ilustracion no la ensena).
 * De noche, acurrucados, tal cual los dibuja su segunda ilustracion (`docs/art/perretesDurmiendo.jpg`), con unas z que
   salen de cada uno.
 
@@ -74,20 +74,18 @@ class Tail:
 class Dog:
     name: str
     origin: Point           # esquina del lienzo de sus capas, en la ilustracion
-    neck: Point             # por encima de aqui se ladea la cabeza
-    chin: Point             # la barbilla: por donde se apoya la cabeza al dormir
     ears: tuple[Ear, ...]
     tail: Tail | None = None
     tongue: Point | None = None     # donde nace la lengua (arriba, en la boca)
 
 
 BLITZEN = Dog(
-    "blitzen", (166, 86), (762, 880), (762, 862),
+    "blitzen", (166, 86),
     (Ear("blitzen-oreja-izq", (500, 230), -1), Ear("blitzen-oreja-der", (1024, 230), 1)),
     tongue=(762, 703),
 )
 BLACK = Dog(
-    "black", (1301, 537), (1798, 1175), (1798, 1165),
+    "black", (1301, 537),
     (Ear("black-oreja-izq", (1600, 650), -1), Ear("black-oreja-der", (1996, 650), 1)),
     Tail((2090, 1600),
          ((0, 0), (40, -50), (88, -102), (122, -112), (126, -78), (90, -24), (40, 34)),
@@ -190,45 +188,16 @@ def _compose(dog: Dog, scale: float, closed: bool, ear_angle: float, tongue: tup
     return frame
 
 
-def _paint_bent(p: QPainter, dog: Dog, image: QImage, scale: float, tilt: float) -> None:
-    """Pinta la imagen ladeando la cabeza: por encima del cuello cada fila se desplaza en proporcion a su altura (de 0 en
-    el cuello al ladeo entero un poco mas arriba), y por debajo el cuerpo queda tal cual.
-
-    Las filas se mueven en una imagen intermedia, de pixel entero en pixel entero (sin reescalar en vertical: asi no quedan
-    juntas entre filas), y esa imagen se pinta de una vez."""
-    ox, oy = dog.origin
-    width, height = image.width(), image.height()
-    pivot = (dog.neck[1] - oy) * scale
-    ramp = 90 * scale                                       # la transicion entre cuerpo quieto y cabeza ladeada
-    slope = math.tan(math.radians(tilt))
-    if abs(slope) < 1e-4:
-        p.drawImage(QRectF(ox, oy, width / scale, height / scale), image)
-        return
-    still = min(height, math.ceil(pivot + ramp))            # desde aqui hacia abajo, el cuerpo quieto
-    pad = math.ceil(abs(pivot * slope)) + 1
-    bent = QImage(width + 2 * pad, height, QImage.Format.Format_ARGB32_Premultiplied)
-    bent.fill(0)
-    q = QPainter(bent)
-    q.drawImage(pad, still, image, 0, still, width, height - still)
-    for y in range(still):
-        f = max(0.0, min(1.0, (pivot + ramp - y - 0.5) / (2 * ramp)))
-        dx = round((pivot - y - 0.5) * slope * f * f * (3 - 2 * f))
-        q.drawImage(pad + dx, y, image, 0, y, width, 1)
-    q.end()
-    p.drawImage(QRectF(ox - pad / scale, oy, bent.width() / scale, height / scale), bent)
-
-
-def _paint_sitting(p: QPainter, dog: Dog, *, closed: bool, tilt: float, ear_angle: float, tail_angle: float = 0.0,
-                   tongue: tuple[float, float] = (1.0, 0.0), breath: float = 1.0) -> None:
-    p.save()
-    p.translate(0, GROUND_Y)                                # respira: el pecho sube desde las patas
-    p.scale(1.0, breath)
-    p.translate(0, -GROUND_Y)
+def _paint_sitting(p: QPainter, dog: Dog, *, closed: bool, ear_angle: float, tail_angle: float = 0.0,
+                   tongue: tuple[float, float] = (1.0, 0.0)) -> None:
+    """Un perro sentado, tal cual su ilustracion: solo se mueven sus partes (parpados, orejas, lengua y cola)."""
     if dog.tail is not None:
         _paint_tail(p, dog.tail, tail_angle)
     scale = min(_device_scale(p), STORE * 2)                # nunca mas grande que el doble de lo guardado
+    image = _compose(dog, scale, closed, ear_angle, tongue)
+    p.save()
     p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
-    _paint_bent(p, dog, _compose(dog, scale, closed, ear_angle, tongue), scale, tilt)
+    p.drawImage(QRectF(dog.origin[0], dog.origin[1], image.width() / scale, image.height() / scale), image)
     p.restore()
 
 
@@ -262,11 +231,6 @@ def _blink(t: float, offset: float) -> float:
     return 1.0 if ((t + offset) % 4.3) < 0.14 else 0.0
 
 
-def _tilt(t: float, offset: float, amount: float) -> float:
-    """Inclina la cabeza de vez en cuando, con calma, y la devuelve a su sitio."""
-    return amount * max(0.0, math.sin(t * 0.45 + offset)) ** 3
-
-
 def _wag(t: float, speed: float, offset: float, amount: float) -> float:
     """La cola se menea a rachas: un rato rapido y luego descansa."""
     return math.sin(t * speed) * amount * max(0.0, math.sin(t * 0.8 + offset)) ** 0.5
@@ -290,15 +254,15 @@ def _place(p: QPainter, ground: float, center_x: float) -> None:
 
 
 def paint_day(p: QPainter, dark: bool, t: float, ground: float, center_x: float) -> None:
-    """Blitzen y Black sentados, de cara a quien mira: parpadean, ladean la cabeza y mueven las orejas; Blitzen jadea y se
-    relame, y Black menea la cola."""
+    """Blitzen y Black sentados, de cara a quien mira: parpadean y mueven las orejas; Blitzen jadea y se relame, y Black
+    menea la cola."""
     p.save()
     p.setRenderHint(QPainter.RenderHint.Antialiasing)
     _place(p, ground, center_x)
-    _paint_sitting(p, BLITZEN, closed=_blink(t, 0.0) > 0.5, tilt=_tilt(t, 1.0, -7.0),
+    _paint_sitting(p, BLITZEN, closed=_blink(t, 0.0) > 0.5,
                    ear_angle=math.sin(t * 1.3) * 2.2, tongue=_tongue(t))
     ears = math.sin(t * 1.1 + 0.7) * 2.5 + max(0.0, math.sin(t * 0.7 + 2.0)) ** 8 * 7.0
-    _paint_sitting(p, BLACK, closed=_blink(t, 1.7) > 0.5, tilt=_tilt(t, 2.7, 8.0), ear_angle=ears,
+    _paint_sitting(p, BLACK, closed=_blink(t, 1.7) > 0.5, ear_angle=ears,
                    tail_angle=_wag(t, 8.5, 1.5, 20.0))
     p.restore()
 
