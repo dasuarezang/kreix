@@ -67,10 +67,6 @@ def color(pal: Palette, key: str, alpha: int = 255) -> QColor:
     return c
 
 
-def lighter(c: QColor, amount: int = 112) -> QColor:
-    return c.lighter(amount)
-
-
 def monotone_path(points: Sequence[QPointF]) -> QPainterPath:
     """Curva suave que pasa por los puntos sin pasarse (interpolacion monotona: no inventa picos ni valores negativos)."""
     return monotone_path_xy([p.x() for p in points], [p.y() for p in points])
@@ -250,12 +246,9 @@ class BaseChart(QWidget):
         y = min(max(4.0, y), self.height() - height - 4)
         rect = QRectF(x, y, width, height)
         p.setPen(Qt.PenStyle.NoPen)
-        for grow, alpha in ((4.0, 10), (2.0, 16)):                 # sombra suave en dos capas: separa el detalle del grafico
-            p.setBrush(QColor(0, 0, 0, alpha))
-            p.drawRoundedRect(rect.adjusted(-grow, -grow + 3, grow, grow + 3), 12 + grow, 12 + grow)
-        p.setPen(QPen(color(pal, "border"), 1))
+        p.setPen(QPen(color(pal, "field_edge"), 1))                 # sin sombra: el filo basta para separarlo del grafico
         p.setBrush(color(pal, "surface_alt"))
-        p.drawRoundedRect(rect, 12, 12)
+        p.drawRoundedRect(rect, 6, 6)
         mark = QLinearGradient(x + pad, 0, x + pad + 22, 0)         # el trazo de marca, amarillo a rojo, sobre el titulo
         mark.setColorAt(0.0, color(pal, "accent"))
         mark.setColorAt(1.0, color(pal, "red"))
@@ -343,7 +336,7 @@ class BarsChart(BaseChart):
             if i == hover:
                 p.setPen(Qt.PenStyle.NoPen)
                 p.setBrush(color(pal, "hover"))
-                p.drawRoundedRect(QRectF(cx - slot / 2 + 3, plot.top() - 6, slot - 6, plot.height() + 6), 12, 12)
+                p.drawRoundedRect(QRectF(cx - slot / 2 + 3, plot.top() - 6, slot - 6, plot.height() + 6), 4, 4)
             local = max(0.0, min(1.0, self._progress * 1.35 - i * 0.025))
             grow = 1 - (1 - local) ** 3
             y_cursor = plot.bottom()
@@ -358,14 +351,10 @@ class BarsChart(BaseChart):
                 else:
                     x0 = cx - group_w / 2 + j * (bar_w + 4)
                     rect = QRectF(x0, plot.bottom() - height, bar_w, height)
-                base = color(pal, s.color_key)
-                gradient = QLinearGradient(rect.topLeft(), rect.bottomLeft())
-                gradient.setColorAt(0, lighter(base, 106))
-                gradient.setColorAt(1, base)
                 p.setPen(Qt.PenStyle.NoPen)
-                p.setBrush(gradient)
+                p.setBrush(color(pal, s.color_key))
                 top_segment = (not self._stacked) or all(t.values[i] <= 0 for t in self._series[j + 1:])
-                p.drawPath(rounded_top(rect, 5 if top_segment else 1.5))
+                p.drawPath(rounded_top(rect, 2 if top_segment else 0))
             p.setFont(fonts.qfont(fonts.BODY_MEDIUM if i == hover else fonts.BODY, 12))
             p.setPen(color(pal, "text" if i == hover else "muted"))
             draw_text(p, QRectF(cx - slot / 2, plot.bottom() + 6, slot, 18), Qt.AlignmentFlag.AlignCenter, self._labels[i])
@@ -544,14 +533,10 @@ class LineChart(BaseChart):
         for s, pts, line, area in g.drawn:
             base = color(pal, s.color_key)
             if area is not None:
-                gradient = QLinearGradient(0, plot.top(), 0, plot.bottom())
-                top_c, bottom_c = QColor(base), QColor(base)
-                top_c.setAlpha(30)
-                bottom_c.setAlpha(0)
-                gradient.setColorAt(0, top_c)
-                gradient.setColorAt(1, bottom_c)
+                fill = QColor(base)
+                fill.setAlpha(18)                                   # relleno plano y tenue, sin degradado
                 p.setPen(Qt.PenStyle.NoPen)
-                p.setBrush(gradient)
+                p.setBrush(fill)
                 p.drawPath(area)
             pen = QPen(base, s.width)
             pen.setCapStyle(Qt.PenCapStyle.RoundCap)
@@ -728,14 +713,10 @@ class Sparkline(BaseChart):
         area.lineTo(pts[-1].x(), self.height())
         area.lineTo(pts[0].x(), self.height())
         area.closeSubpath()
-        gradient = QLinearGradient(0, 0, 0, self.height())
-        a, b = QColor(base), QColor(base)
-        a.setAlpha(42)
-        b.setAlpha(0)
-        gradient.setColorAt(0, a)
-        gradient.setColorAt(1, b)
+        fill = QColor(base)
+        fill.setAlpha(22)                                           # relleno plano y tenue, sin degradado
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(gradient)
+        p.setBrush(fill)
         p.drawPath(area)
         p.setPen(QPen(base, 1.7, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
         p.setBrush(Qt.BrushStyle.NoBrush)
@@ -941,7 +922,7 @@ class CategoryBarsChart(BaseChart):
             if i == hover:
                 p.setPen(Qt.PenStyle.NoPen)
                 p.setBrush(color(pal, "hover"))
-                p.drawRoundedRect(QRectF(0, y + 2, self.width(), self.row_h - 4), 12, 12)
+                p.drawRoundedRect(QRectF(0, y + 2, self.width(), self.row_h - 4), 4, 4)
             p.setFont(label_font)
             p.setPen(color(pal, "text"))
             draw_text(p, QRectF(10, y, label_w - 10, self.row_h), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
@@ -949,18 +930,14 @@ class CategoryBarsChart(BaseChart):
             track = QRectF(bar_left, mid - 3, max(bar_right - bar_left, 10), 6)
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(color(pal, "surface_alt"))
-            p.drawRoundedRect(track, 3, 3)
+            p.drawRoundedRect(track, 1.5, 1.5)
             local = max(0.0, min(1.0, self._progress * 1.4 - i * 0.07))
             fill_w = max(8.0, track.width() * (amount / top)) * (1 - (1 - local) ** 3)
             fill = QRectF(track.left(), track.top(), fill_w, track.height())
-            gradient = QLinearGradient(fill.topLeft(), fill.topRight())
             base = color(pal, "red")
-            gradient.setColorAt(0, QColor(base).lighter(125) if i else base)
-            gradient.setColorAt(1, base)
-            alpha = max(150, 255 - i * 14)
-            base.setAlpha(alpha)
-            p.setBrush(gradient)
-            p.drawRoundedRect(fill, 3, 3)
+            base.setAlpha(max(150, 255 - i * 14))
+            p.setBrush(base)
+            p.drawRoundedRect(fill, 1.5, 1.5)
             p.setFont(amount_font)
             p.setPen(color(pal, "text"))
             draw_text(p, QRectF(bar_right + 8, y, amount_w + 4, self.row_h), Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,

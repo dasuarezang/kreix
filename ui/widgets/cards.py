@@ -198,7 +198,7 @@ class PageHeader(QWidget):
 
 
 class Chip(QLabel):
-    """Etiqueta redondeada para una variacion o un dato corto (+4,4 %)."""
+    """Variacion o dato corto (+4,4 %) en texto plano con el color de su signo."""
 
     def __init__(self, text: str = "", tone: str = "") -> None:
         super().__init__(text)
@@ -208,6 +208,21 @@ class Chip(QLabel):
     def set_tone(self, tone: str) -> None:
         self.setProperty("tone", tone)
         repolish(self)
+
+
+class StatusLabel(QLabel):
+    """Estado en texto plano con un punto de su color delante (Listo para importar, Con avisos...). Sin caja: el
+    color lo pone la hoja de estilos segun la propiedad `state`; el punto se pinta aqui con ese mismo color."""
+
+    DOT = 6.0
+
+    def paintEvent(self, event) -> None:
+        super().paintEvent(event)
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(self.palette().color(QPalette.ColorRole.WindowText))
+        painter.drawEllipse(QRectF(1, (self.height() - self.DOT) / 2, self.DOT, self.DOT))
 
 
 # ============================================================================ cifras
@@ -313,13 +328,13 @@ class SplitBar(QWidget):
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(QColor(pal.surface_alt))
-        p.drawRoundedRect(QRectF(0, 4, self.width(), 10), 5, 5)
+        p.drawRoundedRect(QRectF(0, 4, self.width(), 10), 2, 2)
         x = 0.0
         total = sum(f for _, _, f, _ in self._parts) or 1.0
         for i, (_, _, fraction, key) in enumerate(self._parts):
             w = max(self.width() * fraction / total - (3 if i < len(self._parts) - 1 else 0), 6)
             p.setBrush(QColor(getattr(pal, key)))
-            p.drawRoundedRect(QRectF(x, 4, w, 10), 5, 5)
+            p.drawRoundedRect(QRectF(x, 4, w, 10), 2, 2)
             x += w + 3
         cursor = 0.0
         name_font, amount_font = fonts.qfont(fonts.BODY, 12), fonts.qfont(fonts.BODY_MEDIUM, 12)

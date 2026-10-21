@@ -1,7 +1,7 @@
 """Base de los cuadros de dialogo de Kreix: mismo fondo con resplandor que la ventana, titulo y una tarjeta con el contenido."""
 from __future__ import annotations
 
-from PySide6.QtGui import QColor, QPainter, QRadialGradient
+from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import QDialog, QFrame, QLabel, QVBoxLayout, QWidget
 
 from ui import theme
@@ -20,14 +20,6 @@ class BrandDialog(QDialog):
         pal = theme.current()
         painter = QPainter(self)
         painter.fillRect(self.rect(), QColor(pal.bg))
-        gradient = QRadialGradient(self.width() * 0.95, -self.height() * 0.05, max(self.width(), self.height()) * 0.95)
-        start = QColor(pal.glow)
-        start.setAlpha(pal.glow_alpha + 20)
-        end = QColor(pal.glow)
-        end.setAlpha(0)
-        gradient.setColorAt(0.0, start)
-        gradient.setColorAt(1.0, end)
-        painter.fillRect(self.rect(), gradient)
 
     def showEvent(self, event) -> None:
         super().showEvent(event)

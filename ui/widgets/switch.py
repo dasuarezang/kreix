@@ -51,15 +51,15 @@ class SwitchToggle(QAbstractButton):
             track.setAlpha(110)
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(track)
-        painter.drawRoundedRect(QRectF(0, 0, self.WIDTH, self.HEIGHT), self.HEIGHT / 2, self.HEIGHT / 2)
+        painter.drawRoundedRect(QRectF(0, 0, self.WIDTH, self.HEIGHT), 4, 4)
         margin, d = 3, self.HEIGHT - 6
         x = margin + (self.WIDTH - 2 * margin - d) * self._pos
         painter.setBrush(QColor(p.on_accent) if self.isChecked() else QColor(p.text))
-        painter.drawEllipse(QRectF(x, margin, d, d))
+        painter.drawRoundedRect(QRectF(x, margin, d, d), 2, 2)
         if self.hasFocus():
             painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.setPen(QPen(QColor(p.accent), 2))
-            painter.drawRoundedRect(QRectF(1, 1, self.WIDTH - 2, self.HEIGHT - 2), 12, 12)
+            painter.drawRoundedRect(QRectF(1, 1, self.WIDTH - 2, self.HEIGHT - 2), 4, 4)
 
 
 class ThemeToggle(QAbstractButton):
@@ -123,14 +123,14 @@ class ThemeToggle(QAbstractButton):
         body = QRectF(inset + 0.5, inset + 0.5, w - 2 * inset - 1, h - 2 * inset - 1)
         painter.setPen(QPen(QColor(p.border), 1))
         painter.setBrush(QColor(p.surface_alt))
-        painter.drawRoundedRect(body, body.height() / 2, body.height() / 2)
+        painter.drawRoundedRect(body, 6, 6)
 
         pad = inset + 4
         knob = h - 2 * pad
         x = pad + (w - 2 * pad - knob) * self._pos
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(QColor(p.accent))
-        painter.drawEllipse(QRectF(x, pad, knob, knob))
+        painter.drawRoundedRect(QRectF(x, pad, knob, knob), 4, 4)
 
         size = 20
         for name, center_x, active in (("sun", pad + knob / 2, not self.isChecked()),
@@ -140,4 +140,4 @@ class ThemeToggle(QAbstractButton):
         if self.hasFocus():
             painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.setPen(QPen(QColor(p.accent), 2))
-            painter.drawRoundedRect(QRectF(1, 1, w - 2, h - 2), (h - 2) / 2, (h - 2) / 2)
+            painter.drawRoundedRect(QRectF(1, 1, w - 2, h - 2), 6, 6)

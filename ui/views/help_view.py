@@ -29,14 +29,13 @@ def _clear(layout) -> None:
 
 
 class IconChip(QLabel):
-    """Icono dentro de un circulo amarillo suave. Se repinta al cambiar de tema."""
+    """Icono dentro de un recuadro de filo fino. Se repinta al cambiar de tema."""
 
     def __init__(self, name: str, size: int = 48) -> None:
         super().__init__()
         self._name = name
         self.setObjectName("IconChip")
         self.setFixedSize(size, size)
-        self.setStyleSheet(f"border-radius: {size // 2}px;")      # circulo exacto: la hoja global no lo hace bien
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.refresh_theme()

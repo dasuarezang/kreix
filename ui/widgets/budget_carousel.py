@@ -147,11 +147,11 @@ class SlideView(QWidget):
         track = QRectF(0, 82, w, 5)
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(QColor(pal.surface_alt))
-        p.drawRoundedRect(track, 2.5, 2.5)
+        p.drawRoundedRect(track, 1.5, 1.5)
         filled = min(float(line.ratio), 1.0)
         if filled > 0:
             p.setBrush(tone)
-            p.drawRoundedRect(QRectF(0, 82, max(w * filled, 6), 5), 2.5, 2.5)
+            p.drawRoundedRect(QRectF(0, 82, max(w * filled, 6), 5), 1.5, 1.5)
 
         note = (tr("Te has pasado {remaining}").format(remaining=fmt_eur(-line.remaining)) if line.state == "over"
                 else tr("Te quedan {remaining} este mes").format(remaining=fmt_eur(line.remaining)))

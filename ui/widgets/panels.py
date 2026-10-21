@@ -75,11 +75,11 @@ class BudgetBars(QWidget):
             track = QRectF(0, top + 29, self.width(), 5)
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(QColor(pal.surface_alt))
-            p.drawRoundedRect(track, 2.5, 2.5)
+            p.drawRoundedRect(track, 1.5, 1.5)
             filled = min(float(line.ratio), 1.0)
             if filled > 0:
                 p.setBrush(color)
-                p.drawRoundedRect(QRectF(0, top + 29, max(self.width() * filled, 6), 5), 2.5, 2.5)
+                p.drawRoundedRect(QRectF(0, top + 29, max(self.width() * filled, 6), 5), 1.5, 1.5)
             note = (tr("Te has pasado {remaining}").format(remaining=fmt_eur(-line.remaining)) if line.state == "over" else tr("Quedan {remaining}").format(remaining=fmt_eur(line.remaining)))
             p.setFont(note_font)
             p.setPen(color if line.state == "over" else QColor(pal.muted))

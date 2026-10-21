@@ -16,7 +16,7 @@ from ui.popups import Combo
 from ui.feedback import Feedback, snapshot_of, tell
 from ui.format import fmt_date
 from ui.mapping_dialog import MappingDialog
-from ui.widgets.cards import PageHeader, repolish
+from ui.widgets.cards import PageHeader, StatusLabel, repolish
 from ui.widgets.dropzone import DropZone
 from ui.widgets.section_card import GroupCard
 from core.i18n import tr, N_
@@ -39,7 +39,7 @@ class ResultRow(QFrame):
             state, label = "warn", tr("Con avisos")
         else:
             state, label = "ok", tr("Importado")
-        pill = QLabel(label)
+        pill = StatusLabel(label)
         pill.setObjectName("Pill")
         pill.setProperty("state", state)
         repolish(pill)
@@ -102,7 +102,7 @@ class PreviewRow(QFrame):
             state, label = "warn", tr("Nada nuevo")
         else:
             state, label = "ok", tr("Listo para importar")
-        pill = QLabel(label)
+        pill = StatusLabel(label)
         pill.setObjectName("Pill")
         pill.setProperty("state", state)
         repolish(pill)

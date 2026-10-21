@@ -5,7 +5,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 
 from PySide6.QtCore import QEasingCurve, QPropertyAnimation, QSize, Qt, QTimer
-from PySide6.QtGui import QColor, QKeySequence, QPainter, QRadialGradient, QShortcut
+from PySide6.QtGui import QColor, QKeySequence, QPainter, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QButtonGroup, QFrame, QGraphicsOpacityEffect, QHBoxLayout, QInputDialog, QLabel, QLineEdit, QMainWindow, QMessageBox,
     QPushButton, QStackedWidget, QVBoxLayout, QWidget,
@@ -68,16 +68,7 @@ class Backdrop(QWidget):
     def paintEvent(self, _event) -> None:
         pal = theme.current()
         painter = QPainter(self)
-        painter.fillRect(self.rect(), QColor(pal.bg))
-        radius = max(self.width(), self.height()) * 0.85
-        gradient = QRadialGradient(self.width() * 0.92, -self.height() * 0.05, radius)
-        start = QColor(pal.glow)
-        start.setAlpha(pal.glow_alpha)
-        end = QColor(pal.glow)
-        end.setAlpha(0)
-        gradient.setColorAt(0.0, start)
-        gradient.setColorAt(1.0, end)
-        painter.fillRect(self.rect(), gradient)
+        painter.fillRect(self.rect(), QColor(pal.bg))                 # fondo plano: la jerarquia la dan los tonos, no la luz
 
 
 @dataclass(frozen=True, slots=True)

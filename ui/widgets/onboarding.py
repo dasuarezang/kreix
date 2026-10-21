@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import QPointF, QRectF, QSize, Qt, Signal
-from PySide6.QtGui import QColor, QLinearGradient, QPainter, QPen, QRadialGradient
+from PySide6.QtGui import QColor, QLinearGradient, QPainter, QPen
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from ui import assets, theme
@@ -165,7 +165,7 @@ class StepDot(QWidget):
         if self.done:
             p.setPen(Qt.PenStyle.NoPen)
             p.setBrush(QColor(pal.green))
-            p.drawEllipse(rect)
+            p.drawRoundedRect(rect, 3, 3)
             pen = QPen(QColor(pal.surface), 2.2)
             pen.setCapStyle(Qt.PenCapStyle.RoundCap)
             pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
@@ -174,7 +174,7 @@ class StepDot(QWidget):
         else:
             p.setPen(QPen(QColor(pal.muted), 1.6))
             p.setBrush(Qt.BrushStyle.NoBrush)
-            p.drawEllipse(rect)
+            p.drawRoundedRect(rect, 3, 3)
 
 
 class SetupPanel(Panel):
@@ -276,13 +276,6 @@ class BrandHalo(QWidget):
         pal = theme.current()
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        glow = QRadialGradient(self.width() / 2, self.height() / 2, self.height() / 2)    # circular: sin bordes rectos
-        inner, outer = QColor(pal.accent), QColor(pal.accent)
-        inner.setAlpha(70)
-        outer.setAlpha(0)
-        glow.setColorAt(0.0, inner)
-        glow.setColorAt(1.0, outer)
-        painter.fillRect(self.rect(), glow)
         x = (self.width() - self._mark.width() / self._mark.devicePixelRatio()) / 2
         y = (self.height() - self._mark.height() / self._mark.devicePixelRatio()) / 2
         painter.drawPixmap(int(x), int(y), self._mark)
@@ -302,14 +295,14 @@ class StepsBar(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(QColor(pal.border))
-        painter.drawRoundedRect(QRectF(0, 2, self.width(), 5), 2.5, 2.5)
+        painter.drawRoundedRect(QRectF(0, 2, self.width(), 5), 1.5, 1.5)
         width = self.width() * self._done / self._total
         if width > 0:
             fill = QLinearGradient(0, 0, self.width(), 0)
             fill.setColorAt(0.0, QColor(pal.accent))
             fill.setColorAt(1.0, QColor(pal.red))
             painter.setBrush(fill)
-            painter.drawRoundedRect(QRectF(0, 2, max(width, 6), 5), 2.5, 2.5)
+            painter.drawRoundedRect(QRectF(0, 2, max(width, 6), 5), 1.5, 1.5)
 
 
 class EmptyState(QWidget):

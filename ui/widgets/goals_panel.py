@@ -70,10 +70,10 @@ class GoalBars(QWidget):
             p.setPen(Qt.PenStyle.NoPen)
             track_c = QColor(pal.border)
             p.setBrush(track_c)
-            p.drawRoundedRect(track, 2.5, 2.5)
+            p.drawRoundedRect(track, 1.5, 1.5)
             if goal.fraction > 0:
                 p.setBrush(tone)
-                p.drawRoundedRect(QRectF(0, top + 29, max(self.width() * goal.fraction, 6), 5), 2.5, 2.5)
+                p.drawRoundedRect(QRectF(0, top + 29, max(self.width() * goal.fraction, 6), 5), 1.5, 1.5)
             p.setFont(note_font)
             p.setPen(QColor(pal.green_text if goal.reached else pal.muted))
             p.drawText(QRectF(0, top + 38, self.width(), 20), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,

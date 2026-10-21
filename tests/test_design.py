@@ -1,3 +1,4 @@
+import re
 from datetime import date
 from decimal import Decimal as D
 
@@ -243,4 +244,5 @@ def test_main_pages_use_flat_sections_with_the_brand_rule_and_keep_a_single_hero
     raised = [f for f in window.dashboard.findChildren(QFrame) if f.objectName() in ("Card", "Hero") and f.isVisibleTo(window.dashboard)]
     assert {f.objectName() for f in raised} <= {"Hero", "Card"} and len(raised) <= 4   # la cifra principal y las dos piezas interactivas
     sheet = theme.stylesheet(theme.DARK)
-    assert "QFrame#Hero {" in sheet and "border-radius: 34px" in sheet and "QFrame#Card {" in sheet   # radios jerarquicos: la estrella manda
+    assert "QFrame#Hero {" in sheet and "QFrame#Card {" in sheet
+    assert not re.search(r"border-radius: (\d\d|[7-9])px", sheet)       # radio tecnico y sobrio: nada por encima de 6 px
