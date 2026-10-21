@@ -28,7 +28,9 @@ def test_every_pose_draws_something_at_any_moment_in_both_themes(qapp):
                 assert any(image.pixelColor(x, y).alpha() > 200 for x in range(0, 400, 7) for y in range(0, 300, 7)), (dark, kind, t)
 
 
-@pytest.mark.parametrize("name", ["blitzen", "blitzen-dormido", "black", "black-dormido", "black-oreja-izq", "black-oreja-der"])
+@pytest.mark.parametrize("name", ["blitzen", "blitzen-dormido", "blitzen-oreja-izq", "blitzen-oreja-der",
+                                  "blitzen-lengua", "blitzen-cabeza", "black", "black-dormido", "black-oreja-izq",
+                                  "black-oreja-der", "black-cabeza"])
 def test_every_layer_of_the_illustration_ships_with_a_transparent_background(qapp, name):
     image = dogs._layer(name, dogs.STORE)
     assert not image.isNull() and image.hasAlphaChannel()
@@ -128,3 +130,10 @@ def test_the_sun_and_the_moon_never_cross_the_dogs_at_any_hour(qapp):
         x = sky._arc_point(state.progress, span).x()
         assert x + 8.5 + 3.5 + 6.1 <= left_of_dogs + 4, (hour, x)       # disco + separacion de los rayos + su alcance
     sky.deleteLater()
+
+
+def test_blitzen_pants_now_and_then_and_licks_every_seven_seconds():
+    assert dogs._tongue(0.0) == (1.0, 0.0)                                   # el cielo quieto: la lengua en su sitio
+    stretch, turn = dogs._tongue(7.0 + 0.45)
+    assert stretch > 1.6 and abs(turn) > 1.0                                 # en pleno relamido: sale y barre
+    assert all(dogs._tongue(7.0 + 0.95 + k * 0.1)[1] == 0.0 for k in range(40))   # entre relamidos solo jadea

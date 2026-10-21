@@ -19,14 +19,15 @@ from PySide6.QtWidgets import QApplication  # noqa: E402
 
 from ui.widgets import dogs as df  # noqa: E402
 
-CELL_W, CELL_H = 62, 52                     # unidades del cielo por momento
+CELL_W, CELL_H = 70, 52                     # unidades del cielo por momento
 GROUND = 48.0
 MOMENTS = (                                  # (rotulo, de dia o de noche, t)
     ("reposo", "day", 0.0),
     ("ladea Blitzen", "day", 4.2),
     ("ladea Black", "day", 1.3),
     ("parpadeo", "day", 4.32),
-    ("orejas y colas", "day", 7.6),
+    ("se relame", "day", 7.45),
+    ("orejas y cola", "day", 9.6),
     ("noche", "night", 1.0),
     ("noche, z", "night", 3.0),
 )
