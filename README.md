@@ -12,6 +12,10 @@
   <img src="docs/screenshots/inicio-claro.png" alt="Inicio en modo claro" width="49%">
 </p>
 
+<p align="center">
+  <b><a href="https://dasuarezang.github.io/kreix-web/">Descargar para Windows y guía de uso</a></b>
+</p>
+
 > Las capturas usan datos de demostración inventados (`tools/demo_data.py`).
 
 ## Qué hace
@@ -44,7 +48,7 @@
 
 ## Las pestañas
 
-Arriba a la izquierda están las tres vistas de tus datos; abajo, en forma de píldora con icono, las herramientas: **Datos** (al pasar el cursor, o al pulsarlo, despliega un submenú con *Importar* y *Exportar*), Ajustes y Ayuda, y debajo el conmutador de modo claro y oscuro (un sol y una luna).
+Arriba a la izquierda están las tres vistas de tus datos; abajo, con su icono, las herramientas: **Datos** (al pasar el cursor, o al pulsarlo, despliega un submenú con *Importar* y *Exportar*), Ajustes y Ayuda, y debajo el conmutador de modo claro y oscuro (un sol y una luna).
 
 | Pestaña | Para qué sirve |
 |---|---|
@@ -70,7 +74,7 @@ Atajos: `Ctrl+H` oculta o muestra las cantidades, `Ctrl+1` a `Ctrl+7` cambian de
 
 **Lo que te interesa.** La primera vez, en el mismo cuadro donde Kreix te pregunta el nombre, eliges con dos interruptores si quieres gestionar **tus cuentas bancarias, tus inversiones o ambas cosas** (siempre queda al menos una). Inicio se adapta: sin inversiones no muestra el rendimiento ni el reparto de activos; sin cuentas no muestra la tasa de ahorro, el flujo de caja, los pagos recurrentes ni los presupuestos. Puedes cambiarlo en **Ajustes > Lo que te interesa**, y si entras en Cuentas o Inversiones y esa pestaña está desactivada, te ofrece un botón para activarla sin tocar la otra. Viaja con tus datos en el archivo `.kreix`.
 
-**Un Inicio vivo.** Junto al saludo hay un cielo animado que recorre un ciclo completo y cerrado con la hora real, aunque dejes la app abierta: un sol que sale por la mañana y sube hasta el mediodía, el mismo sol bajando por la tarde hasta ponerse (de 6 a 21 h) y una luna con estrellas que sale al anochecer y se pone al amanecer (de 21 a 6 h); los rayos giran, pasa una nube y las estrellas centellean. En el horizonte están Blitzen y Black, los perros del autor: de día, sentados de cara, parpadean, mueven la cola y las orejas y ladean la cabeza; de noche duermen hechos una bolita, con Blitzen apoyando la cabeza sobre Black. El sol y la luna recorren solo la parte izquierda del cielo para no taparlos. La pantalla además baja su brillo muy ligeramente con la hora (como máximo un 7 %, sin cambiar de tema); ambas cosas se desactivan en **Ajustes > Ambiente**. El panel *Presupuestos del mes* muestra todos tus presupuestos de uno en uno, pasando solos cada pocos segundos; puedes pasarlos tú con las flechas, los puntos o las teclas ← →, y se detiene mientras tienes el ratón encima.
+**Un Inicio vivo.** Junto al saludo hay un cielo animado que recorre un ciclo completo y cerrado con la hora real, aunque dejes la app abierta: un sol que sale por la mañana y sube hasta el mediodía, el mismo sol bajando por la tarde hasta ponerse (de 6 a 21 h) y una luna con estrellas que sale al anochecer y se pone al amanecer (de 21 a 6 h); los rayos giran, pasa una nube y las estrellas centellean, todo con el mismo estilo de pegatina que los perros. En el horizonte están Blitzen y Black, los perros del autor, sacados de su ilustración (`docs/art/`): de día, sentados de cara, parpadean y mueven las orejas, Blitzen jadea y se relame y Black menea la cola; de noche duermen acurrucados y les salen unas z. El sol y la luna recorren solo la parte izquierda del cielo para no taparlos. La pantalla además baja su brillo muy ligeramente con la hora (como máximo un 7 %, sin cambiar de tema); ambas cosas se desactivan en **Ajustes > Ambiente**. El panel *Presupuestos del mes* muestra todos tus presupuestos de uno en uno, pasando solos cada pocos segundos; puedes pasarlos tú con las flechas, los puntos o las teclas ← →, y se detiene mientras tienes el ratón encima.
 
 **Tres idiomas.** Kreix está en **castellano, català y English**. La primera vez eliges el idioma en el mismo cuadro donde te pregunta el nombre y lo que te interesa (se propone el del sistema y el cuadro cambia al instante); cada idioma lleva en un círculo la bandera de su país o región (España, la senyera y el Reino Unido). Se cambia cuando quieras en **Ajustes > Idioma**: toda la aplicación (menús, ayuda, avisos, errores, fechas y números) cambia sin perder tu sitio, y el idioma viaja con tus datos en el `.kreix`. En inglés los números se escriben como 1,234.56; en castellano y catalán, como 1.234,56.
 
@@ -92,7 +96,7 @@ Atajos: `Ctrl+H` oculta o muestra las cantidades, `Ctrl+1` a `Ctrl+7` cambian de
 
 **Histórico de precios.** En *Importar* puedes soltar el histórico de precios de un fondo que hayas descargado tú (de tu banco, Morningstar, Yahoo o Investing; CSV o Excel con una columna de fecha y otra de precio: valor liquidativo, cierre...). Kreix lo reconoce por las cabeceras, lee números en formato español o inglés y toma el ISIN de una columna, del nombre del archivo o del selector *Fondo del histórico*. Con él, la gráfica de cada fondo pasa de un punto al mes a puntos de días reales; el valor de hoy no cambia (sigue mandando tu último extracto). Nada sale de tu equipo.
 
-**Detalles que ayudan.** Junto a las cifras principales (patrimonio, rendimiento, tasa de ahorro, saldo, ingresos, gastos, valor de la cartera...) hay un «?» que abre su explicación en la Ayuda. Bajo el patrimonio de Inicio, una etiqueta dice cuánto ha subido o bajado frente al cierre del mes anterior. Los desplegables y menús tienen esquinas redondeadas y flecha, las páginas vacías llevan el icono de Kreix con un resplandor y las franjas de marca, los primeros pasos tienen barra de avance, y todos los cuadros de diálogo comparten el mismo fondo, título y tarjeta.
+**Detalles que ayudan.** Junto a las cifras principales (patrimonio, rendimiento, tasa de ahorro, saldo, ingresos, gastos, valor de la cartera...) hay un «?» que abre su explicación en la Ayuda. Bajo el patrimonio de Inicio, una línea en verde o rojo dice cuánto ha subido o bajado frente al cierre del mes anterior. Los desplegables y menús llevan flecha, las páginas vacías llevan el icono de Kreix y las franjas de marca, los primeros pasos tienen barra de avance, y todos los cuadros de diálogo comparten el mismo fondo, título y tarjeta.
 
 **Ayuda.** Un menú de seis temas (Tu dinero de un vistazo, Tus cuentas bancarias, Tus inversiones, Rentabilidad, Avisos y Usar Kreix); cada botón abre su sección y una flecha vuelve al menú. Es un glosario para quien no sabe de finanzas: patrimonio neto, tasa de ahorro, valor liquidativo, plusvalía, TWR, TIR y el resto de términos que muestra Kreix. Cada término es una tarjeta con su explicación sencilla y, debajo, filas separadas con cómo lo calcula Kreix, un ejemplo, un aviso (*Ojo*) y un consejo (*Qué hacer*). Buscar "tir" encuentra la TIR, pero no "invertir".
 
@@ -255,7 +259,7 @@ Decisiones de diseño relevantes:
 - **Importación en bloque.** Los movimientos se insertan con un único `executemany` (20.000 movimientos en alrededor de 1 s, antes 9 s), las fechas habituales se leen sin `strptime` y la vista previa y la importación no leen el archivo dos veces.
 - **Interfaz sin trabajo de más.** Las columnas de las tablas toman su ancho una sola vez (cambiar de tema con 20.000 filas pasó de 10 s a menos de 1 s); el cambio de tema aplica la hoja de estilos una sola vez, y no si no ha cambiado; las gráficas guardan su geometría (el ratón y la animación no la recalculan) y reducen las series largas a unos pocos puntos por píxel conservando los extremos; el reloj y el cielo de Inicio solo corren mientras se ven (y el cielo se detiene al minimizar); redimensionar la ventana ya no recalcula la altura de las filas en cada imagen.
 - **Fluidez.** Las tablas ordenan en el propio modelo (claves precalculadas y `list.sort`), no con el orden de Qt: 20 000 movimientos se ordenan en menos de medio segundo en lugar de cuatro. Las series de patrimonio ordenan una sola vez los saldos por cuenta y buscan por bisección, y solo se recalcula la página visible.
-- **Gráficos propios**, pintados con QPainter (barras redondeadas con degradado, curvas suaves, donut con leyenda e importes), con animación de entrada y tarjeta de detalle al pasar el ratón. Se adaptan al tema activo.
+- **Gráficos propios**, pintados con QPainter (barras de color plano, curvas suaves, donut de corte limpio con leyenda e importes), con animación de entrada y tarjeta de detalle al pasar el ratón. Se adaptan al tema activo.
 
 ## Diseño
 
@@ -263,11 +267,11 @@ Decisiones de diseño relevantes:
 - **Color:** el amarillo vivo del logotipo (sin llegar a fluorescente) y un rojo intenso sobre carbón (modo oscuro) o papel cálido (modo claro). El amarillo se reserva para lo importante, el verde translúcido marca lo positivo y el rojo los gastos, los saldos negativos y las alertas.
 - **Motivo de marca:** las cuatro franjas inclinadas de la K del logotipo (las cuatro barras de la senyera) aparecen en las cabeceras y en la zona de importación.
 - **Legibilidad:** todo el texto cumple el contraste AA (4,5:1 el pequeño): el gris de apoyo y los colores de acento o de verde tienen una variante más oscura para cuando son texto, y nada baja de 11-12 px. Las etiquetas sobre los títulos de página y las mayúsculas en los rótulos se quitaron. Los campos de texto llevan borde, y un test comprueba los contrastes de ambas paletas.
-- **Menos cajas, más marca:** en Inicio, Cuentas e Inversiones las secciones ya no van dentro de tarjetas: se apoyan directamente en la página, separadas por un filo fino que arranca con un trazo del amarillo al rojo del logotipo (la marca como estructura, no como adorno). Solo llevan caja la cifra principal (Patrimonio neto, con el radio mayor) y las piezas con las que se interactúa (el carrusel de presupuestos y los primeros pasos), con un radio menor.
+- **Menos cajas, más marca:** en Inicio, Cuentas e Inversiones las secciones ya no van dentro de tarjetas: se apoyan directamente en la página, separadas por un filo fino que arranca con un trazo del amarillo al rojo del logotipo (la marca como estructura, no como adorno). Solo llevan caja la cifra principal (Patrimonio neto) y las piezas con las que se interactúa (el carrusel de presupuestos y los primeros pasos).
 - **Navegación unificada:** la barra lateral tiene un solo estilo (icono y texto; la página actual en amarillo con un filo más hondo) y el aro de foco solo sale al moverte con el teclado. Ajustes agrupa sus opciones en una tarjeta por tema con filas separadas, la Ayuda es una lista de temas y Exportar es una sola tarjeta con tres filas.
-- **Importar, diálogos y bienvenida con el mismo lenguaje:** Importar reúne sus ajustes en una tarjeta con filas y muestra los resultados como filas planas; los cuadros de diálogo y los pasos de bienvenida usan solo el filo de marca, sin cajas dentro de cajas. Los botones también muestran el aro de foco solo con el teclado, el detalle de los gráficos lleva sombra y el trazo de marca, y los avisos entran con un fundido breve.
+- **Importar, diálogos y bienvenida con el mismo lenguaje:** Importar reúne sus ajustes en una tarjeta con filas y muestra los resultados como filas planas; los cuadros de diálogo y los pasos de bienvenida usan solo el filo de marca, sin cajas dentro de cajas. Los botones también muestran el aro de foco solo con el teclado, el detalle de los gráficos lleva un filo fino y el trazo de marca, y los avisos entran con un fundido breve.
 - **Ningún cuadro es genérico:** los avisos, las preguntas y los cuadros que piden un dato (nombre de una cuenta, contraseña de un archivo, importe de una meta) son propios, con el mismo fondo, título y filo de marca que el resto, los botones en el idioma de la aplicación y la acción destructiva en rojo; el instalador de Windows lleva también la marca (tema oscuro, logotipo y franjas en la columna de bienvenida, textos en los tres idiomas). `tools/build_installer_art.py` dibuja sus imágenes.
-- **Aire y geometría:** márgenes generosos, esquinas muy redondeadas, líneas y barras finas con degradados casi transparentes e iconos lineales de trazo fino.
+- **Sobrio y preciso:** márgenes generosos, esquinas de 6 px como mucho (4 px dentro de menús y casillas), fondos planos sin degradados ni resplandores, tarjetas con un borde fino y sin sombras, variaciones y estados en texto de color (sin cajas de fondo) e iconos lineales de trazo fino.
 - **Estructura:** Ajustes y Ayuda agrupan la información en tarjetas con cabecera tintada, separadores finos y rótulos de grupo, para que cada bloque se vea aislado. Una cifra principal grande en Inicio y bandas de cifras en Cuentas e Inversiones, en lugar de muchas cajas iguales.
 
 ## Desarrollo
@@ -303,4 +307,8 @@ Los extractos bancarios son datos sensibles. Tus datos locales van cifrados (`.k
 
 ## Licencia
 
-Proyecto privado. Todos los derechos reservados.
+Kreix es software de código disponible (*source-available*), no de código abierto: el código está a la vista para que cualquiera pueda comprobar lo que hace, pero los derechos son del autor.
+
+Se publica bajo la [PolyForm Strict License 1.0.0](LICENSE): puedes leer el código y usar el programa con fines no comerciales, pero **no copiarlo, modificarlo, redistribuirlo ni venderlo**. Para cualquier otro uso, pide permiso al autor.
+
+© 2026 [Daniel Suárez Angosto](https://dasuarezang.github.io). Todos los derechos reservados.
