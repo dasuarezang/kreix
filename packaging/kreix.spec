@@ -33,6 +33,7 @@ a = Analysis(
     binaries=[],
     datas=[
         (str(ROOT / "assets" / "fonts"), "assets/fonts"),
+        (str(ROOT / "assets" / "dogs"), "assets/dogs"),
         (str(ROOT / "logo-mejorado"), "logo-mejorado"),
     ],
     # Los idiomas se cargan por nombre (importlib): hay que decirselo a PyInstaller.

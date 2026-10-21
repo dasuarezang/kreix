@@ -1,26 +1,38 @@
-"""Blitzen y Black de frente, en ilustracion plana de linea redondeada (el diseno de la propuesta 2, con los retoques finales).
+"""Blitzen y Black en el cielo de Inicio, sacados tal cual de su ilustracion (`docs/art/basePerretes.jpg`).
 
-Estilo (el de la referencia `estilo.jpg`): contorno redondeado de un solo trazo, rellenos planos y pocas lineas de detalle,
-con la cara y las proporciones de cada perro:
+`tools/build_dogs.py` recorta a cada perro por su contorno crema de pegatina y guarda en `assets/dogs/` sus capas: el perro
+con los ojos abiertos, el mismo con los ojos cerrados (parpados del color de su pelo) y, en Black, las dos orejas aparte.
+Aqui se animan:
 
-* Blitzen, cavalier king charles negro y fuego: cabeza redondeada, orejas largas y onduladas, ojos grandes, cejas de fuego,
-  mejillas de fuego y la sonrisa con la puntita de la lengua.
-* Black, un perrito negro y fuego esbelto: orejas cortas plegadas hacia delante, ojos grandes con las cejas inclinadas, hocico
-  de fuego y el collar amarillo del logotipo. Blitzen lleva el rojo.
+* Parpadean (de dia) y duermen con los ojos cerrados (de noche).
+* Ladean la cabeza: la imagen se dobla por encima del cuello, por franjas finas, y el cuerpo se queda quieto.
+* Black mueve las orejas (giran desde donde nacen) y las dos colas, dibujadas con el mismo estilo de pegatina porque la
+  ilustracion no las enseña, se menean por detras del cuerpo.
+* Respiran: de dia, apenas; de noche, mas hondo y despacio, cabeceando, con unas z que suben.
 
-Cada cabeza se dibuja con una sola funcion (origen en el centro de la cabeza) y se usa igual de pie y durmiendo: las orejas son
-las mismas, solo se tumban hacia los lados cuando duermen. Como los perros son negros, el contorno toma el color del texto del tema
-(crema en oscuro, casi negro en claro) y el pelo es un carbon algo mas claro que el fondo.
-
-Unidades: el suelo es y=0 y arriba es negativo. Blitzen mide unas 52 unidades de alto sentado; Black, unas 36.
+Coordenadas: las de la ilustracion original en pixeles (2400 x 1792). El cielo las reduce con `UNIT` y las apoya en el
+horizonte por la base de las patas (`GROUND_Y`).
 """
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass
 
-from PySide6.QtCore import QPointF, Qt
-from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen
+from PySide6.QtCore import QPointF, QRectF, Qt
+from PySide6.QtGui import QColor, QImage, QPainter, QPainterPath, QPen
+
+from ui.assets import BASE
+
+DOG_DIR = BASE / "assets" / "dogs"
+STORE = 0.35                # escala a la que tools/build_dogs.py guarda las capas
+UNIT = 0.025                # unidades del cielo por pixel de la ilustracion: Blitzen mide unas 41 de alto
+GROUND_Y = 1759.0           # la base de las patas en la ilustracion
+PAIR_CENTER_X = 1221.0      # el centro de la pareja en la ilustracion: el cielo lo coloca en su `center_x`
+
+FUR = QColor(49, 49, 57)            # el pelo negro de la ilustracion
+FUR_LIGHT = QColor(88, 92, 108)     # sus mechones claros
+CREAM = QColor(232, 216, 192)       # el contorno de pegatina
+OUTLINE = 23.0                      # su grosor en la ilustracion
 
 
 Point = tuple[float, float]
@@ -45,265 +57,169 @@ def smooth(points: list[Point], closed: bool = True, tension: float = 1.0) -> QP
 
 
 @dataclass(frozen=True, slots=True)
-class Look:
-    line: QColor        # el contorno
-    coat: QColor        # pelo negro
-    coat_ear: QColor    # el pelo de las orejas, un poco mas claro
-    shade: QColor       # sombra suave (bajo las orejas y la barbilla)
-    fire: QColor        # manchas de fuego
-    fire_soft: QColor   # fuego mas claro (mejillas, hocico)
-    cream: QColor       # collar y mechon blanco de Blitzen
-    eye: QColor
-    nose: QColor
-    paw: QColor         # la punta clara de las patas de Black
-    tongue: QColor
-    grey: QColor        # la perilla gris de Black
-    collar_red: QColor      # collar de Blitzen: el rojo del logotipo
-    collar_yellow: QColor   # collar de Black: el amarillo del logotipo
-    blush: QColor           # rubor de las mejillas
+class Ear:
+    layer: str
+    pivot: Point            # donde nace la oreja (gira desde ahi)
+    side: int               # -1 izquierda, 1 derecha: las dos se abren a la vez
 
 
-def look(dark: bool) -> Look:
-    if dark:
-        return Look(QColor("#F1E8D8"), QColor("#2A2F38"), QColor("#3C424E"), QColor("#1D2128"), QColor("#E5652B"), QColor("#F08A4B"),
-                    QColor("#F4EEDF"), QColor("#14110F"), QColor("#0B0B0D"), QColor("#D8DCE3"), QColor("#E98A8A"), QColor("#9AA0AB"),
-                    QColor("#E03131"), QColor("#F2A900"), QColor(255, 118, 138, 150))
-    return Look(QColor("#17191D"), QColor("#2A2E36"), QColor("#474D59"), QColor("#1E2127"), QColor("#D4571F"), QColor("#E8793A"),
-                QColor("#F8F2E4"), QColor("#14110F"), QColor("#0B0B0D"), QColor("#E4E7EC"), QColor("#E98A8A"), QColor("#9097A3"),
-                QColor("#C92A2A"), QColor("#F2B400"), QColor(240, 120, 130, 125))
+@dataclass(frozen=True, slots=True)
+class Tail:
+    anchor: Point           # donde nace, escondida detras del cuerpo
+    shape: tuple[Point, ...]    # el contorno, relativo al nacimiento
+    strands: tuple[tuple[Point, ...], ...]     # mechones claros
+    rest: float             # angulo de reposo (grados)
 
 
-LINE_W = 1.0
+@dataclass(frozen=True, slots=True)
+class Dog:
+    name: str
+    origin: Point           # esquina del lienzo de sus capas, en la ilustracion
+    neck: Point             # por encima de aqui se ladea la cabeza
+    ears: tuple[Ear, ...]
+    tail: Tail
 
 
-def sym(right: list[Point]) -> list[Point]:
-    """Una forma simetrica: se da la mitad derecha, de arriba a abajo (acabando en el eje), y se completa con la izquierda."""
-    left = [(-x, y) for x, y in reversed(right)]
-    return right + [pt for pt in left if abs(pt[0]) > 1e-6]
+BLITZEN = Dog(
+    "blitzen", (166, 86), (762, 880), (),
+    Tail((330, 1560),                                       # el penacho del cavalier, hacia arriba y con flecos por debajo
+         ((0, 0), (-40, -80), (-90, -160), (-150, -215), (-205, -232), (-218, -198), (-248, -186), (-208, -160),
+          (-228, -130), (-182, -116), (-192, -80), (-142, -62), (-122, -12), (-60, 40)),
+         (((-50, -60), (-100, -140), (-160, -190)), ((-90, -40), (-140, -100), (-185, -140))),
+         0.0),
+)
+BLACK = Dog(
+    "black", (1301, 537), (1798, 1175),
+    (Ear("black-oreja-izq", (1600, 650), -1), Ear("black-oreja-der", (1996, 650), 1)),
+    Tail((2090, 1600),
+         ((0, 0), (40, -50), (88, -102), (122, -112), (126, -78), (90, -24), (40, 34)),
+         (((30, -30), (70, -72)),),
+         -6.0),
+)
+
+_layers: dict[str, QImage] = {}
+_scaled: dict[tuple[str, int], QImage] = {}
 
 
-class Pen:
-    """Pinta formas con el contorno de la ilustracion."""
+def _layer(name: str, scale: float) -> QImage:
+    """Una capa a `scale` pixeles de pantalla por pixel de la ilustracion (se guarda escalada: se reescala solo si cambia)."""
+    key = (name, round(scale * 1000))
+    if key not in _scaled:
+        if name not in _layers:
+            image = QImage(str(DOG_DIR / f"{name}.png"))
+            _layers[name] = image.convertToFormat(QImage.Format.Format_ARGB32_Premultiplied)
+        image = _layers[name]
+        factor = scale / STORE
+        _scaled[key] = image.scaled(max(1, round(image.width() * factor)), max(1, round(image.height() * factor)),
+                                    Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation)
+    return _scaled[key]
 
-    def __init__(self, p: QPainter, lk: Look, width: float = LINE_W) -> None:
-        self.p, self.lk, self.width = p, lk, width
 
-    def _stroke(self, width: float | None, color: QColor | None = None) -> QPen:
-        pen = QPen(color or self.lk.line, width or self.width)
+def _device_scale(p: QPainter) -> float:
+    """Pixeles reales de pantalla por unidad del pintor en este momento (con la escala del monitor)."""
+    device = p.device()
+    ratio = device.devicePixelRatioF() if device is not None else 1.0
+    return abs(p.worldTransform().m11()) * max(ratio, 1.0)
+
+
+def _paint_tail(p: QPainter, tail: Tail, angle: float) -> None:
+    """La cola, con el contorno crema de pegatina por fuera (se pinta antes que el cuerpo, que tapa su nacimiento)."""
+    p.save()
+    p.translate(*tail.anchor)
+    p.rotate(tail.rest + angle)
+    path = smooth(list(tail.shape))
+    outline = QPen(CREAM, OUTLINE * 2)
+    outline.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+    p.setPen(outline)
+    p.setBrush(CREAM)
+    p.drawPath(path)
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(FUR)
+    p.drawPath(path)
+    strand = QPen(FUR_LIGHT, 9)
+    strand.setCapStyle(Qt.PenCapStyle.RoundCap)
+    p.setPen(strand)
+    p.setBrush(Qt.BrushStyle.NoBrush)
+    for points in tail.strands:
+        p.drawPath(smooth(list(points), closed=False))
+    p.restore()
+
+
+def _compose(dog: Dog, scale: float, closed: bool, ear_angle: float) -> QImage:
+    """El perro de esta imagen: su capa (ojos abiertos o cerrados) y, encima, las orejas giradas."""
+    base = _layer(dog.name + ("-dormido" if closed else ""), scale)
+    if not dog.ears:
+        return base
+    frame = QImage(base.size(), QImage.Format.Format_ARGB32_Premultiplied)
+    frame.fill(0)
+    q = QPainter(frame)
+    q.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+    q.setRenderHint(QPainter.RenderHint.Antialiasing)
+    q.drawImage(0, 0, base)
+    for ear in dog.ears:
+        px, py = (ear.pivot[0] - dog.origin[0]) * scale, (ear.pivot[1] - dog.origin[1]) * scale
+        q.save()
+        q.translate(px, py)
+        q.rotate(ear.side * ear_angle)
+        q.translate(-px, -py)
+        q.drawImage(0, 0, _layer(ear.layer, scale))
+        q.restore()
+    q.end()
+    return frame
+
+
+def _paint_bent(p: QPainter, dog: Dog, image: QImage, scale: float, tilt: float) -> None:
+    """Pinta la imagen ladeando la cabeza: por encima del cuello cada fila se desplaza en proporcion a su altura (de 0 en
+    el cuello al ladeo entero un poco mas arriba), y por debajo el cuerpo queda tal cual.
+
+    Las filas se mueven en una imagen intermedia, de pixel entero en pixel entero (sin reescalar en vertical: asi no quedan
+    juntas entre filas), y esa imagen se pinta de una vez."""
+    ox, oy = dog.origin
+    width, height = image.width(), image.height()
+    pivot = (dog.neck[1] - oy) * scale
+    ramp = 90 * scale                                       # la transicion entre cuerpo quieto y cabeza ladeada
+    slope = math.tan(math.radians(tilt))
+    if abs(slope) < 1e-4:
+        p.drawImage(QRectF(ox, oy, width / scale, height / scale), image)
+        return
+    still = min(height, math.ceil(pivot + ramp))            # desde aqui hacia abajo, el cuerpo quieto
+    pad = math.ceil(abs(pivot * slope)) + 1
+    bent = QImage(width + 2 * pad, height, QImage.Format.Format_ARGB32_Premultiplied)
+    bent.fill(0)
+    q = QPainter(bent)
+    q.drawImage(pad, still, image, 0, still, width, height - still)
+    for y in range(still):
+        f = max(0.0, min(1.0, (pivot + ramp - y - 0.5) / (2 * ramp)))
+        dx = round((pivot - y - 0.5) * slope * f * f * (3 - 2 * f))
+        q.drawImage(pad + dx, y, image, 0, y, width, 1)
+    q.end()
+    p.drawImage(QRectF(ox - pad / scale, oy, bent.width() / scale, height / scale), bent)
+
+
+def _paint_dog(p: QPainter, dog: Dog, *, closed: bool, tilt: float, ear_angle: float, tail_angle: float, breath: float) -> None:
+    p.save()
+    p.translate(0, GROUND_Y)                                # respira: el pecho sube desde las patas
+    p.scale(1.0, breath)
+    p.translate(0, -GROUND_Y)
+    _paint_tail(p, dog.tail, tail_angle)
+    scale = min(_device_scale(p), STORE * 2)                # nunca mas grande que el doble de lo guardado
+    p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+    _paint_bent(p, dog, _compose(dog, scale, closed, ear_angle), scale, tilt)
+    p.restore()
+
+
+def _paint_zs(p: QPainter, t: float, x: float, y: float, color: QColor) -> None:
+    """Unas z que suben y se desvanecen."""
+    for k, (size, delay) in enumerate(((60.0, 0.0), (85.0, 1.6))):
+        phase = (t * 0.35 + delay / 3.2) % 1.0
+        c = QColor(color)
+        c.setAlphaF(0.85 * math.sin(math.pi * phase) ** 1.5)
+        pen = QPen(c, 18)
         pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-        return pen
-
-    def shape(self, points: list[Point], fill: QColor | None, outline: bool = True, width: float | None = None) -> None:
-        self.p.setBrush(fill if fill is not None else Qt.BrushStyle.NoBrush)
-        self.p.setPen(self._stroke(width) if outline else Qt.PenStyle.NoPen)
-        self.p.drawPath(smooth(points, closed=True))
-
-    def line(self, points: list[Point], width: float | None = None, color: QColor | None = None) -> None:
-        self.p.setPen(self._stroke(width or self.width * 0.7, color))
-        self.p.setBrush(Qt.BrushStyle.NoBrush)
-        self.p.drawPath(smooth(points, closed=False))
-
-    def ellipse(self, x: float, y: float, rx: float, ry: float, fill: QColor, outline: bool = False, width: float | None = None,
-                angle: float = 0.0) -> None:
-        path = QPainterPath()
-        path.addEllipse(QPointF(0, 0), rx, ry)
-        self.p.save()
-        self.p.translate(x, y)
-        self.p.rotate(angle)
-        self.p.setBrush(fill)
-        self.p.setPen(self._stroke(width) if outline else Qt.PenStyle.NoPen)
-        self.p.drawPath(path)
-        self.p.restore()
-
-    def eye(self, x: float, y: float, r: float, closed: float = 0.0) -> None:
-        """Un ojo redondo y brillante con dos destellos. `closed` de 0 (abierto) a 1 (cerrado: un arco, como en la referencia)."""
-        if closed >= 0.85:
-            self.line([(x - r * 1.05, y + 0.1), (x, y + r * 0.7), (x + r * 1.05, y + 0.1)], width=self.width * 0.85)
-            return
-        ry = r * (1 - closed * 0.85)
-        self.ellipse(x, y, r, ry, self.lk.eye)
-        self.ellipse(x - r * 0.28, y - ry * 0.32, r * 0.38, r * 0.38 * (ry / r), QColor("#FFFFFF"))
-        self.ellipse(x + r * 0.38, y + ry * 0.35, r * 0.17, r * 0.17 * (ry / r), QColor(255, 255, 255, 190))
-
-
-# ======================================================================================= cabezas (origen: el centro de la cabeza)
-# La oreja larga de Blitzen: el mismo dibujo de pie y durmiendo. Se da la derecha; el origen es el centro de la cabeza.
-_BLITZEN_EAR = [(7.0, -9.0), (11.2, -6.4), (14.2, -0.4), (15.4, 7.0), (16.0, 13.6), (14.6, 19.2), (12.4, 17.4), (11.0, 20.0),
-                (9.6, 16.6), (8.6, 9.4), (8.0, 1.0), (7.4, -5.0)]
-_BLITZEN_EAR_LINES = [[(11.2, -2.6), (12.4, 4.6), (12.0, 11.6)], [(9.8, 1.0), (10.2, 8.0)]]
-
-
-def blitzen_head(pen: Pen, lk: Look, blink: float = 0.0, smile: float = 1.0, ear_swing: float = 0.0, ear_lay: float = 0.0) -> None:
-    """Cabeza redondeada con las orejas largas. `ear_lay` (grados) tumba las orejas hacia los lados, como al dormir."""
-    p = pen.p
-    # collar rojo, debajo de la cabeza y de las orejas: asoma bajo la barbilla, con su chapita
-    pen.shape([(-6.8, 7.4), (-3.6, 9.8), (0, 10.4), (3.6, 9.8), (6.8, 7.4), (6.4, 10.4), (3.4, 12.6), (0, 13.2), (-3.4, 12.6), (-6.4, 10.4)],
-              lk.collar_red, width=0.8)
-    pen.ellipse(0, 14.2, 1.15, 1.15, lk.collar_yellow, outline=True, width=0.55)
-    for sx in (-1, 1):
-        p.save()
-        p.translate(sx * 7.4, -7.0)                              # las orejas giran desde donde nacen
-        p.rotate(sx * (ear_swing - ear_lay))
-        p.translate(-sx * 7.4, 7.0)
-        pen.shape([(sx * x, y) for x, y in _BLITZEN_EAR], lk.coat_ear)
-        for line in _BLITZEN_EAR_LINES:
-            pen.line([(sx * x, y) for x, y in line], width=0.5)
-        p.restore()
-    # cabeza redondeada
-    pen.shape(sym([(0, -9.8), (6.4, -8.4), (9.1, -3.2), (9.0, 2.6), (6.6, 7.2), (3.4, 9.4), (0, 9.8)]), lk.coat)
-    # mejillas y hocico de fuego
-    pen.shape(sym([(0, 2.0), (2.8, 2.6), (5.2, 4.4), (5.6, 7.2), (3.6, 9.2), (0, 9.8)]), lk.fire_soft, outline=False)
-    # cejas de fuego y ojos grandes
-    for sx in (-1, 1):
-        pen.ellipse(sx * 4.4, -4.4, 1.7, 1.0, lk.fire, angle=sx * 12)
-        pen.ellipse(sx * 6.6, 2.6, 1.5, 0.85, lk.blush)
-        pen.eye(sx * 3.9, -0.7, 2.15, blink)
-    # nariz, philtrum y boca con la lengua
-    pen.shape([(-2.7, 3.6), (0, 2.8), (2.7, 3.6), (2.0, 5.8), (0, 6.6), (-2.0, 5.8)], lk.nose, outline=False)
-    pen.ellipse(-0.8, 3.8, 0.6, 0.34, QColor(255, 255, 255, 150))
-    pen.line([(0, 6.6), (0, 7.8)], width=0.5)
-    pen.line([(-3.6, 7.4), (-2.0, 9.0), (0, 7.8), (2.0, 9.0), (3.6, 7.4)], width=0.55)
-    if smile > 0.4:
-        pen.shape([(-1.1, 8.6), (-0.9, 10.2), (0, 10.8), (0.9, 10.2), (1.1, 8.6)], lk.tongue, width=0.5)
-        pen.line([(0, 8.8), (0, 10.2)], width=0.3)
-
-
-def black_head(pen: Pen, lk: Look, blink: float = 0.0, ear_swing: float = 0.0) -> None:
-    """Cabeza de Black: orejas cortas plegadas hacia delante, cejas inclinadas hacia dentro, ojos grandes y la perilla gris."""
-    p = pen.p
-    for sx in (-1, 1):
-        p.save()
-        p.translate(sx * 5.4, -6.0)
-        p.rotate(sx * ear_swing)
-        p.translate(-sx * 5.4, 6.0)
-        pen.shape([(sx * 5.4, -6.8), (sx * 9.6, -5.6), (sx * 11.0, -0.8), (sx * 9.4, 2.0), (sx * 7.2, -0.2), (sx * 6.0, -3.8)], lk.coat_ear)
-        pen.line([(sx * 7.2, -6.0), (sx * 9.0, -2.2), (sx * 9.6, 0.4)], width=0.4)
-        p.restore()
-    pen.shape(sym([(0, -7.6), (5.6, -6.6), (8.6, -2.0), (8.0, 3.4), (4.6, 6.8), (0, 7.6)]), lk.coat)
-    # hocico de fuego
-    pen.shape(sym([(0, -0.6), (3.6, 0.2), (5.0, 3.0), (3.6, 5.8), (0, 6.8)]), lk.fire_soft, outline=False)
-    for sx in (-1, 1):
-        p.save()
-        p.translate(sx * 3.5, -4.9)
-        p.rotate(sx * 12)
-        pen.ellipse(0, 0, 1.4, 0.85, lk.fire)
-        p.restore()
-        pen.ellipse(sx * 6.0, 1.6, 1.3, 0.75, lk.blush)
-        pen.eye(sx * 3.5, -2.1, 2.0, blink)
-    pen.shape([(-2.4, 0.4), (0, -0.4), (2.4, 0.4), (1.7, 2.4), (0, 3.1), (-1.7, 2.4)], lk.nose, outline=False)
-    pen.ellipse(-0.6, 0.6, 0.55, 0.32, QColor(255, 255, 255, 150))
-    pen.line([(0, 3.1), (0, 4.2)], width=0.5)
-    pen.line([(-2.6, 4.0), (-1.3, 5.0), (0, 4.2), (1.3, 5.0), (2.6, 4.0)], width=0.5)
-
-
-# ======================================================================================= Blitzen, sentado, de frente
-def blitzen_sitting(p: QPainter, lk: Look, t: float = 0.0, blink: float = 0.0, tilt: float = 0.0) -> None:
-    pen = Pen(p, lk)
-    wag = math.sin(t * 8.0) * 12.0 * max(0.0, math.sin(t * 0.9)) ** 0.5
-    # cola, asomando por el lado
-    p.save()
-    p.translate(12.0, -2.5)
-    p.rotate(-22 + wag)
-    pen.shape([(0, 0), (3.5, -2.4), (8.5, -2.6), (12.5, -0.6), (9.5, 1.8), (4, 2.2)], lk.coat)
-    pen.line([(4.5, -0.4), (8.5, -0.8)], width=0.5)
-    p.restore()
-    # cuerpo sentado: cuello, hombros, costillas y grupa
-    pen.shape([(-5.6, -28), (-9.0, -23), (-11.0, -15), (-13.6, -5), (-12.6, -0.4), (0, 0.6), (12.6, -0.4), (13.6, -5), (11.0, -15), (9.0, -23), (5.6, -28)], lk.coat)
-    # patas delanteras de fuego
-    for sx in (-1, 1):
-        pen.shape([(sx * 1.8, -15), (sx * 5.8, -15), (sx * 6.4, -6), (sx * 6.5, -1.6), (sx * 5.2, 0.2), (sx * 2.2, 0.2), (sx * 1.2, -1.6), (sx * 1.0, -6)], lk.fire)
-        pen.line([(sx * 2.8, -1.0), (sx * 2.8, 0.1)], width=0.45)
-        pen.line([(sx * 4.4, -1.0), (sx * 4.4, 0.1)], width=0.45)
-    # cabeza (con la inclinacion curiosa de un cavalier)
-    p.save()
-    p.translate(0, -28.0)
-    p.rotate(tilt)
-    p.translate(0, 28.0)
-    p.translate(0, -39.0)
-    blitzen_head(pen, lk, blink=blink, smile=1.0, ear_swing=math.sin(t * 1.3) * 1.8)
-    p.restore()
-
-
-# ======================================================================================= Black, sentado, de frente
-def black_sitting(p: QPainter, lk: Look, t: float = 0.0, blink: float = 0.0, tilt: float = 0.0) -> None:
-    pen = Pen(p, lk)
-    wag = math.sin(t * 8.5) * 14.0 * max(0.0, math.sin(t * 0.7 + 1.5)) ** 0.5
-    p.save()
-    p.translate(-8.5, -2.0)
-    p.rotate(20 - wag)
-    pen.shape([(0, 0), (-3, -2.6), (-6.5, -2.4), (-8.2, 0.2), (-4.5, 1.7)], lk.coat)
-    p.restore()
-    # cuerpo compacto con el pecho ancho
-    pen.shape([(-5.4, -19), (-8.4, -13.5), (-10.0, -6.5), (-9.2, -0.4), (0, 0.6), (9.2, -0.4), (10.0, -6.5), (8.4, -13.5), (5.4, -19)], lk.coat)
-    # manchas de fuego del pecho
-    for sx in (-1, 1):
-        pen.shape([(sx * 1.0, -18.8), (sx * 5.2, -18.2), (sx * 6.2, -13.2), (sx * 3.4, -11.2), (sx * 1.0, -13.4)], lk.fire, outline=False)
-    # patas de fuego con la punta clara
-    for sx in (-1, 1):
-        pen.shape([(sx * 1.5, -11.5), (sx * 5.0, -11.5), (sx * 5.5, -2.4), (sx * 4.8, 0.1), (sx * 1.4, 0.1), (sx * 1.0, -2.4)], lk.fire)
-        pen.shape([(sx * 1.1, -2.4), (sx * 5.3, -2.4), (sx * 5.5, -0.2), (sx * 4.6, 0.3), (sx * 1.4, 0.3)], lk.paw, outline=False)
-        pen.line([(sx * 3.1, -2.3), (sx * 3.1, 0.2)], width=0.4)
-    # cabeza
-    p.save()
-    p.translate(0, -17.0)
-    p.rotate(tilt)
-    p.translate(0, 17.0)
-    p.translate(0, -24.8)
-    black_head(pen, lk, blink=blink, ear_swing=math.sin(t * 1.1 + 0.7) * 2.2 + max(0.0, math.sin(t * 0.7 + 2.0)) ** 8 * 6.0)
-    p.restore()
-    # collar amarillo con su chapita
-    pen.shape([(-6.6, -18.4), (-3.4, -16.4), (0, -15.8), (3.4, -16.4), (6.6, -18.4), (6.3, -16.2), (3.2, -14.2), (0, -13.6), (-3.2, -14.2), (-6.3, -16.2)],
-              lk.collar_yellow, width=0.8)
-    pen.ellipse(0, -12.6, 1.05, 1.05, lk.collar_red, outline=True, width=0.55)
-
-
-# ======================================================================================= los dos durmiendo, juntos
-def sleeping_pair(p: QPainter, lk: Look, t: float = 0.0) -> None:
-    """Hechos un ovillo, uno contra otro: la misma cabeza de pie y durmiendo, con las orejas de Blitzen tumbadas. Ojos cerrados."""
-    pen = Pen(p, lk)
-    big = 1.0 + 0.02 * math.sin(t * 1.2)
-    small = 1.0 + 0.028 * math.sin(t * 1.5 + 1.1)
-    # cuerpos: dos cupulas detras de las cabezas (el de Black, delante del de Blitzen)
-    p.save()
-    p.scale(1.0, big)
-    pen.shape([(-27, 0), (-28.5, -7), (-23, -14.5), (-14, -17), (-4, -14.5), (0, -7), (-0.5, 0)], lk.coat)
-    p.restore()
-    p.save()                                                                            # la cola de Blitzen, asomando a la izquierda
-    p.translate(-26.0, -2.0)
-    p.rotate(-math.sin(t * 1.2) * 3.0)
-    pen.shape([(0, 0), (-3.4, -1.6), (-7.0, -0.4), (-6.4, 2.0), (-2.4, 2.4)], lk.coat)
-    p.restore()
-    p.save()
-    p.scale(1.0, small)
-    pen.shape([(-5, 0), (-5.5, -6), (-1, -11.5), (7, -13.5), (15, -11), (19.5, -5.5), (19, 0)], lk.coat)
-    p.restore()
-    # Blitzen: la cabeza apoyada encima del lomo de Black, con sus orejas largas colgando (las mismas de pie) hacia el suelo
-    p.save()
-    p.translate(-4.0, -17.0)
-    p.rotate(-5)
-    p.scale(0.85, 0.85)
-    blitzen_head(pen, lk, blink=1.0, smile=0.0, ear_lay=8.0)
-    p.restore()
-    # Black: delante y abajo, con su collar
-    p.save()
-    p.translate(10.0, -8.2)
-    p.scale(0.8, 0.8)
-    black_head(pen, lk, blink=1.0)
-    p.restore()
-    pen.shape([(3.4, -2.6), (7.0, -1.8), (10.0, -1.5), (13.0, -1.8), (16.6, -2.6), (16.2, -0.6), (10.0, 0.0), (3.8, -0.6)], lk.collar_yellow, width=0.7)
-    # unas z que suben
-    for k, (size, delay) in enumerate(((2.4, 0.0), (3.4, 1.6))):
-        phase = (t * 0.35 + delay / 3.2) % 1.0
-        alpha = math.sin(math.pi * phase) ** 1.5
-        c = QColor(lk.line)
-        c.setAlphaF(0.8 * alpha)
-        pen_z = QPen(c, 0.7)
-        pen_z.setCapStyle(Qt.PenCapStyle.RoundCap)
-        pen_z.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-        p.setPen(pen_z)
+        p.setPen(pen)
         p.setBrush(Qt.BrushStyle.NoBrush)
-        cx, cy = 6 + phase * 6 + k * 3, -30 - phase * 10
+        cx, cy = x + phase * 150 + k * 75, y - phase * 250
         z = QPainterPath()
         z.moveTo(cx - size / 2, cy - size / 2)
         z.lineTo(cx + size / 2, cy - size / 2)
@@ -313,10 +229,6 @@ def sleeping_pair(p: QPainter, lk: Look, t: float = 0.0) -> None:
 
 
 # ======================================================================================= la escena del cielo de Inicio
-SIZE = 0.8          # cuanto se reducen los dibujos (unidades de dibujo -> unidades del cielo) para que quepan en el horizonte
-SLEEP_SIZE = 1.0
-
-
 def _blink(t: float, offset: float) -> float:
     """Un parpadeo rapido cada cuatro segundos y pico (0 con el cielo quieto: t = 0 es la imagen sin animar)."""
     if t <= 0.0:
@@ -329,26 +241,39 @@ def _tilt(t: float, offset: float, amount: float) -> float:
     return amount * max(0.0, math.sin(t * 0.45 + offset)) ** 3
 
 
+def _wag(t: float, speed: float, offset: float, amount: float) -> float:
+    """La cola se menea a rachas: un rato rapido y luego descansa."""
+    return math.sin(t * speed) * amount * max(0.0, math.sin(t * 0.8 + offset)) ** 0.5
+
+
+def _place(p: QPainter, ground: float, center_x: float) -> None:
+    p.translate(center_x, ground)
+    p.scale(UNIT, UNIT)
+    p.translate(-PAIR_CENTER_X, -GROUND_Y)
+
+
 def paint_day(p: QPainter, dark: bool, t: float, ground: float, center_x: float) -> None:
-    """Blitzen y Black sentados, de cara a quien mira: parpadean, mueven la cola, las orejas y ladean la cabeza."""
-    lk = look(dark)
+    """Blitzen y Black sentados, de cara a quien mira: parpadean, ladean la cabeza, Black mueve las orejas y los dos la cola."""
     p.save()
     p.setRenderHint(QPainter.RenderHint.Antialiasing)
-    for dx, draw, off, amount in ((-14.0, blitzen_sitting, 0.0, -7.0), (14.0, black_sitting, 1.7, 8.0)):
-        p.save()
-        p.translate(center_x + dx * SIZE, ground)
-        p.scale(SIZE, SIZE)
-        draw(p, lk, t, _blink(t, off), _tilt(t, off + 1.0, amount))
-        p.restore()
+    _place(p, ground, center_x)
+    _paint_dog(p, BLITZEN, closed=_blink(t, 0.0) > 0.5, tilt=_tilt(t, 1.0, -6.0), ear_angle=0.0,
+               tail_angle=_wag(t, 8.0, 0.0, 14.0), breath=1.0 + 0.008 * math.sin(t * 1.7))
+    ears = math.sin(t * 1.1 + 0.7) * 2.5 + max(0.0, math.sin(t * 0.7 + 2.0)) ** 8 * 7.0
+    _paint_dog(p, BLACK, closed=_blink(t, 1.7) > 0.5, tilt=_tilt(t, 2.7, 7.0), ear_angle=ears,
+               tail_angle=_wag(t, 8.5, 1.5, 18.0), breath=1.0 + 0.008 * math.sin(t * 1.9 + 1.0))
     p.restore()
 
 
 def paint_night(p: QPainter, dark: bool, t: float, ground: float, center_x: float) -> None:
-    """Los dos hechos un ovillo, Blitzen con la cabeza sobre Black, respirando y con sus z."""
-    lk = look(dark)
+    """Los dos dormidos, sentados uno junto al otro: ojos cerrados, respiracion lenta y honda, cabeceo suave y sus z."""
     p.save()
     p.setRenderHint(QPainter.RenderHint.Antialiasing)
-    p.translate(center_x, ground)
-    p.scale(SLEEP_SIZE, SLEEP_SIZE)
-    sleeping_pair(p, lk, t)
+    _place(p, ground, center_x)
+    nod = math.sin(t * 0.6)
+    _paint_dog(p, BLITZEN, closed=True, tilt=4.0 + 1.5 * nod, ear_angle=0.0, tail_angle=0.0,
+               breath=1.0 + 0.016 * math.sin(t * 1.2))
+    _paint_dog(p, BLACK, closed=True, tilt=-5.0 - 1.5 * math.sin(t * 0.6 + 1.3), ear_angle=-3.0,
+               tail_angle=0.0, breath=1.0 + 0.02 * math.sin(t * 1.5 + 1.1))
+    _paint_zs(p, t, 2120.0, 470.0, QColor("#F1E8D8") if dark else QColor("#17191D"))
     p.restore()

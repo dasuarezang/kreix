@@ -28,10 +28,36 @@ def test_every_pose_draws_something_at_any_moment_in_both_themes(qapp):
                 assert any(image.pixelColor(x, y).alpha() > 200 for x in range(0, 400, 7) for y in range(0, 300, 7)), (dark, kind, t)
 
 
-def test_the_dogs_wear_the_brand_fire_and_black_and_the_outline_follows_the_theme():
-    dark, light = dogs.look(True), dogs.look(False)
-    assert dark.fire.red() > 200 and dark.fire.green() < 130 and dark.coat.lightness() < 60 and light.coat.lightness() < 60
-    assert dark.line.lightness() > 200 and light.line.lightness() < 60       # el contorno los separa del fondo en cada tema
+@pytest.mark.parametrize("name", ["blitzen", "blitzen-dormido", "black", "black-dormido", "black-oreja-izq", "black-oreja-der"])
+def test_every_layer_of_the_illustration_ships_with_a_transparent_background(qapp, name):
+    image = dogs._layer(name, dogs.STORE)
+    assert not image.isNull() and image.hasAlphaChannel()
+    assert image.pixelColor(2, 2).alpha() == 0                              # recortado: la esquina es transparente
+
+
+def test_sleeping_closes_the_eyes_and_leaves_the_rest_of_the_dog_as_it_is(qapp):
+    for dog, eye in (("blitzen", (617, 438)), ("black", (1652, 870))):
+        awake, asleep = dogs._layer(dog, dogs.STORE), dogs._layer(dog + "-dormido", dogs.STORE)
+        origin = (dogs.BLITZEN if dog == "blitzen" else dogs.BLACK).origin
+        x, y = round((eye[0] - origin[0]) * dogs.STORE), round((eye[1] - origin[1]) * dogs.STORE)
+        assert awake.pixelColor(x, y) != asleep.pixelColor(x, y)
+        assert awake.pixelColor(x, awake.height() - 30) == asleep.pixelColor(x, asleep.height() - 30)
+
+
+def test_tilting_the_head_moves_the_head_and_never_the_paws(qapp):
+    def frame(tilt: float) -> QImage:
+        image = QImage(700, 600, QImage.Format.Format_ARGB32)
+        image.fill(0)
+        p = QPainter(image)
+        p.scale(0.4, 0.4)
+        p.translate(-100, -100)
+        dogs._paint_bent(p, dogs.BLITZEN, dogs._layer("blitzen", 0.4), 0.4, tilt)
+        p.end()
+        return image
+    still, tilted = frame(0.0), frame(7.0)
+    head_row, paw_row = round((500 - 100) * 0.4), round((1700 - 100) * 0.4)
+    row = lambda image, y: [image.pixelColor(x, y).rgba() for x in range(image.width())]   # noqa: E731
+    assert row(still, head_row) != row(tilted, head_row) and row(still, paw_row) == row(tilted, paw_row)
 
 
 def test_blinks_are_brief_and_the_still_sky_keeps_the_eyes_open():
