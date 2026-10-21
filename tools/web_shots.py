@@ -43,6 +43,22 @@ SCREENS = (
 )
 
 
+PHONE_CARD_W = 575                                               # ancho (px de la app) de la tarjeta de Inicio para movil
+
+
+def save_phone_card(card, path: Path) -> None:
+    """Captura la tarjeta de patrimonio con el ancho de un movil: sus textos se ven a su tamano real, no reducidos."""
+    card.setFixedWidth(PHONE_CARD_W)
+    QTest.qWait(1800)                                            # se recoloca y repinta el grafico
+    image = card.grab().toImage()
+    image.setDevicePixelRatio(1.0)
+    image.save(str(path), "webp", 85)
+    card.setMinimumWidth(0)
+    card.setMaximumWidth(16777215)
+    QTest.qWait(300)
+    print(f"  {path.name}: {image.width()} x {image.height()}", flush=True)
+
+
 def shoot(app: QApplication, lang: str, out: Path) -> None:
     tmp = Path(tempfile.mkdtemp())
     as_of = demo_data.build(tmp / "demo")
@@ -79,6 +95,9 @@ def shoot(app: QApplication, lang: str, out: Path) -> None:
             image.setDevicePixelRatio(1.0)
             full = image.scaled(*SIZE, Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation)
             full.save(str(out / f"{name}-{theme_name}.webp"), "webp", 88)
+            if page == "SUMMARY":                                # Inicio: la tarjeta, estrechada al ancho de un movil
+                save_phone_card(window.dashboard.card_net, out / f"m-{name}-{theme_name}.webp")   # (recortada no se leia)
+                continue
             x, y, w, h = crop                                    # el recorte para movil, a doble resolucion
             image.copy(QRect(2 * x, 2 * y, 2 * w, 2 * h)).save(str(out / f"m-{name}-{theme_name}.webp"), "webp", 85)
     window.close()
