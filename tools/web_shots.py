@@ -2,7 +2,7 @@
 ingles, con el tema oscuro y el claro, y sus recortes para movil.
 
 Uso:  python tools/web_shots.py RUTA/kreix-web/assets/shots
-Salida: <pantalla>-<tema>.webp (1280 x 860) y m-<pantalla>-<tema>.webp (el recorte para movil), en la carpeta de cada idioma
+Salida: <pantalla>-<tema>.webp (1280 x 860) y m-<pantalla>-<tema>.webp (el recorte para movil, a doble resolucion), en la carpeta de cada idioma
 (castellano en la raiz, catalan en ca/ e ingles en en/). Inicio sale de noche: con la luna y Blitzen y Black durmiendo.
 """
 from __future__ import annotations
@@ -15,13 +15,14 @@ from datetime import datetime
 from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+os.environ["QT_SCALE_FACTOR"] = "2"          # todo se pinta al doble: los recortes para movil salen nitidos en pantallas densas
 os.environ.setdefault("QT_QPA_FONTDIR", r"C:\Windows\Fonts")
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tools"))
 
-from PySide6.QtCore import QDate, QRect  # noqa: E402
+from PySide6.QtCore import QDate, QRect, Qt  # noqa: E402
 from PySide6.QtTest import QTest  # noqa: E402
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
@@ -74,10 +75,12 @@ def shoot(app: QApplication, lang: str, out: Path) -> None:
             if QApplication.focusWidget() is not None:           # ni el aro de foco de teclado en el primer boton
                 QApplication.focusWidget().clearFocus()
             QTest.qWait(50)
-            image = window.grab().toImage()
+            image = window.grab().toImage()                      # al doble de resolucion (QT_SCALE_FACTOR)
             image.setDevicePixelRatio(1.0)
-            image.save(str(out / f"{name}-{theme_name}.webp"), "webp", 88)
-            image.copy(QRect(*crop)).save(str(out / f"m-{name}-{theme_name}.webp"), "webp", 88)
+            full = image.scaled(*SIZE, Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation)
+            full.save(str(out / f"{name}-{theme_name}.webp"), "webp", 88)
+            x, y, w, h = crop                                    # el recorte para movil, a doble resolucion
+            image.copy(QRect(2 * x, 2 * y, 2 * w, 2 * h)).save(str(out / f"m-{name}-{theme_name}.webp"), "webp", 85)
     window.close()
     window.deleteLater()
 

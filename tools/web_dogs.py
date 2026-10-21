@@ -57,6 +57,8 @@ def main() -> None:
     dogs._paint_tail(p, dogs.BLACK.tail, 0.0)
     p.end()
     tail.save(str(out / "black-cola.webp"), "webp", 90)
+    # los dos senalando con la pata (la llamada a descargar): lo recorta tools/build_dogs.py
+    QImage(str(ROOT / "docs" / "art" / "recortes" / "senalando.png")).save(str(out / "senalando.webp"), "webp", 90)
 
     w, h = CANVAS[2] - CANVAS[0], CANVAS[3] - CANVAS[1]
     print(f"lienzo {tail.width()} x {tail.height()}")

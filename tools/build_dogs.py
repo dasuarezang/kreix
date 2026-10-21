@@ -10,6 +10,7 @@ Salida: assets/dogs/*.png
   relleno de debajo). Solo salen aparte los parpados (para la web) y la lengua de Blitzen, para jadear y relamerse.
 * De noche: los dos acurrucados, recortados de `perretesDurmiendo.jpg` por su contorno (las z, las rayitas y el logotipo de
   la ilustracion quedan fuera: las z se animan en la app).
+* Para la web, los dos senalando con la pata (`perretesSenalando.jpg`), con sus rayitas de emocion: en `docs/art/recortes/`.
 * Todas las capas de un perro comparten el mismo lienzo (mismo tamano y origen): se pintan una encima de otra sin recolocar.
 """
 from __future__ import annotations
@@ -24,7 +25,9 @@ from scipy import ndimage as ndi
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "docs" / "art" / "basePerretes.jpg"
 SLEEPING = ROOT / "docs" / "art" / "perretesDurmiendo.jpg"
+POINTING = ROOT / "docs" / "art" / "perretesSenalando.jpg"
 OUT = ROOT / "assets" / "dogs"
+OUT_WEB = ROOT / "docs" / "art" / "recortes"    # recortes que solo usa la web (no van en el programa)
 STORE = 0.35                # las capas se guardan al 35 % del original: de sobra para el tamano del cielo, incluso con pantallas HiDPI
 MARGIN = 40                 # margen del lienzo (px del original) alrededor de cada perro
 
@@ -153,6 +156,22 @@ def main() -> None:
     box = crop_box(pair)
     save(cutout(rgb, pair), box, "durmiendo.png")
     print(f"durmiendo: lienzo {tuple(int(v) for v in box)}")
+
+    # ---------------------------------------------------------------- los dos senalando (solo la web)
+    rgb = np.asarray(Image.open(POINTING).convert("RGB")).astype(np.float32)
+    lum = rgb.mean(axis=2)
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    cream = (lum > 130) & (r > g - 5) & (g > b - 5) & (r - b < 90) & (r - b > 8)    # su contorno es algo mas oscuro en la pata
+    labels, n = ndi.label(ndi.binary_fill_holes(cream))
+    sizes = ndi.sum(np.ones_like(lum), labels, range(1, n + 1))
+    order = np.argsort(sizes)[::-1]
+    keep = [int(i) + 1 for i in order[:2]] + [int(i) + 1 for i in order[2:40] if sizes[i] > 1500]   # los dos y sus rayitas
+    pair = np.isin(labels, keep)
+    box = crop_box(pair)
+    OUT_WEB.mkdir(parents=True, exist_ok=True)
+    piece = Image.fromarray(cutout(rgb, pair).astype(np.uint8), "RGBA").crop(box)
+    piece.resize((round(piece.width * 0.4), round(piece.height * 0.4)), Image.Resampling.LANCZOS).save(OUT_WEB / "senalando.png", optimize=True)
+    print(f"senalando: lienzo {tuple(int(v) for v in box)} (al 40 %)")
 
 
 if __name__ == "__main__":
