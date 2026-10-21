@@ -11,7 +11,7 @@ import time
 from dataclasses import dataclass
 
 from PySide6.QtCore import QEvent, QPointF, QRectF, QSize, Qt, QTimer
-from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen, QRadialGradient
+from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen, QTransform
 from PySide6.QtWidgets import QWidget
 
 from ui import theme
@@ -22,10 +22,13 @@ DAWN, DUSK = 6.0, 21.0            # el sol sale a las 6 y se pone a las 21
 LEAD_H = 1.25                     # (solo para el hundimiento de `_arc_point` fuera del recorrido: hoy no se usa)
 SUN_HIGH = QColor("#FFD23F")
 SUN_LOW = QColor("#FF8A3D")
-MOON = QColor("#F3EFE7")
+MOON = QColor("#F6E7B0")
 SUN_HIGH_LIGHT = QColor("#F2A100")        # en el tema claro los astros se oscurecen un poco para que se vean sobre el papel
 MOON_LIGHT = QColor("#7580C4")
 RADIUS = 8.5                       # radio del sol y de la luna
+STICKER_EDGE = dogs.CREAM          # el contorno de pegatina de Blitzen y Black, tambien para el sol, la luna, la nube y las estrellas
+STICKER_LINE = 0.62                # su grosor en unidades del cielo (el mismo que el de los perros a su tamano)
+CLOUD = QColor("#FFFFFF")
 FRAME_MS = 40                      # 25 imagenes por segundo: suficiente para un movimiento suave y barato
 
 
@@ -75,9 +78,8 @@ class SkyWidget(QWidget):
     W, H = 92, 50                   # tamano del dibujo en coordenadas logicas
     SCALE = 2.6                     # y cuanto se amplia en pantalla (rellena el hueco entre el saludo y las cuatro franjas)
     BASE = 46                       # la linea del horizonte
-    # El resplandor del sol llega mas lejos que el dibujo (radio 26 + el latido): si el widget acabara donde acaba el dibujo,
-    # la luz se cortaria en un cuadrado invisible. Por eso el widget es mas grande que el cielo y el cielo se pinta con este
-    # margen: la luz se apaga del todo antes de llegar al borde.
+    # El widget es algo mas grande que el cielo y el cielo se pinta con este margen: los rayos del sol, las estrellas, las z y
+    # los perros llegan cerca de los bordes y asi nunca se cortan.
     ARC_X0, ARC_X1 = 14.0, 33.0     # el astro recorre solo la parte izquierda: la derecha es de Blitzen y Black (no se tapan)
     PAD_X, PAD_TOP = 17, 12         # margen a izquierda/derecha y arriba (en coordenadas logicas)
 
@@ -212,68 +214,85 @@ class SkyWidget(QWidget):
             dogs.paint_night(p, dark, t, self.GROUND, center_x=77.0)
 
     def _paint_horizon(self, p: QPainter, pal) -> None:
+        """El suelo: una linea suave de lado a lado (llega tambien bajo los perros) y, bajo ellos, su sombra plana."""
         pen = QPen(_alpha(QColor(pal.muted), 0.35), 1.6)
         pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         p.setPen(pen)
-        p.drawLine(QPointF(6, self.BASE + 2), QPointF(self.W - 6, self.BASE + 2))
+        p.drawLine(QPointF(6, self.BASE + 2), QPointF(self.W + 12, self.BASE + 2))
+        if self._animated:
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor(255, 255, 255, 22) if pal.name == "dark" else QColor(0, 0, 0, 20))
+            p.drawEllipse(QPointF(77.0, self.GROUND + 0.4), 29.0, 1.9)
 
     def _elevation(self, center: QPointF) -> float:
-        """0 cuando el astro esta del todo bajo el horizonte y 1 cuando ya asoma por completo: sirve para que el brillo
-        y los rayos aparezcan poco a poco al salir y se apaguen al ponerse (sin 'dientes' sueltos sobre la linea)."""
+        """0 cuando el astro esta del todo bajo el horizonte y 1 cuando ya asoma por completo: sirve para que los rayos
+        crezcan poco a poco al salir y se recojan al ponerse (sin 'dientes' sueltos sobre la linea)."""
         return max(0.0, min(1.0, (self.BASE + RADIUS + 4 - center.y()) / (RADIUS * 2.4)))
 
+    @staticmethod
+    def _sticker(p: QPainter, path: QPainterPath, fill: QColor, alpha: float = 1.0) -> None:
+        """Una forma con el contorno crema de pegatina por fuera, como Blitzen y Black."""
+        edge = QPen(_alpha(STICKER_EDGE, alpha), STICKER_LINE * 2)
+        edge.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        p.setPen(edge)
+        p.setBrush(_alpha(STICKER_EDGE, alpha))
+        p.drawPath(path)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(_alpha(fill, alpha))
+        p.drawPath(path)
+
     def _paint_sun(self, p: QPainter, pal, progress: float, t: float, presence: float = 1.0) -> None:
+        """El sol como pegatina: disco y rayos gorditos en una sola forma, relleno plano y un brillo plano. Los rayos giran
+        despacio y laten; al salir y al ponerse se recogen."""
         inside = max(0.0, min(1.0, progress))
         low = 1 - math.sin(math.pi * inside) ** 0.55           # 0 a mediodia, 1 en el horizonte
         high = SUN_HIGH_LIGHT if pal.name == "light" else SUN_HIGH
         color = _mix(high, SUN_LOW, low * 1.15)
         center = self._arc_point(progress) + QPointF(0, math.sin(t * 1.3) * 1.3)   # un ligero vaiven
         radius = RADIUS
-
         vis = self._elevation(center)
-        pulse = 1 + 0.07 * math.sin(t * 2.2)
-        glow = QRadialGradient(center, 26 * pulse)
-        glow.setColorAt(0.0, _alpha(color, 0.55 * vis))
-        glow.setColorAt(0.45, _alpha(color, 0.16 * vis))
-        glow.setColorAt(1.0, _alpha(color, 0.0))
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(glow)
-        p.drawEllipse(center, 26 * pulse, 26 * pulse)
 
+        shape = QPainterPath()
+        shape.addEllipse(center, radius, radius)
         angle = t * 0.35                                       # los rayos giran muy despacio
-        ray = QPen(_alpha(color, 0.9 * vis), 2.2)
-        ray.setCapStyle(Qt.PenCapStyle.RoundCap)
-        p.setPen(ray)
-        for i in range(10):
-            a = angle + i * math.tau / 10
-            reach = 4.5 + 1.6 * math.sin(t * 2.2 + i * 0.9)
-            c, s = math.cos(a), math.sin(a)
-            p.drawLine(center + QPointF(c * (radius + 3.5), s * (radius + 3.5)),
-                       center + QPointF(c * (radius + 3.5 + reach), s * (radius + 3.5 + reach)))
-
-        disc = QRadialGradient(center - QPointF(2.5, 3), radius * 1.5)
-        disc.setColorAt(0.0, _mix(color, QColor("#FFFFFF"), 0.45))
-        disc.setColorAt(1.0, color)
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(disc)
-        p.drawEllipse(center, radius, radius)
+        for i in range(8):
+            a = angle + i * math.tau / 8
+            reach = (4.2 + 1.1 * math.sin(t * 2.2 + i * 0.9)) * vis
+            if reach < 0.4:
+                continue
+            ray = QPainterPath()
+            ray.addRoundedRect(QRectF(radius + 1.6, -1.25, reach, 2.5), 1.25, 1.25)
+            turn = QTransform()
+            turn.translate(center.x(), center.y())
+            turn.rotateRadians(a)
+            shape = shape.united(turn.map(ray))
+        self._sticker(p, shape, color)
+        shine = QPainterPath()                                 # el brillo: una media luna clara, plana, arriba a la izquierda
+        shine.addEllipse(center + QPointF(-2.6, -2.8), radius * 0.42, radius * 0.3)
+        p.setBrush(_mix(color, QColor("#FFFFFF"), 0.5))
+        p.drawPath(shine)
 
         self._paint_cloud(p, pal, t, presence)
 
     def _paint_cloud(self, p: QPainter, pal, t: float, presence: float = 1.0) -> None:
-        """Una nube suave cruza el cielo cada medio minuto, por delante del sol, y se funde en los bordes."""
+        """Una nube de pegatina cruza el cielo cada medio minuto, por delante del sol, y aparece y se va por los bordes."""
         span = self.W + 44
         x = ((t * 3.2) % span) - 28
         fade = max(0.0, min(1.0, (x + 6) / 18, (self.W - x - 20) / 18)) * presence
         if fade <= 0:
             return
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QColor(255, 255, 255, round(70 * fade)))
-        for dx, dy, r in ((4, 0, 4.5), (10, -3, 5.5), (17, -1, 4.8), (23, 0, 3.8)):
-            p.drawEllipse(QPointF(x + dx, 15 + dy), r, r)
-        p.drawRoundedRect(QRectF(x, 15, 26, 5), 2.5, 2.5)
+        cloud = QPainterPath()
+        for dx, dy, r in ((4, 0, 4.0), (10, -3, 5.0), (17, -1, 4.4), (23, 0, 3.4)):
+            puff = QPainterPath()
+            puff.addEllipse(QPointF(x + dx, 15 + dy), r, r)
+            cloud = cloud.united(puff)
+        base = QPainterPath()
+        base.addRoundedRect(QRectF(x, 15, 26, 4.4), 2.2, 2.2)
+        cloud = cloud.united(base)
+        self._sticker(p, cloud, CLOUD, fade)
 
     def _paint_moon(self, p: QPainter, pal, progress: float, t: float, presence: float = 1.0) -> None:
+        """La luna como pegatina (creciente plano con dos crateres) y estrellas de cuatro puntas que titilan."""
         moon_color = MOON_LIGHT if pal.name == "light" else MOON
         center = self._arc_point(progress, 24 - DUSK + DAWN) + QPointF(0, math.sin(t * 1.0) * 1.2)
         radius = RADIUS
@@ -283,26 +302,22 @@ class SkyWidget(QWidget):
 
         stars = ((6, 10, 0.0), (38, 10, 1.7), (52, 6, 3.1), (45, 22, 4.4), (38, 32, 5.2))
         for x, y, shift in stars:
-            twinkle = 0.25 + 0.75 * (0.5 + 0.5 * math.sin(t * 1.8 + shift)) ** 2
-            size = 1.6 + 0.9 * twinkle
-            pen = QPen(_alpha(moon_color, twinkle * 0.9 * night_fade), 1.2)
-            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-            p.setPen(pen)
-            p.drawLine(QPointF(x - size, y), QPointF(x + size, y))
-            p.drawLine(QPointF(x, y - size), QPointF(x, y + size))
-
-        vis = self._elevation(center)
-        glow = QRadialGradient(center, 24)
-        glow.setColorAt(0.0, QColor(130, 150, 240, round(90 * vis)))
-        glow.setColorAt(1.0, QColor(130, 150, 240, 0))
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(glow)
-        p.drawEllipse(center, 24, 24)
+            twinkle = 0.5 + 0.5 * math.sin(t * 1.8 + shift)
+            size = 1.7 + 1.1 * twinkle
+            sparkle = QPainterPath()                           # cuatro puntas: los lados se curvan hacia dentro
+            tips = ((x, y - size), (x + size, y), (x, y + size), (x - size, y))
+            sparkle.moveTo(*tips[0])
+            for i in range(4):
+                nx, ny = tips[(i + 1) % 4]
+                sparkle.quadTo(QPointF(x, y), QPointF(nx, ny))
+            self._sticker(p, sparkle, moon_color, (0.45 + 0.55 * twinkle) * night_fade)
 
         moon = QPainterPath()
         moon.addEllipse(center, radius, radius)
         bite = QPainterPath()
         bite.addEllipse(center + QPointF(4.2, -2.6), radius * 0.86, radius * 0.86)
         crescent = moon.subtracted(bite)
-        p.setBrush(moon_color)
-        p.drawPath(crescent)
+        self._sticker(p, crescent, moon_color)
+        p.setBrush(_mix(moon_color, QColor("#000000"), 0.12))  # dos crateres planos
+        for dx, dy, r in ((-5.0, 1.8, 1.2), (-2.2, 5.2, 0.9)):
+            p.drawEllipse(center + QPointF(dx, dy), r, r)
