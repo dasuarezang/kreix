@@ -34,7 +34,7 @@ EYES = {
     "black": [(1652, 870, 68, 60), (1945, 867, 68, 60)],
 }
 BLITZEN_AXIS = 762          # el eje de simetria de la cara de Blitzen
-BLITZEN_FACE = (762, 500, 322, 365)          # elipse de la cara (centro y radios)
+UNDER_EAR_MARGIN = 60      # bajo las orejas de Blitzen hay pelo en todo el perro salvo esta franja junto al borde: al girar no se abre rendija
 _BLITZEN_LEFT_EAR = [(575, 120), (420, 130), (300, 170), (200, 240), (140, 380), (100, 560), (60, 700), (70, 860), (100, 980),
                      (150, 1080), (250, 1150), (380, 1140), (520, 1085), (575, 990), (505, 900), (452, 800), (432, 660),
                      (442, 520), (470, 380), (575, 260)]
@@ -42,7 +42,6 @@ BLITZEN_EARS = {
     "izq": _BLITZEN_LEFT_EAR,
     "der": [(2 * BLITZEN_AXIS - x, y) for x, y in _BLITZEN_LEFT_EAR],
 }
-BLITZEN_SHOULDERS = [(470, 840), (1054, 840), (1130, 1000), (1200, 1180), (1250, 1420), (274, 1420), (324, 1180), (394, 1000)]   # el cuerpo bajo las orejas
 BLITZEN_TONGUE = (700, 690, 825, 795)        # la caja de la lengua
 BLACK_HEAD = (1798, 900, 262, 268)            # elipse de la cabeza de Black (centro y radios)
 BLACK_EARS = {
@@ -173,8 +172,7 @@ def main() -> None:
     box = crop_box(blitzen_mask)
     full = cutout(rgb, blitzen_mask).astype(np.uint8)
     asleep_full = close_eyes(full, rgb, EYES["blitzen"])
-    face = ellipse(shape, *BLITZEN_FACE)
-    under = blitzen_mask & (face | polygon(shape, BLITZEN_SHOULDERS))
+    under = ndi.distance_transform_edt(blitzen_mask) > UNDER_EAR_MARGIN   # todo el perro salvo la franja del borde exterior
     fur = ring_color(rgb, 762, 980, 90, 60)
     tongue_box = np.zeros(shape[:2], bool)
     x0, y0, x1, y1 = BLITZEN_TONGUE
