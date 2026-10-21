@@ -763,8 +763,8 @@ class DonutChart(BaseChart):
         self._geometry = (center, radius, thickness)
 
         hover = self._hover_slice()
-        # extremos redondeados solo si todos los trozos son grandes; con trozos pequenos, planos (si no, se pisan)
-        rounded = len(self._slices) == 1 or all(float(s.weight) >= 0.10 for s in self._slices)
+        # extremos siempre planos: trozos de corte limpio, como el resto de barras (los redondeados parecian pildoras)
+        rounded = False
         cap = math.degrees(thickness / 2 / max(radius, 1)) if rounded else 0.0
         gap = 0.0 if len(self._slices) == 1 else (2 * cap + 3.0 if rounded else 2.4)
         start = 0.0

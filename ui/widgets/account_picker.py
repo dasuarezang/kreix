@@ -8,7 +8,7 @@ from __future__ import annotations
 from functools import partial
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QCheckBox, QPushButton, QWidgetAction
+from PySide6.QtWidgets import QCheckBox, QPushButton, QStyle, QStyleOptionButton, QStylePainter, QWidgetAction
 
 from ui.popups import Menu
 from core.i18n import tr, trn
@@ -145,3 +145,19 @@ class AccountPicker(QPushButton):
 
     def _refresh_label(self) -> None:
         self.setText(self.label_text())
+
+    # ------------------------------------------------------------------ pintado
+    TEXT_LEFT, TEXT_RIGHT = 16, 40                         # los mismos margenes que el padding de la hoja de estilos
+
+    def paintEvent(self, _event) -> None:
+        """Qt ignora el padding izquierdo de un boton con menu y texto a la izquierda: el texto quedaba pegado al filo.
+        Se pinta el boton sin texto (fondo, filo y flecha) y el texto aparte, con su margen."""
+        painter = QStylePainter(self)
+        option = QStyleOptionButton()
+        self.initStyleOption(option)
+        text, option.text = option.text, ""
+        painter.drawControl(QStyle.ControlElement.CE_PushButton, option)
+        rect = self.rect().adjusted(self.TEXT_LEFT, 0, -self.TEXT_RIGHT, 0)
+        painter.setPen(option.palette.color(option.palette.ColorRole.ButtonText))
+        painter.drawText(rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+                         self.fontMetrics().elidedText(text, Qt.TextElideMode.ElideRight, rect.width()))

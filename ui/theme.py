@@ -231,21 +231,22 @@ QLabel#Pill[state="error"] {{ color: {p.red}; }}
 
 /* ---------------------------------------------------------------- botones */
 QPushButton {{
-    background: {p.surface_alt}; color: {p.text}; border: none; border-radius: 6px;
-    padding: 11px 22px; font-family: {bold}; font-size: 13px; outline: none;
+    background: {p.surface_alt}; color: {p.text}; border: 1px solid {p.field_edge}; border-radius: 6px;
+    padding: 10px 21px; font-family: {bold}; font-size: 13px; outline: none;
 }}
-QPushButton:hover {{ background: {p.hover}; }}
-QPushButton[kbd="true"]:focus {{ border: 2px solid {p.accent}; padding: 8px 18px; outline: none; }}
-QPushButton:disabled {{ color: {p.muted}; }}
-QPushButton#Primary {{ background: {p.accent}; color: {p.on_accent}; padding: 12px 26px; }}
-QPushButton#Primary:hover {{ background: {p.accent_hover}; }}
-QPushButton#Primary:disabled {{ background: {p.surface_alt}; color: {p.muted}; }}
-QPushButton#Arrow {{ padding: 6px 12px; font-size: 16px; }}
+/* el filo de 1 px separa el boton secundario del fondo (en claro, sin el, se pierde); el padding compensa el filo */
+QPushButton:hover {{ background: {p.hover}; border-color: {p.muted}; }}
+QPushButton[kbd="true"]:focus {{ border: 2px solid {p.accent}; padding: 9px 20px; outline: none; }}
+QPushButton:disabled {{ color: {p.muted}; border-color: {p.border}; }}
+QPushButton#Primary {{ background: {p.accent}; color: {p.on_accent}; border-color: {p.accent}; padding: 11px 25px; }}
+QPushButton#Primary:hover {{ background: {p.accent_hover}; border-color: {p.accent_hover}; }}
+QPushButton#Primary:disabled {{ background: {p.surface_alt}; color: {p.muted}; border-color: {p.border}; }}
+QPushButton#Arrow {{ padding: 5px 11px; font-size: 16px; }}
 QLabel#LockError {{ color: {p.red}; font-family: {medium}; }}
 QPushButton#LinkButton {{ background: transparent; color: {p.muted}; border: none; padding: 8px 10px 8px 2px; min-width: 170px; text-decoration: underline; }}
 QPushButton#LinkButton:hover {{ color: {p.red}; }}
 QPushButton#BackButton {{
-    background: transparent; color: {p.muted}; padding: 6px 14px 6px 8px; border-radius: 6px;
+    background: transparent; color: {p.muted}; border: none; padding: 6px 14px 6px 8px; border-radius: 6px;
 }}
 QPushButton#BackButton:hover {{ background: {p.hover}; color: {p.text}; }}
 
@@ -322,11 +323,11 @@ QLabel#DemoBannerText {{ color: {p.text}; font-family: {bold}; font-size: 13px; 
 QFrame#Toast {{ background: {p.surface}; border: 1px solid {rgba(p.accent, 0.6)}; border-radius: 6px; }}
 QFrame#Toast QLabel {{ background: transparent; font-family: {medium}; font-size: 13px; color: {p.text}; }}
 QPushButton#ToastAction {{
-    background: {p.accent}; color: {p.on_accent}; padding: 7px 16px; border-radius: 6px; font-size: 12px;
+    background: {p.accent}; color: {p.on_accent}; border: none; padding: 7px 16px; border-radius: 6px; font-size: 12px;
 }}
 QPushButton#ToastAction:hover {{ background: {p.accent_hover}; }}
 QPushButton#ToastClose {{
-    background: transparent; color: {p.muted}; padding: 2px 10px; font-size: 18px; border-radius: 6px;
+    background: transparent; color: {p.muted}; border: none; padding: 2px 10px; font-size: 18px; border-radius: 6px;
 }}
 QPushButton#ToastClose:hover {{ background: {p.hover}; color: {p.text}; }}
 
@@ -339,7 +340,7 @@ QFrame#DropZone QLabel {{ background: transparent; }}
 
 /* ---------------------------------------------------------------- entradas */
 QLineEdit {{ lineedit-password-character: 8226; }}
-QPushButton#AccountPicker {{ text-align: left; padding: 9px 40px 9px 16px; }}
+QPushButton#AccountPicker {{ text-align: left; padding: 8px 39px 8px 15px; }}
 QMenu QCheckBox#PickerBox {{ padding: 9px 22px 9px 14px; spacing: 12px; background: transparent; color: {p.text}; font-family: {medium}; font-size: 13px; }}
 QMenu QCheckBox#PickerBox:hover {{ background: {p.hover}; border-radius: 4px; }}
 QMenu QCheckBox#PickerBox::indicator {{ width: 18px; height: 18px; border-radius: 3px; border: 1px solid {p.muted}; background: {p.surface}; }}
