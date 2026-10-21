@@ -29,6 +29,7 @@ import demo_data  # noqa: E402
 from main import build_window  # noqa: E402
 
 SIZE = (1280, 860)
+NAME = "Blitzen"                                             # el nombre del saludo de Inicio
 NIGHT = datetime.now().replace(hour=22, minute=54, second=0, microsecond=0)   # hoy (el dia de los datos importados), de noche
 LANGUAGES = {"es": "", "ca": "ca", "en": "en"}
 # (nombre del archivo, pagina, recorte para movil: x, y, ancho, alto)
@@ -52,7 +53,7 @@ def shoot(app: QApplication, lang: str, out: Path) -> None:
     window = build_window(db, "demo")
     window.clock = window.dashboard.clock = lambda: NIGHT
     window.show()
-    window._apply_user_name("Ana", announce=False)             # nombre inventado para el saludo de Inicio
+    window._apply_user_name(NAME, announce=False)
     window.resize(*SIZE)
 
     window.navigate(window.IMPORT)                               # importar los extractos de demostracion: Importar

@@ -25,7 +25,7 @@ MOMENTS = (                                  # (rotulo, de dia o de noche, t)
     ("reposo", "day", 0.0),
     ("parpadeo", "day", 4.32),
     ("se relame", "day", 7.45),
-    ("orejas y cola", "day", 9.6),
+    ("cola", "day", 9.6),
     ("noche", "night", 1.0),
     ("noche, z", "night", 3.0),
 )

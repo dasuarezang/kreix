@@ -1,11 +1,11 @@
 """Blitzen y Black en el cielo de Inicio, sacados tal cual de su ilustracion (`docs/art/basePerretes.jpg`).
 
 `tools/build_dogs.py` recorta a cada perro por su contorno crema de pegatina y guarda en `assets/dogs/` sus capas: el perro
-con los ojos abiertos y con los ojos cerrados, las orejas aparte, la lengua de Blitzen y los dos durmiendo. Aqui se animan:
+con los ojos abiertos y con los ojos cerrados, la lengua de Blitzen y los dos durmiendo. Aqui se animan:
 
-* De dia, sentados y tal cual su ilustracion: solo se mueven sus partes. Parpadean y mueven las orejas; Blitzen jadea con
-  la lengua y de vez en cuando se relame; Black menea la cola (dibujada con el mismo estilo de pegatina, porque la
-  ilustracion no la ensena).
+* De dia, sentados y tal cual su ilustracion, enteros (sin cortes: las orejas no se mueven porque al separarlas se veian los
+  cortes). Parpadean; Blitzen jadea con la lengua y de vez en cuando se relame; Black menea la cola (dibujada con el mismo
+  estilo de pegatina, porque la ilustracion no la ensena).
 * De noche, acurrucados, tal cual los dibuja su segunda ilustracion (`docs/art/perretesDurmiendo.jpg`), con unas z que
   salen de cada uno.
 
@@ -56,13 +56,6 @@ def smooth(points: list[Point], closed: bool = True, tension: float = 1.0) -> QP
 
 
 @dataclass(frozen=True, slots=True)
-class Ear:
-    layer: str
-    pivot: Point            # donde nace la oreja (gira desde ahi)
-    side: int               # -1 izquierda, 1 derecha: las dos se abren a la vez
-
-
-@dataclass(frozen=True, slots=True)
 class Tail:
     anchor: Point           # donde nace, escondida detras del cuerpo
     shape: tuple[Point, ...]    # el contorno, relativo al nacimiento
@@ -74,19 +67,16 @@ class Tail:
 class Dog:
     name: str
     origin: Point           # esquina del lienzo de sus capas, en la ilustracion
-    ears: tuple[Ear, ...]
     tail: Tail | None = None
     tongue: Point | None = None     # donde nace la lengua (arriba, en la boca)
 
 
 BLITZEN = Dog(
     "blitzen", (166, 86),
-    (Ear("blitzen-oreja-izq", (500, 230), -1), Ear("blitzen-oreja-der", (1024, 230), 1)),
     tongue=(762, 703),
 )
 BLACK = Dog(
     "black", (1301, 537),
-    (Ear("black-oreja-izq", (1600, 650), -1), Ear("black-oreja-der", (1996, 650), 1)),
     Tail((2090, 1600),
          ((0, 0), (40, -50), (88, -102), (122, -112), (126, -78), (90, -24), (40, 34)),
          (((30, -30), (70, -72)),),
@@ -157,44 +147,35 @@ def _paint_tail(p: QPainter, tail: Tail, angle: float) -> None:
     p.restore()
 
 
-def _compose(dog: Dog, scale: float, closed: bool, ear_angle: float, tongue: tuple[float, float] = (1.0, 0.0)) -> QImage:
-    """El perro de esta imagen: su capa (ojos abiertos o cerrados), la lengua (estirada `tongue[0]` veces y girada
-    `tongue[1]` grados desde la boca) y, encima, las orejas giradas."""
+def _compose(dog: Dog, scale: float, closed: bool, tongue: tuple[float, float] = (1.0, 0.0)) -> QImage:
+    """El perro de esta imagen: su capa (ojos abiertos o cerrados) y, si se mueve, la lengua (estirada `tongue[0]` veces y
+    girada `tongue[1]` grados desde la boca)."""
     base = _layer(dog.name + ("-dormido" if closed else ""), scale)
+    if dog.tongue is None or (tongue[0] <= 1.001 and abs(tongue[1]) <= 0.1):
+        return base                                         # quieto: la ilustracion tal cual
     frame = QImage(base.size(), QImage.Format.Format_ARGB32_Premultiplied)
     frame.fill(0)
     q = QPainter(frame)
     q.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
     q.setRenderHint(QPainter.RenderHint.Antialiasing)
     q.drawImage(0, 0, base)
-    if dog.tongue is not None and (tongue[0] > 1.001 or abs(tongue[1]) > 0.1):
-        tx, ty = (dog.tongue[0] - dog.origin[0]) * scale, (dog.tongue[1] - dog.origin[1]) * scale
-        q.save()
-        q.translate(tx, ty)
-        q.rotate(tongue[1])
-        q.scale(1.0 + (tongue[0] - 1.0) * 0.25, tongue[0])
-        q.translate(-tx, -ty)
-        q.drawImage(0, 0, _layer(f"{dog.name}-lengua", scale))
-        q.restore()
-    for ear in dog.ears:
-        px, py = (ear.pivot[0] - dog.origin[0]) * scale, (ear.pivot[1] - dog.origin[1]) * scale
-        q.save()
-        q.translate(px, py)
-        q.rotate(ear.side * ear_angle)
-        q.translate(-px, -py)
-        q.drawImage(0, 0, _layer(ear.layer, scale))
-        q.restore()
+    tx, ty = (dog.tongue[0] - dog.origin[0]) * scale, (dog.tongue[1] - dog.origin[1]) * scale
+    q.translate(tx, ty)
+    q.rotate(tongue[1])
+    q.scale(1.0 + (tongue[0] - 1.0) * 0.25, tongue[0])
+    q.translate(-tx, -ty)
+    q.drawImage(0, 0, _layer(f"{dog.name}-lengua", scale))
     q.end()
     return frame
 
 
-def _paint_sitting(p: QPainter, dog: Dog, *, closed: bool, ear_angle: float, tail_angle: float = 0.0,
+def _paint_sitting(p: QPainter, dog: Dog, *, closed: bool, tail_angle: float = 0.0,
                    tongue: tuple[float, float] = (1.0, 0.0)) -> None:
-    """Un perro sentado, tal cual su ilustracion: solo se mueven sus partes (parpados, orejas, lengua y cola)."""
+    """Un perro sentado, tal cual su ilustracion: solo se mueven sus parpados, la lengua y la cola."""
     if dog.tail is not None:
         _paint_tail(p, dog.tail, tail_angle)
     scale = min(_device_scale(p), STORE * 2)                # nunca mas grande que el doble de lo guardado
-    image = _compose(dog, scale, closed, ear_angle, tongue)
+    image = _compose(dog, scale, closed, tongue)
     p.save()
     p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
     p.drawImage(QRectF(dog.origin[0], dog.origin[1], image.width() / scale, image.height() / scale), image)
@@ -254,16 +235,12 @@ def _place(p: QPainter, ground: float, center_x: float) -> None:
 
 
 def paint_day(p: QPainter, dark: bool, t: float, ground: float, center_x: float) -> None:
-    """Blitzen y Black sentados, de cara a quien mira: parpadean y mueven las orejas; Blitzen jadea y se relame, y Black
-    menea la cola."""
+    """Blitzen y Black sentados, de cara a quien mira: parpadean; Blitzen jadea y se relame, y Black menea la cola."""
     p.save()
     p.setRenderHint(QPainter.RenderHint.Antialiasing)
     _place(p, ground, center_x)
-    _paint_sitting(p, BLITZEN, closed=_blink(t, 0.0) > 0.5,
-                   ear_angle=math.sin(t * 1.3) * 2.2, tongue=_tongue(t))
-    ears = math.sin(t * 1.1 + 0.7) * 2.5 + max(0.0, math.sin(t * 0.7 + 2.0)) ** 8 * 7.0
-    _paint_sitting(p, BLACK, closed=_blink(t, 1.7) > 0.5, ear_angle=ears,
-                   tail_angle=_wag(t, 8.5, 1.5, 20.0))
+    _paint_sitting(p, BLITZEN, closed=_blink(t, 0.0) > 0.5, tongue=_tongue(t))
+    _paint_sitting(p, BLACK, closed=_blink(t, 1.7) > 0.5, tail_angle=_wag(t, 8.5, 1.5, 20.0))
     p.restore()
 
 

@@ -2,7 +2,7 @@
 
 Uso:  python tools/web_dogs.py RUTA/kreix-web/assets/perretes
 Salida: una imagen WebP por capa, todas del mismo tamano y sobre el mismo lienzo (la ilustracion basePerretes, de x=130 a 2330
-y de y=60 a 1790, al 35 %): se apilan en la web sin recolocarlas y cada parte gira desde su punto (ver PIVOTS).
+y de y=60 a 1790, al 35 %): se apilan en la web sin recolocarlas (la lengua y la cola se mueven desde el punto que se imprime).
 """
 from __future__ import annotations
 
@@ -25,14 +25,10 @@ SCALE = dogs.STORE
 # (archivo de la web, capa de la app, perro)
 LAYERS = (
     ("blitzen", "blitzen", dogs.BLITZEN),
-    ("blitzen-ojos", "blitzen-dormido", dogs.BLITZEN),
+    ("blitzen-ojos", "blitzen-parpados", dogs.BLITZEN),     # solo los parpados: encima del perro, sin duplicar sus bordes
     ("blitzen-lengua", "blitzen-lengua", dogs.BLITZEN),
-    ("blitzen-oreja-izq", "blitzen-oreja-izq", dogs.BLITZEN),
-    ("blitzen-oreja-der", "blitzen-oreja-der", dogs.BLITZEN),
     ("black", "black", dogs.BLACK),
-    ("black-ojos", "black-dormido", dogs.BLACK),
-    ("black-oreja-izq", "black-oreja-izq", dogs.BLACK),
-    ("black-oreja-der", "black-oreja-der", dogs.BLACK),
+    ("black-ojos", "black-parpados", dogs.BLACK),
 )
 
 
@@ -64,9 +60,7 @@ def main() -> None:
 
     w, h = CANVAS[2] - CANVAS[0], CANVAS[3] - CANVAS[1]
     print(f"lienzo {tail.width()} x {tail.height()}")
-    for label, (x, y) in (("blitzen oreja izq", dogs.BLITZEN.ears[0].pivot), ("blitzen oreja der", dogs.BLITZEN.ears[1].pivot),
-                          ("blitzen lengua", dogs.BLITZEN.tongue), ("black oreja izq", dogs.BLACK.ears[0].pivot),
-                          ("black oreja der", dogs.BLACK.ears[1].pivot), ("black cola", dogs.BLACK.tail.anchor)):
+    for label, (x, y) in (("blitzen lengua", dogs.BLITZEN.tongue), ("black cola", dogs.BLACK.tail.anchor)):
         print(f"{label}: transform-origin {100 * (x - CANVAS[0]) / w:.2f}% {100 * (y - CANVAS[1]) / h:.2f}%")
 
 

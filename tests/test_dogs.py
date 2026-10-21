@@ -28,9 +28,8 @@ def test_every_pose_draws_something_at_any_moment_in_both_themes(qapp):
                 assert any(image.pixelColor(x, y).alpha() > 200 for x in range(0, 400, 7) for y in range(0, 300, 7)), (dark, kind, t)
 
 
-@pytest.mark.parametrize("name", ["blitzen", "blitzen-dormido", "blitzen-oreja-izq", "blitzen-oreja-der",
-                                  "blitzen-lengua", "black", "black-dormido", "black-oreja-izq",
-                                  "black-oreja-der", "durmiendo"])
+@pytest.mark.parametrize("name", ["blitzen", "blitzen-dormido", "blitzen-parpados", "blitzen-lengua",
+                                  "black", "black-dormido", "black-parpados", "durmiendo"])
 def test_every_layer_of_the_illustration_ships_with_a_transparent_background(qapp, name):
     image = dogs._layer(name, dogs.STORE)
     assert not image.isNull() and image.hasAlphaChannel()
