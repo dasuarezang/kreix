@@ -1,4 +1,4 @@
-"""Recorta a Blitzen y Black de la ilustracion `docs/art/basePerretes.jpg` y genera las capas que anima el cielo de Inicio.
+"""Recorta a Blitzen y Black de sus ilustraciones (`docs/art/`) y genera las capas que anima el cielo de Inicio.
 
 Uso:  python tools/build_dogs.py            (necesita Pillow, numpy y scipy: solo para regenerar, la app no los usa)
 Salida: assets/dogs/*.png
@@ -8,8 +8,8 @@ Salida: assets/dogs/*.png
   con la linea del ojo cerrado), para parpadear y para dormir.
 * Las orejas salen en capas aparte, para que se muevan; debajo, la cabeza y el cuerpo se rellenan con su pelo.
 * La lengua de Blitzen sale aparte, para jadear y relamerse.
-* Para dormir acurrucados: la cabeza de cada uno (con sus orejas y los ojos cerrados), sin el cuerpo, con el contorno
-  crema cerrado por donde se corta.
+* De noche: los dos acurrucados, recortados de `perretesDurmiendo.jpg` por su contorno (las z, las rayitas y el logotipo de
+  la ilustracion quedan fuera: las z se animan en la app).
 * Todas las capas de un perro comparten el mismo lienzo (mismo tamano y origen): se pintan una encima de otra sin recolocar.
 """
 from __future__ import annotations
@@ -23,10 +23,10 @@ from scipy import ndimage as ndi
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "docs" / "art" / "basePerretes.jpg"
+SLEEPING = ROOT / "docs" / "art" / "perretesDurmiendo.jpg"
 OUT = ROOT / "assets" / "dogs"
 STORE = 0.35                # las capas se guardan al 35 % del original: de sobra para el tamano del cielo, incluso con pantallas HiDPI
 MARGIN = 40                 # margen del lienzo (px del original) para que las orejas y la cabeza puedan moverse sin cortarse
-OUTLINE = 22                # grosor del contorno crema de la ilustracion
 
 # Coordenadas en pixeles de la ilustracion original (2400 x 1792).
 EYES = {
@@ -148,30 +148,6 @@ def split_ears(layer: np.ndarray, ears: dict[str, list[tuple[float, float]]], un
     return base, pieces
 
 
-def over(bottom: np.ndarray, top: np.ndarray) -> np.ndarray:
-    """`top` encima de `bottom` (RGBA de 0 a 255)."""
-    a = top[..., 3:4] / 255.0
-    out = bottom.astype(np.float32).copy()
-    out[..., :3] = top[..., :3] * a + bottom[..., :3] * (1 - a)
-    out[..., 3:4] = top[..., 3:4] + bottom[..., 3:4] * (1 - a)
-    return out.astype(np.uint8)
-
-
-def head_only(layer: np.ndarray, keep: np.ndarray, silhouette: np.ndarray, cream: np.ndarray) -> np.ndarray:
-    """La cabeza sola: fuera lo que no es `keep`, y por donde se corta (dentro de la silueta original) un contorno crema nuevo,
-    del mismo grosor que el de la ilustracion."""
-    out = layer.copy()
-    out[~keep, 3] = 0
-    solid = out[..., 3] > 127
-    distance = ndi.distance_transform_edt(~solid)
-    rim = (distance > 0) & (distance <= OUTLINE + 1) & silhouette
-    alpha = np.clip(OUTLINE + 1 - distance, 0.0, 1.0)
-    fresh = rim & (out[..., 3] < 255)
-    out[fresh, :3] = cream
-    out[fresh, 3] = np.maximum(out[fresh, 3], (alpha[fresh] * 255).astype(np.uint8))
-    return out
-
-
 def crop_box(mask: np.ndarray) -> tuple[int, int, int, int]:
     ys, xs = np.nonzero(mask)
     return xs.min() - MARGIN, ys.min() - MARGIN, xs.max() + MARGIN + 1, ys.max() + 1
@@ -196,7 +172,6 @@ def main() -> None:
     # ---------------------------------------------------------------- Blitzen
     box = crop_box(blitzen_mask)
     full = cutout(rgb, blitzen_mask).astype(np.uint8)
-    cream = cream_of(rgb, blitzen_mask)
     asleep_full = close_eyes(full, rgb, EYES["blitzen"])
     face = ellipse(shape, *BLITZEN_FACE)
     under = blitzen_mask & (face | polygon(shape, BLITZEN_SHOULDERS))
@@ -217,14 +192,11 @@ def main() -> None:
         if not suffix:
             for side, piece in ears.items():
                 save(piece, box, f"blitzen-oreja-{side}.png")
-    keep = ((face & (yy < 875)) | polygon(shape, BLITZEN_EARS["izq"]) | polygon(shape, BLITZEN_EARS["der"])) & blitzen_mask
-    save(head_only(asleep_full, keep, blitzen_mask, cream), box, "blitzen-cabeza.png")
     print(f"blitzen: lienzo {tuple(int(v) for v in box)}")
 
     # ---------------------------------------------------------------- Black
     box = crop_box(black_mask)
     full = cutout(rgb, black_mask).astype(np.uint8)
-    cream = cream_of(rgb, black_mask)
     asleep_full = close_eyes(full, rgb, EYES["black"])
     head = ellipse(shape, *BLACK_HEAD)
     fur = ring_color(rgb, BLACK_HEAD[0], BLACK_HEAD[1] - 120, 120, 90)
@@ -234,9 +206,14 @@ def main() -> None:
         if not suffix:
             for side, piece in ears.items():
                 save(piece, box, f"black-oreja-{side}.png")
-    keep = (head | polygon(shape, BLACK_EARS["izq"]) | polygon(shape, BLACK_EARS["der"]) | (yy < 860)) & black_mask
-    save(head_only(asleep_full, keep, black_mask, cream), box, "black-cabeza.png")
     print(f"black: lienzo {tuple(int(v) for v in box)}")
+
+    # ---------------------------------------------------------------- los dos durmiendo
+    rgb = np.asarray(Image.open(SLEEPING).convert("RGB")).astype(np.float32)
+    pair = max(silhouettes(rgb), key=lambda m: m.sum())
+    box = crop_box(pair)
+    save(cutout(rgb, pair), box, "durmiendo.png")
+    print(f"durmiendo: lienzo {tuple(int(v) for v in box)}")
 
 
 if __name__ == "__main__":

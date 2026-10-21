@@ -1,14 +1,13 @@
 """Blitzen y Black en el cielo de Inicio, sacados tal cual de su ilustracion (`docs/art/basePerretes.jpg`).
 
 `tools/build_dogs.py` recorta a cada perro por su contorno crema de pegatina y guarda en `assets/dogs/` sus capas: el perro
-con los ojos abiertos y con los ojos cerrados, las orejas aparte, la lengua de Blitzen y, para dormir, la cabeza de cada uno
-sola. Aqui se animan:
+con los ojos abiertos y con los ojos cerrados, las orejas aparte, la lengua de Blitzen y los dos durmiendo. Aqui se animan:
 
 * De dia, sentados: parpadean, ladean la cabeza (la imagen se dobla por encima del cuello) y mueven las orejas. Blitzen
   jadea con la lengua y de vez en cuando se relame; Black menea la cola (dibujada con el mismo estilo de pegatina, porque
   la ilustracion no la ensena).
-* De noche, acurrucados: dos lomos tumbados, con el estilo de pegatina, y encima las cabezas dormidas; la de Blitzen
-  apoyada sobre Black. Respiran despacio y suben unas z.
+* De noche, acurrucados, tal cual los dibuja su segunda ilustracion (`docs/art/perretesDurmiendo.jpg`), con unas z que
+  salen de cada uno.
 
 Coordenadas: las de la ilustracion original en pixeles (2400 x 1792). El cielo las reduce con `UNIT` y las apoya en el
 horizonte por la base de las patas (`GROUND_Y`).
@@ -31,8 +30,6 @@ PAIR_CENTER_X = 1221.0      # el centro de la pareja en la ilustracion: el cielo
 
 FUR = QColor(49, 49, 57)            # el pelo negro de la ilustracion
 FUR_LIGHT = QColor(88, 92, 108)     # sus mechones claros
-FIRE = QColor(214, 98, 40)          # el fuego de las patas
-PAW = QColor(160, 160, 166)         # la punta gris de las patas de Black
 CREAM = QColor(232, 216, 192)       # el contorno de pegatina
 OUTLINE = 23.0                      # su grosor en la ilustracion
 
@@ -98,23 +95,12 @@ BLACK = Dog(
          -6.0),
 )
 
-# La escena de noche: dos lomos tumbados (con el estilo de pegatina de la ilustracion) y las cabezas dormidas encima.
-BLITZEN_BACK = ((300, 1759), (280, 1600), (360, 1390), (540, 1220), (800, 1140), (1080, 1150), (1340, 1240), (1560, 1420),
-                (1660, 1600), (1670, 1759))
-BLITZEN_BACK_STRANDS = (((470, 1360), (620, 1280), (790, 1250)), ((400, 1560), (540, 1470), (720, 1440)),
-                        ((960, 1250), (1130, 1290), (1280, 1380)))
-BLITZEN_SLEEP_TAIL = Tail((360, 1700),                       # el penacho, tendido en el suelo y con la punta hacia arriba
-                          ((0, 0), (-80, -40), (-180, -60), (-270, -110), (-320, -180), (-300, -235), (-268, -192),
-                           (-245, -220), (-238, -160), (-198, -150), (-212, -110), (-150, -100), (-130, -40), (-60, 40)),
-                          (((-60, -20), (-160, -45), (-250, -100)), ((-120, -60), (-210, -90), (-280, -160))),
-                          0.0)
-BLACK_BACK = ((1330, 1759), (1320, 1610), (1400, 1460), (1580, 1350), (1830, 1310), (2080, 1335), (2290, 1430),
-              (2420, 1590), (2440, 1759))
-BLACK_BACK_STRANDS = (((1560, 1450), (1720, 1395), (1880, 1385)),)
-BLACK_PAWS = ((1965, 1735), (2190, 1735))                    # las patas delanteras, asomando bajo la barbilla
-NIGHT_SHIFT = -130.0        # acurrucados ocupan mas ancho que sentados: un poco a la izquierda, sin acercarse a la luna
-BLITZEN_HEAD_REST = ((1480, 1400), 0.92, 11.0)               # (donde queda la barbilla, escala, giro): sobre el lomo de Black
-BLACK_HEAD_REST = ((2080, 1705), 0.82, -4.0)                 # apoyada en sus patas
+# De noche, la ilustracion de los dos acurrucados (`perretesDurmiendo.jpg`), con sus propias medidas.
+SLEEP_ORIGIN = (47, 105)            # esquina de su capa en esa ilustracion
+SLEEP_GROUND = 1492.0               # la base de la pegatina
+SLEEP_CENTER_X = 1382.0             # su centro: el cielo lo coloca en `center_x`
+SLEEP_UNIT = 0.0205                 # unidades del cielo por pixel: ocupan lo mismo de ancho que sentados
+SLEEP_ZS = ((1690.0, 300.0, 1.0, 0.0), (2170.0, 780.0, 0.8, 1.7))   # de donde salen las z: (x, y, tamano, desfase)
 
 _layers: dict[str, QImage] = {}
 _scaled: dict[tuple[str, int], QImage] = {}
@@ -246,63 +232,25 @@ def _paint_sitting(p: QPainter, dog: Dog, *, closed: bool, tilt: float, ear_angl
     p.restore()
 
 
-def _paint_head(p: QPainter, dog: Dog, rest: tuple[Point, float, float], lift: float) -> None:
-    """La cabeza dormida de un perro, con la barbilla en `rest` (escalada y girada), subiendo `lift` al respirar."""
-    (x, y), size, angle = rest
-    p.save()
-    p.translate(x, y - lift)
-    p.rotate(angle)
-    p.scale(size, size)
-    p.translate(-dog.chin[0], -dog.chin[1])
-    scale = min(_device_scale(p), STORE * 2)
-    image = _layer(f"{dog.name}-cabeza", scale)
-    p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
-    p.drawImage(QRectF(dog.origin[0], dog.origin[1], image.width() / scale, image.height() / scale), image)
-    p.restore()
-
-
-def _paint_back(p: QPainter, points, strands, breath: float) -> None:
-    """Un lomo tumbado que respira (sube y baja desde el suelo)."""
-    p.save()
-    p.translate(0, GROUND_Y)
-    p.scale(1.0, breath)
-    p.translate(0, -GROUND_Y)
-    _sticker(p, smooth(list(points)), FUR)
-    _strands(p, strands)
-    p.restore()
-
-
-def _paint_paws(p: QPainter) -> None:
-    """Las puntas grises de las patas delanteras de Black, asomando bajo su barbilla."""
-    for x, y in BLACK_PAWS:
-        paw = QPainterPath()
-        paw.addRoundedRect(QRectF(x - 62, y - 30, 124, 54), 27, 27)
-        _sticker(p, paw, PAW)
-        toe = QPen(QColor(100, 100, 108), 7)
-        toe.setCapStyle(Qt.PenCapStyle.RoundCap)
-        p.setPen(toe)
-        for dx in (-22, 22):
-            p.drawLine(QPointF(x + dx, y - 6), QPointF(x + dx, y + 18))
-        p.setPen(Qt.PenStyle.NoPen)
-
-
-def _paint_zs(p: QPainter, t: float, x: float, y: float, color: QColor) -> None:
-    """Unas z que suben y se desvanecen."""
-    for k, (size, delay) in enumerate(((60.0, 0.0), (85.0, 1.6))):
-        phase = (t * 0.35 + delay / 3.2) % 1.0
+def _paint_zs(p: QPainter, t: float, x: float, y: float, size: float, color: QColor) -> None:
+    """Unas z que salen de la cabeza de un perro dormido, una cada poco: suben en diagonal, crecen y se desvanecen (z z Z)."""
+    every, life = 1.1, 3.3
+    for k in range(3):
+        u = ((t + k * every) % life) / life                   # 0 al salir, 1 al desvanecerse
         c = QColor(color)
-        c.setAlphaF(0.85 * math.sin(math.pi * phase) ** 1.5)
-        pen = QPen(c, 18)
+        c.setAlphaF(0.9 * math.sin(math.pi * u) ** 1.2)
+        side = (40 + 90 * u) * size
+        pen = QPen(c, side * 0.2)
         pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
         p.setPen(pen)
         p.setBrush(Qt.BrushStyle.NoBrush)
-        cx, cy = x + phase * 150 + k * 75, y - phase * 250
+        cx, cy = x + u * 260 * size, y - u * 330 * size
         z = QPainterPath()
-        z.moveTo(cx - size / 2, cy - size / 2)
-        z.lineTo(cx + size / 2, cy - size / 2)
-        z.lineTo(cx - size / 2, cy + size / 2)
-        z.lineTo(cx + size / 2, cy + size / 2)
+        z.moveTo(cx - side / 2, cy - side / 2)
+        z.lineTo(cx + side / 2, cy - side / 2)
+        z.lineTo(cx - side / 2, cy + side / 2)
+        z.lineTo(cx + side / 2, cy + side / 2)
         p.drawPath(z)
 
 
@@ -356,19 +304,17 @@ def paint_day(p: QPainter, dark: bool, t: float, ground: float, center_x: float)
 
 
 def paint_night(p: QPainter, dark: bool, t: float, ground: float, center_x: float) -> None:
-    """Los dos acurrucados: Blitzen detras, con la cabeza apoyada sobre el lomo de Black, y Black delante, con la cabeza
-    sobre sus patas. Respiran despacio (los lomos suben y bajan, y las cabezas con ellos) y suben unas z."""
+    """Los dos acurrucados, tal cual los dibuja su ilustracion, con unas z que salen de cada uno."""
     p.save()
     p.setRenderHint(QPainter.RenderHint.Antialiasing)
-    _place(p, ground, center_x)
-    p.translate(NIGHT_SHIFT, 0)
-    big = 0.022 * math.sin(t * 1.2)
-    small = 0.028 * math.sin(t * 1.5 + 1.1)
-    _paint_tail(p, BLITZEN_SLEEP_TAIL, -math.sin(t * 1.2) * 3.0)
-    _paint_back(p, BLITZEN_BACK, BLITZEN_BACK_STRANDS, 1.0 + big)
-    _paint_back(p, BLACK_BACK, BLACK_BACK_STRANDS, 1.0 + small)
-    _paint_head(p, BLITZEN, BLITZEN_HEAD_REST, (GROUND_Y - 1310) * small)      # sube y baja con el lomo de Black
-    _paint_head(p, BLACK, BLACK_HEAD_REST, (GROUND_Y - 1310) * small * 0.3)
-    _paint_paws(p)
-    _paint_zs(p, t, 1250.0, 400.0, QColor("#F1E8D8") if dark else QColor("#17191D"))
+    p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+    p.translate(center_x, ground)
+    p.scale(SLEEP_UNIT, SLEEP_UNIT)
+    p.translate(-SLEEP_CENTER_X, -SLEEP_GROUND)
+    scale = min(_device_scale(p), STORE * 2)
+    image = _layer("durmiendo", scale)
+    p.drawImage(QRectF(SLEEP_ORIGIN[0], SLEEP_ORIGIN[1], image.width() / scale, image.height() / scale), image)
+    color = CREAM if dark else QColor("#17191D")
+    for x, y, size, offset in SLEEP_ZS:
+        _paint_zs(p, t + offset, x, y, size, color)
     p.restore()
