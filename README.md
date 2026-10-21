@@ -282,6 +282,17 @@ Decisiones de diseño relevantes:
 .venv\Scripts\python tools\screenshots.py  # regenera las capturas del README
 ```
 
+Blitzen y Black salen de sus ilustraciones (`docs/art/`). `tools/build_dogs.py` las recorta en las capas que anima el programa (`assets/dogs/`; necesita Pillow, numpy y scipy, que el programa no usa) y `tools/dogs_preview.py` dibuja una hoja con los momentos de la animación.
+
+La web de descarga y guía vive en otro repositorio, [kreix-web](https://github.com/dasuarezang/kreix-web). Sus imágenes salen de aquí:
+
+```powershell
+.venv\Scripts\python tools\web_shots.py ..\kreix-web\assets\shots       # capturas en 3 idiomas, 2 temas y recortes para móvil
+.venv\Scripts\python tools\web_dogs.py ..\kreix-web\assets\perretes     # los perros de la portada y de la llamada a descargar
+```
+
+El instalador (`packaging\build.ps1`, con Inno Setup 6) se publica como *release* de kreix-web, que es desde donde se descarga.
+
 El programa empaquetado se comprueba con `Kreix.exe --selftest informe.txt` (sin ventana: recorre las páginas en los tres idiomas y escribe `OK` o el error).
 
 Para medir el rendimiento con un volumen grande de datos inventados (nunca toca tus datos):
