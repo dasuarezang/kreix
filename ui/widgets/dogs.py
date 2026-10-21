@@ -6,7 +6,7 @@ con la cara y las proporciones de cada perro:
 * Blitzen, cavalier king charles negro y fuego: cabeza redondeada, orejas largas y onduladas, ojos grandes, cejas de fuego,
   mejillas de fuego y la sonrisa con la puntita de la lengua.
 * Black, un perrito negro y fuego esbelto: orejas cortas plegadas hacia delante, ojos grandes con las cejas inclinadas, hocico
-  de fuego y el collar crema con su anilla.
+  de fuego y el collar amarillo del logotipo. Blitzen lleva el rojo.
 
 Cada cabeza se dibuja con una sola funcion (origen en el centro de la cabeza) y se usa igual de pie y durmiendo: las orejas son
 las mismas, solo se tumban hacia los lados cuando duermen. Como los perros son negros, el contorno toma el color del texto del tema
@@ -58,14 +58,19 @@ class Look:
     paw: QColor         # la punta clara de las patas de Black
     tongue: QColor
     grey: QColor        # la perilla gris de Black
+    collar_red: QColor      # collar de Blitzen: el rojo del logotipo
+    collar_yellow: QColor   # collar de Black: el amarillo del logotipo
+    blush: QColor           # rubor de las mejillas
 
 
 def look(dark: bool) -> Look:
     if dark:
         return Look(QColor("#F1E8D8"), QColor("#2A2F38"), QColor("#3C424E"), QColor("#1D2128"), QColor("#E5652B"), QColor("#F08A4B"),
-                    QColor("#F4EEDF"), QColor("#14110F"), QColor("#0B0B0D"), QColor("#D8DCE3"), QColor("#E98A8A"), QColor("#9AA0AB"))
+                    QColor("#F4EEDF"), QColor("#14110F"), QColor("#0B0B0D"), QColor("#D8DCE3"), QColor("#E98A8A"), QColor("#9AA0AB"),
+                    QColor("#E03131"), QColor("#F2A900"), QColor(255, 118, 138, 150))
     return Look(QColor("#17191D"), QColor("#2A2E36"), QColor("#474D59"), QColor("#1E2127"), QColor("#D4571F"), QColor("#E8793A"),
-                QColor("#F8F2E4"), QColor("#14110F"), QColor("#0B0B0D"), QColor("#E4E7EC"), QColor("#E98A8A"), QColor("#9097A3"))
+                QColor("#F8F2E4"), QColor("#14110F"), QColor("#0B0B0D"), QColor("#E4E7EC"), QColor("#E98A8A"), QColor("#9097A3"),
+                QColor("#C92A2A"), QColor("#F2B400"), QColor(240, 120, 130, 125))
 
 
 LINE_W = 1.0
@@ -112,16 +117,14 @@ class Pen:
         self.p.restore()
 
     def eye(self, x: float, y: float, r: float, closed: float = 0.0) -> None:
-        """Un ojo redondo con parpado superior y dos brillos. `closed` de 0 (abierto) a 1 (cerrado: un arco, como en la referencia)."""
+        """Un ojo redondo y brillante con dos destellos. `closed` de 0 (abierto) a 1 (cerrado: un arco, como en la referencia)."""
         if closed >= 0.85:
             self.line([(x - r * 1.05, y + 0.1), (x, y + r * 0.7), (x + r * 1.05, y + 0.1)], width=self.width * 0.85)
             return
         ry = r * (1 - closed * 0.85)
         self.ellipse(x, y, r, ry, self.lk.eye)
-        self.ellipse(x - r * 0.3, y - ry * 0.35, r * 0.3, r * 0.3, QColor("#FFFFFF"))
-        self.ellipse(x + r * 0.4, y + ry * 0.33, r * 0.13, r * 0.13, QColor(255, 255, 255, 170))
-        self.line([(x - r * 1.12, y - ry * 0.3), (x - r * 0.4, y - ry * 1.12), (x + r * 0.5, y - ry * 1.12), (x + r * 1.12, y - ry * 0.3)],
-                  width=self.width * 0.8)
+        self.ellipse(x - r * 0.28, y - ry * 0.32, r * 0.38, r * 0.38 * (ry / r), QColor("#FFFFFF"))
+        self.ellipse(x + r * 0.38, y + ry * 0.35, r * 0.17, r * 0.17 * (ry / r), QColor(255, 255, 255, 190))
 
 
 # ======================================================================================= cabezas (origen: el centro de la cabeza)
@@ -134,6 +137,10 @@ _BLITZEN_EAR_LINES = [[(11.2, -2.6), (12.4, 4.6), (12.0, 11.6)], [(9.8, 1.0), (1
 def blitzen_head(pen: Pen, lk: Look, blink: float = 0.0, smile: float = 1.0, ear_swing: float = 0.0, ear_lay: float = 0.0) -> None:
     """Cabeza redondeada con las orejas largas. `ear_lay` (grados) tumba las orejas hacia los lados, como al dormir."""
     p = pen.p
+    # collar rojo, debajo de la cabeza y de las orejas: asoma bajo la barbilla, con su chapita
+    pen.shape([(-6.8, 7.4), (-3.6, 9.8), (0, 10.4), (3.6, 9.8), (6.8, 7.4), (6.4, 10.4), (3.4, 12.6), (0, 13.2), (-3.4, 12.6), (-6.4, 10.4)],
+              lk.collar_red, width=0.8)
+    pen.ellipse(0, 14.2, 1.15, 1.15, lk.collar_yellow, outline=True, width=0.55)
     for sx in (-1, 1):
         p.save()
         p.translate(sx * 7.4, -7.0)                              # las orejas giran desde donde nacen
@@ -149,8 +156,9 @@ def blitzen_head(pen: Pen, lk: Look, blink: float = 0.0, smile: float = 1.0, ear
     pen.shape(sym([(0, 2.0), (2.8, 2.6), (5.2, 4.4), (5.6, 7.2), (3.6, 9.2), (0, 9.8)]), lk.fire_soft, outline=False)
     # cejas de fuego y ojos grandes
     for sx in (-1, 1):
-        pen.ellipse(sx * 4.4, -3.6, 1.85, 1.1, lk.fire, angle=sx * -10)
-        pen.eye(sx * 3.9, -0.6, 1.8, blink)
+        pen.ellipse(sx * 4.4, -4.4, 1.7, 1.0, lk.fire, angle=sx * 12)
+        pen.ellipse(sx * 6.6, 2.6, 1.5, 0.85, lk.blush)
+        pen.eye(sx * 3.9, -0.7, 2.15, blink)
     # nariz, philtrum y boca con la lengua
     pen.shape([(-2.7, 3.6), (0, 2.8), (2.7, 3.6), (2.0, 5.8), (0, 6.6), (-2.0, 5.8)], lk.nose, outline=False)
     pen.ellipse(-0.8, 3.8, 0.6, 0.34, QColor(255, 255, 255, 150))
@@ -173,16 +181,16 @@ def black_head(pen: Pen, lk: Look, blink: float = 0.0, ear_swing: float = 0.0) -
         pen.line([(sx * 7.2, -6.0), (sx * 9.0, -2.2), (sx * 9.6, 0.4)], width=0.4)
         p.restore()
     pen.shape(sym([(0, -7.6), (5.6, -6.6), (8.6, -2.0), (8.0, 3.4), (4.6, 6.8), (0, 7.6)]), lk.coat)
-    pen.line([(-2.2, -5.2), (0, -5.8), (2.2, -5.2)], width=0.4)                  # arruga de la frente
     # hocico de fuego
     pen.shape(sym([(0, -0.6), (3.6, 0.2), (5.0, 3.0), (3.6, 5.8), (0, 6.8)]), lk.fire_soft, outline=False)
     for sx in (-1, 1):
         p.save()
-        p.translate(sx * 3.4, -4.0)
-        p.rotate(sx * -12)
-        pen.ellipse(0, 0, 1.5, 0.95, lk.fire)
+        p.translate(sx * 3.5, -4.9)
+        p.rotate(sx * 12)
+        pen.ellipse(0, 0, 1.4, 0.85, lk.fire)
         p.restore()
-        pen.eye(sx * 3.5, -2.0, 1.7, blink)
+        pen.ellipse(sx * 6.0, 1.6, 1.3, 0.75, lk.blush)
+        pen.eye(sx * 3.5, -2.1, 2.0, blink)
     pen.shape([(-2.4, 0.4), (0, -0.4), (2.4, 0.4), (1.7, 2.4), (0, 3.1), (-1.7, 2.4)], lk.nose, outline=False)
     pen.ellipse(-0.6, 0.6, 0.55, 0.32, QColor(255, 255, 255, 150))
     pen.line([(0, 3.1), (0, 4.2)], width=0.5)
@@ -202,9 +210,6 @@ def blitzen_sitting(p: QPainter, lk: Look, t: float = 0.0, blink: float = 0.0, t
     p.restore()
     # cuerpo sentado: cuello, hombros, costillas y grupa
     pen.shape([(-5.6, -28), (-9.0, -23), (-11.0, -15), (-13.6, -5), (-12.6, -0.4), (0, 0.6), (12.6, -0.4), (13.6, -5), (11.0, -15), (9.0, -23), (5.6, -28)], lk.coat)
-    # el pelo largo del pecho: tres mechones
-    for dx, h in ((-5.2, 4.2), (0.0, 5.0), (5.2, 4.2)):
-        pen.line([(dx - 1.9, -17.5), (dx - 0.7, -17.5 + h * 0.85), (dx, -17.5 + h), (dx + 0.7, -17.5 + h * 0.85), (dx + 1.9, -17.5)], width=0.55)
     # patas delanteras de fuego
     for sx in (-1, 1):
         pen.shape([(sx * 1.8, -15), (sx * 5.8, -15), (sx * 6.4, -6), (sx * 6.5, -1.6), (sx * 5.2, 0.2), (sx * 2.2, 0.2), (sx * 1.2, -1.6), (sx * 1.0, -6)], lk.fire)
@@ -215,7 +220,6 @@ def blitzen_sitting(p: QPainter, lk: Look, t: float = 0.0, blink: float = 0.0, t
     p.translate(0, -28.0)
     p.rotate(tilt)
     p.translate(0, 28.0)
-    pen.shape([(-6.0, -29.5), (0, -27.4), (6.0, -29.5), (4.6, -27.0), (0, -25.6), (-4.6, -27.0)], lk.shade, outline=False)   # sombra bajo la barbilla
     p.translate(0, -39.0)
     blitzen_head(pen, lk, blink=blink, smile=1.0, ear_swing=math.sin(t * 1.3) * 1.8)
     p.restore()
@@ -248,10 +252,10 @@ def black_sitting(p: QPainter, lk: Look, t: float = 0.0, blink: float = 0.0, til
     p.translate(0, -24.8)
     black_head(pen, lk, blink=blink, ear_swing=math.sin(t * 1.1 + 0.7) * 2.2 + max(0.0, math.sin(t * 0.7 + 2.0)) ** 8 * 6.0)
     p.restore()
-    # collar claro con su anilla
+    # collar amarillo con su chapita
     pen.shape([(-6.6, -18.4), (-3.4, -16.4), (0, -15.8), (3.4, -16.4), (6.6, -18.4), (6.3, -16.2), (3.2, -14.2), (0, -13.6), (-3.2, -14.2), (-6.3, -16.2)],
-              lk.cream, width=0.8)
-    pen.ellipse(0.6, -13.4, 1.0, 1.0, QColor(0, 0, 0, 0), outline=True, width=0.6)
+              lk.collar_yellow, width=0.8)
+    pen.ellipse(0, -12.6, 1.05, 1.05, lk.collar_red, outline=True, width=0.55)
 
 
 # ======================================================================================= los dos durmiendo, juntos
@@ -287,7 +291,7 @@ def sleeping_pair(p: QPainter, lk: Look, t: float = 0.0) -> None:
     p.scale(0.8, 0.8)
     black_head(pen, lk, blink=1.0)
     p.restore()
-    pen.shape([(3.4, -2.6), (7.0, -1.8), (10.0, -1.5), (13.0, -1.8), (16.6, -2.6), (16.2, -0.6), (10.0, 0.0), (3.8, -0.6)], lk.cream, width=0.7)
+    pen.shape([(3.4, -2.6), (7.0, -1.8), (10.0, -1.5), (13.0, -1.8), (16.6, -2.6), (16.2, -0.6), (10.0, 0.0), (3.8, -0.6)], lk.collar_yellow, width=0.7)
     # unas z que suben
     for k, (size, delay) in enumerate(((2.4, 0.0), (3.4, 1.6))):
         phase = (t * 0.35 + delay / 3.2) % 1.0
