@@ -41,7 +41,7 @@ def main() -> None:
     fonts.setup_application(app)
     window = build_window(f"sqlite:///{tmp / 'demo.db'}", "demo")
     window.show()
-    window._apply_user_name("Ana", announce=False)             # nombre inventado para el saludo de Inicio
+    window._apply_user_name("Blitzen", announce=False)         # el saludo de Inicio, para Blitzen
 
     def shot(name: str) -> None:
         QTest.qWait(1800)  # espera a que terminen las animaciones de los graficos
