@@ -3,3 +3,4 @@ openpyxl>=3.1
 PySide6-Essentials>=6.8
 cryptography>=43
 xlrd>=2.0
+segno>=1.6

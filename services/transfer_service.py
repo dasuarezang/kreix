@@ -40,7 +40,7 @@ DB_ENTRY, MANIFEST_ENTRY = "kreix.db", "manifest.json"
 MAX_DB_BYTES = 1 << 30            # 1 GB
 MAX_MANIFEST_BYTES = 1 << 20      # 1 MB
 REQUIRED_TABLES = {"accounts", "transactions", "investments", "investment_operations", "valuations", "settings"}
-APP_VERSION = "0.5.0"
+APP_VERSION = "0.6.0"
 
 
 class TransferError(ValueError):

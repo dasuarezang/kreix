@@ -92,6 +92,19 @@ class ExportView(QWidget):
         what.add_field(tr("Cómo llevarlo a otro ordenador"),
                        tr("Importar un archivo .kreix reemplaza los datos que hubiera en ese ordenador."), steps_box)
 
+        self.qr_button = QPushButton(tr("Mostrar el código QR"))
+        self.qr_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.qr_button.clicked.connect(self.show_qr)
+        qr_row = QHBoxLayout()
+        qr_row.setContentsMargins(0, 0, 0, 0)
+        qr_row.addWidget(self.qr_button)
+        qr_row.addStretch(1)
+        qr_box = QWidget()
+        qr_box.setLayout(qr_row)
+        what.add_field(tr("Pasar al móvil"),
+                       tr("Copia todos tus datos a la app de Kreix del móvil con un código QR que se lee con la cámara, sin "
+                          "cables ni conexión. Lo que llegue reemplaza los datos que hubiera en el móvil."), qr_box)
+
         body = QWidget()
         body.setObjectName("Page")
         col = QVBoxLayout(body)
@@ -193,6 +206,17 @@ class ExportView(QWidget):
         self._status.setText(text)
         self._status.setProperty("state", state)
         repolish(self._status)
+
+    def show_qr(self) -> None:
+        """El codigo QR animado para la app movil (cifrado con la contrasena maestra si hay almacen cifrado)."""
+        if self._service.summary().is_empty:
+            self._set_status(tr(NO_DATA), "error")
+            return
+        from ui.qr_dialog import QrTransferDialog
+
+        dialog = QrTransferDialog(self._service, self._seal, self)
+        dialog.exec()
+        dialog.deleteLater()
 
     def suggested_name(self) -> str:
         return f"kreix-datos-{date.today().isoformat()}{EXTENSION}"

@@ -212,6 +212,8 @@ def selftest(report: Path) -> int:
                 raise RuntimeError("no se pudo dibujar el logotipo")
             if not localized_entries():
                 raise RuntimeError("falta la ayuda")
+            from ui.qr_dialog import QrCode                  # "Pasar al movil": segno tiene que ir en el paquete
+            QrCode().set_data(b"kreix")
             window.close()
             window.deleteLater()
         report.write_text("OK\n", encoding="utf-8")

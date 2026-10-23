@@ -20,6 +20,8 @@
 
 ## Qué hace
 
+- **También en el móvil.** Kreix tiene app para Android y iPhone (`pwa/`): la misma lógica de este repositorio ejecutándose en el navegador con Pyodide, con la interfaz adaptada al móvil. Se instala desde la web, funciona sin conexión y guarda los datos cifrados en el móvil con el mismo formato `.krx`. **Datos > Exportar > Pasar al móvil** muestra un código QR animado que la app lee con la cámara para llevarse todos los datos, sin cables ni conexión (`core/qr_transfer.py`). Se construye con `.venv/Scripts/python tools/build_pwa.py`, que la deja en `../kreix-web/app/`.
+
 - **Importa extractos arrastrándolos a la ventana.** Kreix detecta el banco y el tipo de archivo por las cabeceras, no por el nombre ni la extensión, y **te enseña lo que ha leído antes de guardar nada**: cuántos movimientos, de qué fechas, cuántos son nuevos y cuántos ya estaban.
 - **Pensado para no perderse:** una guía de tres pasos la primera vez, datos de ejemplo para explorar sin importar nada, una lista de primeros pasos en Inicio, una frase bajo cada gráfico que dice lo que cuenta y errores que explican qué hacer.
 - **Todo se confirma y se puede deshacer:** cada cambio importante avisa con un mensaje breve y un botón **Deshacer** (importar, categorías, reglas, presupuestos, borrados...).

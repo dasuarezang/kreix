@@ -6,9 +6,15 @@ from PySide6.QtWidgets import QFrame, QLabel, QPushButton, QScrollArea, QVBoxLay
 from core.i18n import tr, N_
 from ui.widgets.brand_dialog import BrandDialog
 
-VERSION = "0.5.0"
+VERSION = "0.6.0"
 
 RELEASES: dict[str, tuple[tuple[str, str], ...]] = {
+    "0.6.0": (
+        (N_("Kreix en el móvil"),
+         N_("Kreix tiene app para Android y iPhone: se instala desde la web de Kreix, funciona sin conexión y guarda tus datos cifrados en el móvil.")),
+        (N_("Pasar al móvil"),
+         N_("En Exportar, «Pasar al móvil» muestra un código QR animado que la app del móvil lee con la cámara: tus datos pasan del ordenador al móvil sin cables ni conexión.")),
+    ),
     "0.5.0": (
         (N_("Sueldo y muchos más comercios"),
          N_("Kreix reconoce muchos más comercios, recibos y trámites, separa tu sueldo de otros ingresos y deja menos movimientos sin categoría.")),
