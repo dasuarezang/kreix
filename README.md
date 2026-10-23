@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <b><a href="https://dasuarezang.github.io/kreix-web/">Descargar para Windows y guía de uso</a></b>
+  <b><a href="https://dasuarezang.github.io/kreix-web/">Descargar para Windows y guía de uso</a></b>  ·  <b><a href="https://dasuarezang.github.io/kreix-web/app/">App para el móvil</a></b>
 </p>
 
 > Las capturas usan datos de demostración inventados (`tools/demo_data.py`).
@@ -58,9 +58,9 @@ Arriba a la izquierda están las tres vistas de tus datos; abajo, con su icono, 
 | **Cuentas** | Todo lo de tus cuentas bancarias: saldo, ingresos, gastos, tasa de ahorro, gasto medio, mayor gasto y categoría principal; gastos por categoría, evolución del saldo, ingresos y gastos por mes; presupuestos, pagos recurrentes y la tabla de movimientos. |
 | **Inversiones** | Todo lo de tu cartera: valor, aportado, plusvalía, rentabilidad (TWR y TIR), distribución por fondo, aportado frente a valor, evolución de cada fondo, posiciones actuales y operaciones. |
 | **Datos > Importar** | Arrastra extractos y elige a qué cuenta pertenecen. También restaura un archivo `.kreix`. |
-| **Datos > Exportar** | Guarda todos tus datos en un único archivo `.kreix`, cifrado con tu contraseña maestra si quieres, para hacer una copia o llevarlos a otro ordenador. |
+| **Datos > Exportar** | Guarda todos tus datos en un único archivo `.kreix`, cifrado con tu contraseña maestra si quieres, para hacer una copia o llevarlos a otro ordenador. **Pasar al móvil** los copia a la app del móvil con un código QR animado que se lee con la cámara. |
 | **Ajustes** | Organizados en tarjetas por tema: tu nombre, idioma y lo que te interesa; ambiente y cálculo del ahorro; reglas de categorías; seguridad (cambiar la contraseña, bloqueo automático y bloquear ahora); copias de seguridad (carpeta, cuántas conservar, restaurar); tus datos (ubicación, borrar todo) y novedades. |
-| **Ayuda** | Qué significa cada cifra y cada gráfico, explicado sin tecnicismos y con ejemplos. |
+| **Ayuda** | Qué significa cada cifra y cada gráfico, explicado sin tecnicismos y con ejemplos. Cada término se despliega al pulsarlo. |
 
 Atajos: `Ctrl+H` oculta o muestra las cantidades, `Ctrl+1` a `Ctrl+7` cambian de página en el orden de la tabla (Importar y Exportar, que viven bajo *Datos*, son `Ctrl+4` y `Ctrl+5`), `Ctrl+K` busca en todo, `Ctrl+T` alterna el modo claro y oscuro, `Ctrl+F` va al buscador de movimientos, `Ctrl+L` bloquea Kreix y `F5` recalcula la página.
 
@@ -100,7 +100,7 @@ Atajos: `Ctrl+H` oculta o muestra las cantidades, `Ctrl+1` a `Ctrl+7` cambian de
 
 **Detalles que ayudan.** Junto a las cifras principales (patrimonio, rendimiento, tasa de ahorro, saldo, ingresos, gastos, valor de la cartera...) hay un «?» que abre su explicación en la Ayuda. Bajo el patrimonio de Inicio, una línea en verde o rojo dice cuánto ha subido o bajado frente al cierre del mes anterior. Los desplegables y menús llevan flecha, las páginas vacías llevan el icono de Kreix y las franjas de marca, los primeros pasos tienen barra de avance, y todos los cuadros de diálogo comparten el mismo fondo, título y tarjeta.
 
-**Ayuda.** Un menú de seis temas (Tu dinero de un vistazo, Tus cuentas bancarias, Tus inversiones, Rentabilidad, Avisos y Usar Kreix); cada botón abre su sección y una flecha vuelve al menú. Es un glosario para quien no sabe de finanzas: patrimonio neto, tasa de ahorro, valor liquidativo, plusvalía, TWR, TIR y el resto de términos que muestra Kreix. Cada término es una tarjeta con su explicación sencilla y, debajo, filas separadas con cómo lo calcula Kreix, un ejemplo, un aviso (*Ojo*) y un consejo (*Qué hacer*). Buscar "tir" encuentra la TIR, pero no "invertir".
+**Ayuda.** Un menú de seis temas (Tu dinero de un vistazo, Tus cuentas bancarias, Tus inversiones, Rentabilidad, Avisos y Usar Kreix); cada botón abre su sección y una flecha vuelve al menú. Es un glosario para quien no sabe de finanzas: patrimonio neto, tasa de ahorro, valor liquidativo, plusvalía, TWR, TIR y el resto de términos que muestra Kreix. Cada término es un desplegable: la sección solo enseña los nombres y, al pulsar uno, se abre su explicación sencilla con filas separadas para cómo lo calcula Kreix, un ejemplo, un aviso (*Ojo*) y un consejo (*Qué hacer*). Desde un «?» se llega a su término ya desplegado. Buscar "tir" encuentra la TIR, pero no "invertir".
 
 **Exportar y mover tus datos.** *Exportar* crea un archivo `.kreix` (un ZIP con una copia consistente de la base de datos y una ficha con la versión y los totales). Para llevarlo a otro ordenador, instala Kreix allí, ve a *Importar* y arrastra el archivo: los datos quedan idénticos a los de origen (cuentas, movimientos, categorías, operaciones, cartera y ajustes, incluida la protección anti-duplicados). Importar un `.kreix` **reemplaza** los datos que hubiera en ese ordenador, y pide confirmación si ya había datos. Un archivo recibido se trata como no fiable: solo se aceptan sus dos entradas, se comprueba la integridad de la base de datos y se rechaza si trae disparadores o vistas, si es de una versión más reciente o si es demasiado grande. **Si no lo cifras, el archivo no está cifrado**: contiene tu información financiera, guárdalo en un sitio seguro. (Al exportar no se escribe ningún archivo temporal en claro; el archivo `.kreix` es la única copia legible.)
 
@@ -242,10 +242,14 @@ data/                   modelos SQLAlchemy, repositorios idempotentes, migracion
                         tracker.py: detector de cambios reales y caché de resultados)
 core/                   lógica pura: métricas (generales, por cuenta y de inversión),
                         periodos, categorizador, pagos recurrentes, presupuestos, entidades, enumeraciones
+                        y el código fuente del QR animado para pasar los datos al móvil (qr_transfer.py)
+pwa/                    la app del móvil: py/kreix_web.py (puente JSON que replica cada vista del escritorio)
+                        y web/ (interfaz HTML/CSS/JS, worker de Pyodide, service worker y manifest)
 packaging/              PyInstaller (kreix.spec), instalador de Inno Setup (installer.iss, imágenes en art/) y build.ps1
 logo-mejorado/          logotipos e iconos de la marca (SVG como fuente; `tools/build_logos.py` regenera PNG e .ico)
 assets/fonts/           tipografías incluidas (Montserrat y DM Sans, licencia OFL)
-tools/                  capturas, benchmark de rendimiento, generador de fuentes y atajo para los datos de demostración
+tools/                  capturas, benchmark de rendimiento, generador de fuentes, build de la app móvil (build_pwa.py)
+                        y atajo para los datos de demostración
                         (la lógica de los datos de ejemplo vive en services/demo_data.py)
 tests/                  suite de pruebas
 ```
@@ -274,7 +278,7 @@ Decisiones de diseño relevantes:
 - **Importar, diálogos y bienvenida con el mismo lenguaje:** Importar reúne sus ajustes en una tarjeta con filas y muestra los resultados como filas planas; los cuadros de diálogo y los pasos de bienvenida usan solo el filo de marca, sin cajas dentro de cajas. Los botones también muestran el aro de foco solo con el teclado, el detalle de los gráficos lleva un filo fino y el trazo de marca, y los avisos entran con un fundido breve.
 - **Ningún cuadro es genérico:** los avisos, las preguntas y los cuadros que piden un dato (nombre de una cuenta, contraseña de un archivo, importe de una meta) son propios, con el mismo fondo, título y filo de marca que el resto, los botones en el idioma de la aplicación y la acción destructiva en rojo; el instalador de Windows lleva también la marca (tema oscuro, logotipo y franjas en la columna de bienvenida, textos en los tres idiomas). `tools/build_installer_art.py` dibuja sus imágenes.
 - **Sobrio y preciso:** márgenes generosos, esquinas de 6 px como mucho (4 px dentro de menús y casillas), fondos planos sin degradados ni resplandores, tarjetas con un borde fino y sin sombras, variaciones y estados en texto de color (sin cajas de fondo) e iconos lineales de trazo fino.
-- **Estructura:** Ajustes y Ayuda agrupan la información en tarjetas con cabecera tintada, separadores finos y rótulos de grupo, para que cada bloque se vea aislado. Una cifra principal grande en Inicio y bandas de cifras en Cuentas e Inversiones, en lugar de muchas cajas iguales.
+- **Estructura:** Ajustes agrupa la información en tarjetas con separadores finos y rótulos de grupo, y la Ayuda es una lista de términos plegados que se abren de uno en uno, para que cada bloque se vea aislado. Una cifra principal grande en Inicio y bandas de cifras en Cuentas e Inversiones, en lugar de muchas cajas iguales.
 
 ## Desarrollo
 
@@ -295,6 +299,14 @@ La web de descarga y guía vive en otro repositorio, [kreix-web](https://github.
 
 El instalador (`packaging\build.ps1`, con Inno Setup 6) se publica como *release* de kreix-web, que es desde donde se descarga.
 
+La app del móvil también se publica en kreix-web, en `app/`:
+
+```powershell
+.venv\Scripts\python tools\build_pwa.py      # deja la app en ..\kreix-web\app (Pyodide incluido: no pide nada a terceros)
+```
+
+Ejecuta en el navegador, con [Pyodide](https://pyodide.org) 0.29.5, el mismo `core`, `data`, `etl` y `services` de este repositorio (y los módulos de `ui` que no usan Qt), así que el móvil calcula y dice exactamente lo mismo que el escritorio. Las constantes de texto de los widgets, los iconos y el logotipo se sacan del código del escritorio al construir, para que nunca se desincronicen. El almacén cifrado es el mismo `.krx`, guardado en IndexedDB.
+
 El programa empaquetado se comprueba con `Kreix.exe --selftest informe.txt` (sin ventana: recorre las páginas en los tres idiomas y escribe `OK` o el error).
 
 Para medir el rendimiento con un volumen grande de datos inventados (nunca toca tus datos):
@@ -311,12 +323,12 @@ Los tests de interfaz usan Qt sin pantalla (`QT_QPA_PLATFORM=offscreen`) y simul
 
 - Migraciones de base de datos con Alembic.
 - Empaquetado para macOS (`.app`); el de Windows ya está.
-- Versión móvil con sincronización cifrada entre dispositivos.
+- Sincronización en los dos sentidos entre el móvil y el ordenador (hoy el QR lleva los datos del ordenador al móvil; del móvil al ordenador se pasa con un archivo `.kreix`).
 - Más idiomas (el catálogo de traducciones está en `core/locales/` y la ayuda en `ui/help_texts/`).
 
 ## Privacidad
 
-Los extractos bancarios son datos sensibles. Tus datos locales van cifrados (`.krx`), pero el archivo `.kreix` exportado no lo está. El repositorio ignora por defecto las bases de datos (`*.db`), los almacenes cifrados (`*.krx`), los exportados (`*.kreix`) y las carpetas `ejemplos/` y `extractos/`. No subas extractos reales al control de versiones.
+Los extractos bancarios son datos sensibles. Tus datos locales van cifrados (`.krx`); el archivo `.kreix` exportado va cifrado si dejas marcada la opción (si no, guárdalo en un sitio seguro). El repositorio ignora por defecto las bases de datos (`*.db`), los almacenes cifrados (`*.krx`), los exportados (`*.kreix`) y las carpetas `ejemplos/` y `extractos/`. No subas extractos reales al control de versiones.
 
 ## Licencia
 

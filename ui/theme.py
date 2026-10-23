@@ -277,6 +277,14 @@ QFrame#SectionHead {{
 QFrame#SectionHead[tone="alert"] {{ background: {red_soft}; border-bottom: 1px solid {rgba(p.red, 0.35)}; }}
 QFrame#SectionHead[tone="tip"] {{ background: {accent_soft}; border-bottom: 1px solid {rgba(p.accent, 0.4)}; }}
 QLabel#SectionHeadTitle {{ color: {p.text}; font-family: {medium}; font-size: 15px; }}
+/* un termino de la Ayuda, plegado: la fila entera es el boton; la flecha gira al desplegarlo */
+QPushButton#HelpToggle {{
+    text-align: left; background: transparent; border: none; border-radius: 6px; padding: 18px 32px;
+    color: {p.text}; font-family: {medium}; font-size: 15px; outline: none;
+}}
+QPushButton#HelpToggle:hover {{ background: {p.hover}; }}
+QPushButton#HelpToggle:checked {{ color: {p.accent_text}; }}
+QPushButton#HelpToggle[kbd="true"]:focus {{ border: 2px solid {p.accent}; padding: 16px 30px; }}
 QFrame#Divider {{ background: {p.border}; border: none; min-height: 1px; max-height: 1px; }}
 QLabel#GroupTitle {{ color: {p.text}; font-family: {medium}; font-size: 14px; }}
 QLabel#DetailLabel {{ color: {p.muted}; font-family: {medium}; font-size: 12px; }}

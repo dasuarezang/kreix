@@ -1,5 +1,5 @@
 ; Instalador de Kreix (Inno Setup 6). Lo lanza packaging/build.ps1 con /DAppVersion=x.y.z; compilado a mano:
-;   ISCC.exe /DAppVersion=0.6.0 packaging\installer.iss
+;   ISCC.exe /DAppVersion=0.6.1 packaging\installer.iss
 ; Se instala solo para el usuario (no pide permisos de administrador), crea el acceso directo en el menu Inicio y,
 ; si se quiere, en el escritorio. Al desinstalar NO se borran los datos (%APPDATA%\Kreix): son del usuario.
 

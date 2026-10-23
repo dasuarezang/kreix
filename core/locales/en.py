@@ -909,4 +909,6 @@ TEXTS: dict[str, str] = {
     'Kreix en el móvil': 'Kreix on your phone',
     'Kreix tiene app para Android y iPhone: se instala desde la web de Kreix, funciona sin conexión y guarda tus datos cifrados en el móvil.': 'Kreix has an app for Android and iPhone: install it from the Kreix website, it works offline and keeps your data encrypted on the phone.',
     'En Exportar, «Pasar al móvil» muestra un código QR animado que la app del móvil lee con la cámara: tus datos pasan del ordenador al móvil sin cables ni conexión.': 'In Export, “Send to phone” shows an animated QR code that the phone app reads with the camera: your data moves from the computer to the phone with no cables or connection.',
+    'Ayuda más limpia': 'A cleaner Help',
+    'Cada término de la Ayuda es un desplegable: solo ves los nombres y la explicación aparece al pulsar el que te interesa. Desde un «?» se abre ya desplegado.': 'Each Help term is a drop-down: you only see the names and the explanation appears when you click the one you want. From a “?” it opens already expanded.',
 }

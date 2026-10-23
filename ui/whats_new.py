@@ -6,9 +6,13 @@ from PySide6.QtWidgets import QFrame, QLabel, QPushButton, QScrollArea, QVBoxLay
 from core.i18n import tr, N_
 from ui.widgets.brand_dialog import BrandDialog
 
-VERSION = "0.6.0"
+VERSION = "0.6.1"
 
 RELEASES: dict[str, tuple[tuple[str, str], ...]] = {
+    "0.6.1": (
+        (N_("Ayuda más limpia"),
+         N_("Cada término de la Ayuda es un desplegable: solo ves los nombres y la explicación aparece al pulsar el que te interesa. Desde un «?» se abre ya desplegado.")),
+    ),
     "0.6.0": (
         (N_("Kreix en el móvil"),
          N_("Kreix tiene app para Android y iPhone: se instala desde la web de Kreix, funciona sin conexión y guarda tus datos cifrados en el móvil.")),

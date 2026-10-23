@@ -4,11 +4,12 @@ from __future__ import annotations
 from functools import partial
 
 from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QIcon, QTransform
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QLineEdit, QPushButton, QScrollArea, QStackedLayout, QVBoxLayout, QWidget
 
 from ui import icons, theme
 from ui.widgets.cards import PageHeader
-from ui.widgets.section_card import GroupCard, GroupHeading, SectionCard, divider
+from ui.widgets.section_card import GroupCard, GroupHeading, divider
 from ui.help_content import SECTION_INFO, SECTIONS, HelpEntry, grouped, localized_entries, search
 from core.i18n import tr
 
@@ -26,6 +27,73 @@ def _clear(layout) -> None:
             item.widget().deleteLater()
         elif item.layout():
             _clear(item.layout())
+
+
+class HelpItem(QFrame):
+    """Un termino del glosario, plegado: a la vista solo su nombre; la explicacion se despliega al pulsarlo (y se recoge
+    al pulsar otra vez). Asi el menu de cada seccion se lee de un vistazo."""
+
+    def __init__(self, entry: HelpEntry, expanded: bool = False) -> None:
+        super().__init__()
+        self.setObjectName("SectionCard")
+        self.entry = entry
+        self.toggle = QPushButton(entry.term)
+        self.toggle.setObjectName("HelpToggle")
+        self.toggle.setCheckable(True)
+        self.toggle.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.toggle.setLayoutDirection(Qt.LayoutDirection.RightToLeft)       # la flecha, al final de la fila
+        self.toggle.toggled.connect(self._on_toggled)
+        self.body = QWidget()
+        body = QVBoxLayout(self.body)
+        body.setContentsMargins(32, 4, 32, 24)
+        body.setSpacing(14)
+        plain = QLabel(entry.plain)
+        plain.setWordWrap(True)
+        body.addWidget(plain)
+        for label, text, tone in ((tr("Cómo lo calcula"), entry.how, ""), (tr("Ejemplo"), entry.example, ""),
+                                  (tr("Ojo"), entry.note, "alert"), (tr("Qué hacer"), entry.todo, "tip")):
+            if text:
+                name = QLabel(label)
+                name.setObjectName("DetailLabel")
+                name.setProperty("tone", tone)
+                name.setFixedWidth(116)
+                name.setAlignment(Qt.AlignmentFlag.AlignTop)
+                detail = QLabel(text)
+                detail.setObjectName("Small")
+                detail.setWordWrap(True)
+                row = QWidget()
+                lay = QHBoxLayout(row)
+                lay.setContentsMargins(0, 0, 0, 0)
+                lay.setSpacing(16)
+                lay.addWidget(name, 0, Qt.AlignmentFlag.AlignTop)
+                lay.addWidget(detail, 1)
+                body.addWidget(divider())
+                body.addWidget(row)
+        self.body.hide()                        # (antes de tener padre, ocultar nunca abre una ventana suelta)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+        outer.addWidget(self.toggle)
+        outer.addWidget(self.body)
+        self.setAccessibleName(entry.term)
+        self.toggle.setChecked(expanded)
+        self.refresh_theme()
+
+    @property
+    def expanded(self) -> bool:
+        return self.toggle.isChecked()
+
+    def _on_toggled(self, on: bool) -> None:
+        self.body.setVisible(on)
+        self.refresh_theme()
+
+    def refresh_theme(self) -> None:
+        """La flecha apunta a la derecha plegado y hacia abajo desplegado."""
+        pal = theme.current()
+        pix = icons.pixmap("chevron", pal.accent_text if self.expanded else pal.muted, 18, 2.0)
+        if self.expanded:
+            pix = pix.transformed(QTransform().rotate(90))
+        self.toggle.setIcon(QIcon(pix))
 
 
 class IconChip(QLabel):
@@ -96,6 +164,7 @@ class HelpView(QWidget):
         self.setObjectName("Page")
         self._section: str | None = None
         self._shown: list[HelpEntry] = []
+        self.items: list[HelpItem] = []          # los terminos que se ven ahora (de la seccion o de la busqueda)
 
         self._stack = QStackedLayout(self)
         self._stack.addWidget(self._build_hub())
@@ -218,8 +287,9 @@ class HelpView(QWidget):
         self._section_title.setText(tr(section))
         self._section_sub.setText(tr("{description}  ·  {count} términos").format(description=tr(description), count=len(entries)))
         _clear(self._entries)
+        self.items = []
         for entry in entries:
-            self._entries.addWidget(self._card(entry))
+            self._entries.addWidget(self._item(entry))
         self._stack.setCurrentIndex(1)
         self.section_opened.emit(section)
 
@@ -230,6 +300,7 @@ class HelpView(QWidget):
         self._grid_holder.setVisible(not searching)
         self._results_holder.setVisible(searching)
         _clear(self._results)
+        self.items = []
         if not searching:
             self._summary.setText("")
             if self.is_hub():
@@ -246,11 +317,13 @@ class HelpView(QWidget):
             self._summary.setText("")
             return
         self._summary.setText(tr("{found} de {total} términos").format(found=len(found), total=len(everything)))
+        exact = [e for e in found if e.term.casefold() == query.casefold()]
         for section, entries in grouped(found):
             self._results.addSpacing(8)
             self._results.addWidget(GroupHeading(tr(section)))
             for entry in entries:
-                self._results.addWidget(self._card(entry))
+                # desde un «?» se busca el termino exacto: ese sale ya desplegado (o el unico resultado)
+                self._results.addWidget(self._item(entry, expanded=entry in exact or len(found) == 1))
 
     def set_query(self, text: str) -> None:
         """Escribe en el buscador (vuelve al menu si se estaba dentro de una seccion)."""
@@ -269,33 +342,12 @@ class HelpView(QWidget):
         self.back_button.setIcon(icons.button_icon("back", theme.current(), 18))
         for card in self.cards:
             card.refresh_theme()
+        for item in self.items:
+            item.refresh_theme()
         self._section_chip.refresh_theme()
 
-    # ------------------------------------------------------------------ tarjeta de termino
-    @staticmethod
-    def _card(entry: HelpEntry) -> QFrame:
-        """Un termino: cabecera con su nombre, la explicacion sencilla y, debajo, filas separadas (calculo, ejemplo, aviso, consejo)."""
-        card = SectionCard(entry.term)
-        plain = QLabel(entry.plain)
-        plain.setWordWrap(True)
-        card.add(plain)
-        for label, text, tone in ((tr("Cómo lo calcula"), entry.how, ""), (tr("Ejemplo"), entry.example, ""),
-                                  (tr("Ojo"), entry.note, "alert"), (tr("Qué hacer"), entry.todo, "tip")):
-            if text:
-                name = QLabel(label)
-                name.setObjectName("DetailLabel")
-                name.setProperty("tone", tone)
-                name.setFixedWidth(116)
-                name.setAlignment(Qt.AlignmentFlag.AlignTop)
-                body = QLabel(text)
-                body.setObjectName("Small")
-                body.setWordWrap(True)
-                row = QWidget()
-                lay = QHBoxLayout(row)
-                lay.setContentsMargins(0, 0, 0, 0)
-                lay.setSpacing(16)
-                lay.addWidget(name, 0, Qt.AlignmentFlag.AlignTop)
-                lay.addWidget(body, 1)
-                card.add_row(row)
-        card.setAccessibleName(entry.term)
-        return card
+    # ------------------------------------------------------------------ termino (desplegable)
+    def _item(self, entry: HelpEntry, expanded: bool = False) -> HelpItem:
+        item = HelpItem(entry, expanded)
+        self.items.append(item)
+        return item
